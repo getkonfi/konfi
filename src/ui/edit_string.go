@@ -43,5 +43,10 @@ func (e *stringEditor) View(width int) string {
 	return "    " + e.input.View()
 }
 
+func (e *stringEditor) InlineView(width int) string {
+	e.input.Width = width
+	return e.input.View()
+}
+
 func (e *stringEditor) Value() string { return e.val }
-func (e *stringEditor) Height() int   { return 1 }
+func (e *stringEditor) Height() int   { return 0 }

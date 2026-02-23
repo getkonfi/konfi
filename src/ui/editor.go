@@ -16,6 +16,13 @@ type FieldEditor interface {
 	Height() int
 }
 
+// InlineEditor is optionally implemented by editors that render on the
+// same row as the field label instead of on a separate line below.
+type InlineEditor interface {
+	FieldEditor
+	InlineView(width int) string
+}
+
 // editorForField returns the appropriate editor for a field type.
 // falls back to string editor for unknown types.
 func editorForField(f pkg.Field) FieldEditor {
@@ -29,6 +36,10 @@ func editorForField(f pkg.Field) FieldEditor {
 		return &enumEditor{}
 	case "color":
 		return &colorEditor{}
+	case "list":
+		return &listEditor{}
+	case "multi":
+		return &multiEditor{}
 	default:
 		return &stringEditor{}
 	}
@@ -39,7 +50,7 @@ func editorForField(f pkg.Field) FieldEditor {
 func formatValue(value, fieldType, configFormat string) string {
 	if configFormat == "toml" {
 		switch fieldType {
-		case "string", "color", "enum":
+		case "string", "color", "enum", "multi":
 			return `"` + value + `"`
 		}
 	}

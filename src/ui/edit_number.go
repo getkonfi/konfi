@@ -90,8 +90,21 @@ func (e *numberEditor) View(width int) string {
 	return line
 }
 
+func (e *numberEditor) InlineView(width int) string {
+	suffix := e.hint
+	if e.errMsg != "" {
+		suffix += " " + e.errStyle.Render(e.errMsg)
+	}
+	w := width - lipgloss.Width(suffix)
+	if w < 1 {
+		w = 1
+	}
+	e.input.Width = w
+	return e.input.View() + suffix
+}
+
 func (e *numberEditor) Value() string { return e.val }
-func (e *numberEditor) Height() int   { return 1 }
+func (e *numberEditor) Height() int   { return 0 }
 
 func (e *numberEditor) step(dir int) {
 	cur, err := strconv.ParseFloat(e.input.Value(), 64)
