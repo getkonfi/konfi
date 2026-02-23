@@ -1,6 +1,6 @@
 # build output
 bin/
-konfigurator
+/konfigurator
 
 # IDE
 .idea/

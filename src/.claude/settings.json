@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)", "Bash(tree:*)", "Bash(mkdir:*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
+      "Bash(npm test:*)", "Bash(npm run:*)",
+      "Bash(go test:*)", "Bash(go build:*)",
+      "Bash(cargo test:*)", "Bash(cargo build:*)",
+      "Bash(zig build:*)", "Bash(zig test:*)",
+      "Bash(python -m pytest:*)", "Bash(make:*)",
+      "WebSearch", "WebFetch",
+      "mcp__tavily__tavily_search",
+      "mcp__tavily__tavily_extract",
+      "mcp__tavily__tavily_research",
+      "mcp__tavily__tavily_crawl"
+    ]
+  }
+}
