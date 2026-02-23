@@ -51,7 +51,8 @@ type content struct {
 	fields       []pkg.Field // flattened field list across all sections
 	fieldSection []int       // len == len(c.fields), maps field → section index
 	visible      []row       // navigable rows (section headers + fields)
-	collapsed    map[int]bool // section index → collapsed
+	collapsed      map[int]bool // section index → collapsed
+	activeSection  int          // current section tab
 	configuredOnly bool
 	searching      bool
 	search         textinput.Model
@@ -84,6 +85,9 @@ type content struct {
 
 	// file state indicator ("", "unsaved", "saved", "reloaded", "new")
 	fileState string
+
+	// keyboard hints (set by root.updateHints)
+	hints []keyHint
 
 	// insight cycling + split-flap animation
 	insightIdx          int
@@ -179,18 +183,27 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				cmd := c.openEditor()
 				return c, cmd
 			}
-			// enter on section header toggles collapse
-			if hasRows && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
-				c.toggleCollapse(c.visible[c.cursor].sectionIdx)
-			}
-		case "z":
-			if hasRows && c.cursor < len(c.visible) {
-				r := c.visible[c.cursor]
-				if r.isSection {
-					c.toggleCollapse(r.sectionIdx)
-				} else {
-					c.toggleCollapse(c.fieldSection[r.fieldIdx])
+		case "[":
+			if c.schema != nil && len(c.schema.Sections) > 1 {
+				c.activeSection--
+				if c.activeSection < 0 {
+					c.activeSection = len(c.schema.Sections) - 1
 				}
+				c.cursor = 0
+				c.scrollY = 0
+				c.refilter()
+				c.updatePreviewLine()
+			}
+		case "]":
+			if c.schema != nil && len(c.schema.Sections) > 1 {
+				c.activeSection++
+				if c.activeSection >= len(c.schema.Sections) {
+					c.activeSection = 0
+				}
+				c.cursor = 0
+				c.scrollY = 0
+				c.refilter()
+				c.updatePreviewLine()
 			}
 		case "f":
 			if c.schema != nil {
@@ -384,6 +397,7 @@ func (c *content) commitEdit(value string) {
 			}
 			c.config.SetContent(newData)
 			c.refreshValues()
+			c.emitSettingChanged(f.Key, value)
 			return
 		}
 	}
@@ -395,6 +409,17 @@ func (c *content) commitEdit(value string) {
 	}
 	c.config.SetContent(newData)
 	c.refreshValues()
+
+	// hot-reload konfigurator settings
+	c.emitSettingChanged(f.Key, value)
+}
+
+// emitSettingChanged sends a KonfSettingChangedMsg if editing konfigurator.
+func (c *content) emitSettingChanged(key, value string) {
+	if c.konfable == nil || c.konfable.Name() != "konfigurator" || c.program == nil {
+		return
+	}
+	c.program.Send(KonfSettingChangedMsg{Key: key, Value: value})
 }
 
 // toggleBool flips a boolean field value immediately.
@@ -435,6 +460,7 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.fieldSection = nil
 	c.visible = nil
 	c.collapsed = make(map[int]bool)
+	c.activeSection = 0
 	c.configuredOnly = false
 	c.searching = false
 	c.search.SetValue("")
@@ -477,6 +503,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.fieldSection = nil
 	c.visible = nil
 	c.collapsed = make(map[int]bool)
+	c.activeSection = 0
 	c.configuredOnly = false
 	c.searching = false
 	c.search.SetValue("")
@@ -496,8 +523,14 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 
 	info := k.Info()
 
-	// load config file
+	// load config file (virtual konfables create defaults if missing)
 	cf, err := pkg.LoadConfigFile(info.ConfigPath)
+	if err != nil && info.Binary == "" {
+		cf, err = pkg.LoadOrCreateConfigFile(info.ConfigPath, []byte("theme: catppuccin\nlog_level: info\n"))
+		if err == nil {
+			c.fileState = "new"
+		}
+	}
 	if err != nil {
 		return func() tea.Msg {
 			return StatusMsg{Text: fmt.Sprintf("no config: %s", info.ConfigPath)}
@@ -524,7 +557,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.insightGen++
 
 	// start file watching
-	path := info.ConfigPath
 	if c.config != nil && c.program != nil {
 		p := c.program
 		cfPath := c.config.Path
@@ -534,9 +566,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	}
 
 	var cmds []tea.Cmd
-	cmds = append(cmds, func() tea.Msg {
-		return StatusMsg{Text: path}
-	})
 
 	// init split-flap animation if we have a previous snapshot
 	if snapshot != nil {
@@ -563,81 +592,39 @@ func (c *content) buildFieldList() {
 	c.refilter()
 }
 
-// refilter rebuilds the visible row slice from current collapse/filter/search state.
-// two-pass: first count visible fields per section, then emit rows — skipping
-// section headers with zero visible fields.
+// refilter rebuilds the visible row slice for the active section tab.
 func (c *content) refilter() {
 	c.visible = c.visible[:0]
 	if c.schema == nil {
 		return
 	}
 
+	// clamp activeSection
+	if c.activeSection >= len(c.schema.Sections) {
+		c.activeSection = 0
+	}
+
 	query := strings.ToLower(strings.TrimSpace(c.search.Value()))
 	hasSearch := c.searching && query != ""
 
-	// pass 1: count visible fields per section (ignoring collapse state)
-	sectionCount := make([]int, len(c.schema.Sections))
-	fieldIdx := 0
-	for si, sec := range c.schema.Sections {
-		for range sec.Fields {
-			f := c.fields[fieldIdx]
-			visible := true
-			if c.configuredOnly {
-				if _, ok := c.values[f.Key]; !ok {
-					visible = false
-				}
-			}
-			if visible && hasSearch {
-				label := strings.ToLower(f.Label)
-				key := strings.ToLower(f.Key)
-				if !strings.Contains(label, query) && !strings.Contains(key, query) {
-					visible = false
-				}
-			}
-			if visible {
-				sectionCount[si]++
-			}
-			fieldIdx++
-		}
-	}
-
-	// pass 2: emit rows, skipping empty sections
-	fieldIdx = 0
-	for si, sec := range c.schema.Sections {
-		if sectionCount[si] == 0 {
-			fieldIdx += len(sec.Fields)
+	for i := range c.fields {
+		f := &c.fields[i]
+		if c.fieldSection[i] != c.activeSection {
 			continue
 		}
-
-		c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
-
-		if c.collapsed[si] && !hasSearch {
-			fieldIdx += len(sec.Fields)
-			continue
-		}
-
-		for range sec.Fields {
-			f := c.fields[fieldIdx]
-
-			if c.configuredOnly {
-				if _, ok := c.values[f.Key]; !ok {
-					fieldIdx++
-					continue
-				}
+		if c.configuredOnly {
+			if _, ok := c.values[f.Key]; !ok {
+				continue
 			}
-
-			if hasSearch {
-				label := strings.ToLower(f.Label)
-				key := strings.ToLower(f.Key)
-				if !strings.Contains(label, query) && !strings.Contains(key, query) {
-					fieldIdx++
-					continue
-				}
-			}
-
-			c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: fieldIdx})
-			fieldIdx++
 		}
+		if hasSearch {
+			label := strings.ToLower(f.Label)
+			key := strings.ToLower(f.Key)
+			if !strings.Contains(label, query) && !strings.Contains(key, query) {
+				continue
+			}
+		}
+		c.visible = append(c.visible, row{sectionIdx: c.activeSection, fieldIdx: i})
 	}
 
 	// clamp cursor
@@ -651,32 +638,7 @@ func (c *content) refilter() {
 	}
 }
 
-// toggleCollapse toggles the collapsed state of a section and refilters.
-// if the cursor is on a field inside the section being collapsed, move it to the section header.
-func (c *content) toggleCollapse(sectionIdx int) {
-	c.collapsed[sectionIdx] = !c.collapsed[sectionIdx]
-
-	// if collapsing and cursor is on a field in this section, move cursor to section header
-	if c.collapsed[sectionIdx] {
-		if c.cursor < len(c.visible) {
-			r := c.visible[c.cursor]
-			if !r.isSection && c.fieldSection[r.fieldIdx] == sectionIdx {
-				// find the section header row for this section
-				for i, vr := range c.visible {
-					if vr.isSection && vr.sectionIdx == sectionIdx {
-						c.cursor = i
-						break
-					}
-				}
-			}
-		}
-	}
-
-	c.refilter()
-	c.updatePreviewLine()
-}
-
-// currentField returns the field under the cursor, or nil if on a section header or empty.
+// currentField returns the field under the cursor, or nil if empty.
 func (c *content) currentField() *pkg.Field {
 	if len(c.visible) == 0 || c.cursor < 0 || c.cursor >= len(c.visible) {
 		return nil
@@ -806,6 +768,9 @@ func (c content) pageSize() int {
 // includes the search bar when active.
 func (c content) headerHeight() int {
 	h := 8
+	if c.schema != nil && len(c.schema.Sections) > 1 {
+		h++ // tab bar line
+	}
 	if c.searching {
 		h++ // search bar line
 	}
@@ -819,21 +784,12 @@ func (c content) cursorLine() int {
 		return 0
 	}
 	line := c.headerHeight()
-	firstVisibleSection := true
 	for i, r := range c.visible {
-		// blank line before section headers (only when a previous section was emitted)
-		if r.isSection {
-			if !firstVisibleSection {
-				line++
-			}
-			firstVisibleSection = false
-		}
 		if i == c.cursor {
 			return line
 		}
-		// section header = 1 line, field = 1 line + optional editor height
 		line++
-		if !r.isSection && c.editing && c.editor != nil && r.fieldIdx == c.editField {
+		if c.editing && c.editor != nil && r.fieldIdx == c.editField {
 			line += c.editor.Height()
 		}
 	}
@@ -934,14 +890,6 @@ func (c content) renderSeparator(width int) string {
 
 	var parts []string
 
-	// current section name
-	if c.cursor >= 0 && c.cursor < len(c.visible) {
-		r := c.visible[c.cursor]
-		if r.sectionIdx >= 0 && r.sectionIdx < len(c.schema.Sections) {
-			parts = append(parts, c.schema.Sections[r.sectionIdx].Name)
-		}
-	}
-
 	// position indicator
 	parts = append(parts, fmt.Sprintf("%d/%d", c.cursor+1, len(c.visible)))
 
@@ -1015,12 +963,13 @@ func (c *content) buildInsights() {
 	c.insightLines = append(c.insightLines, c.schema.Hints...)
 }
 
-// headerLeftLines returns the 4-line left column for the header.
+// headerLeftLines returns the left column lines for the header.
 func (c content) headerLeftLines() []string {
-	version := ""
+	title := ""
 	if c.konfable != nil {
+		title = c.konfable.Name()
 		if v, ok := c.versions[c.konfable.Name()]; ok && v != "" {
-			version = v
+			title += " " + v
 		}
 	}
 
@@ -1037,7 +986,7 @@ func (c content) headerLeftLines() []string {
 		insight = c.insightLines[c.insightIdx%len(c.insightLines)]
 	}
 
-	return []string{version, path, "", insight}
+	return []string{title, path, insight}
 }
 
 // renderHeader produces the two-column header or narrow fallback.
@@ -1053,38 +1002,29 @@ func (c content) renderHeader(width int) string {
 		return strings.Join(lines, "\n") + "\n"
 	}
 
-	// build right column: logo + name badge
+	// build right column: logo only (name is in the left column now)
 	var rightLines []string
 	if logo, ok := konfables.Logos[c.konfable.Name()]; ok {
 		art := logo.Render()
 		rightLines = strings.Split(art, "\n")
 	}
-	// compute logo width before appending badge
-	logoW := 0
+	rightW := 0
 	for _, l := range rightLines {
-		if w := lipgloss.Width(l); w > logoW {
-			logoW = w
+		if w := lipgloss.Width(l); w > rightW {
+			rightW = w
 		}
 	}
-	nameBadge := c.theme.Badge.Render(c.konfable.Name())
-	// center badge under logo (must be full-width so right-align doesn't shift it)
-	rightLines = append(rightLines, lipgloss.PlaceHorizontal(logoW, lipgloss.Center, nameBadge))
 	rightBlock := strings.Join(rightLines, "\n")
-	rightW := logoW
-	badgeW := lipgloss.Width(nameBadge)
-	if badgeW > rightW {
-		rightW = badgeW
-	}
 
 	leftW := width - rightW - 2 // 2 chars gap
 	if leftW < 20 {
-		// narrow fallback: centered logo + name
+		// narrow fallback: centered logo
 		var lines []string
 		if logo, ok := konfables.Logos[c.konfable.Name()]; ok {
 			art := logo.Render()
 			lines = append(lines, strings.Split(centerBlock(art, width), "\n")...)
 		}
-		lines = append(lines, centerLine(nameBadge, width), "") // name + blank after
+		lines = append(lines, "")
 		for len(lines) < hh {
 			lines = append(lines, "")
 		}
@@ -1104,11 +1044,11 @@ func (c content) renderHeader(width int) string {
 
 	// style + truncate left lines
 	styledLeft := make([]string, len(leftData))
-	styles := []lipgloss.Style{c.theme.Subtext, c.theme.Muted, c.theme.Text, c.theme.InsightText}
+	styles := []lipgloss.Style{c.theme.Primary, c.theme.Muted, c.theme.InsightText}
 	for i, line := range leftData {
 		// truncate to leftW (plain text before styling)
 		if len(line) > leftW {
-			line = line[:leftW]
+			line = line[:leftW-1] + "…"
 		}
 		s := c.theme.Text
 		if i < len(styles) {
@@ -1125,8 +1065,8 @@ func (c content) renderHeader(width int) string {
 				s = c.theme.Muted
 			}
 		}
-		// line 3 (insight): use warning style for linter diagnostics
-		if i == 3 && c.insightWarningCount > 0 {
+		// line 2 (insight): use warning style for linter diagnostics
+		if i == 2 && c.insightWarningCount > 0 {
 			idx := c.insightIdx % len(c.insightLines)
 			if idx < c.insightWarningCount {
 				s = c.theme.Warning
@@ -1170,6 +1110,22 @@ func (c content) insightTickCmd() tea.Cmd {
 	})
 }
 
+// renderTabs draws the horizontal section tab bar.
+func (c content) renderTabs(_ int) string {
+	if c.schema == nil || len(c.schema.Sections) <= 1 {
+		return ""
+	}
+	var parts []string
+	for i, sec := range c.schema.Sections {
+		if i == c.activeSection {
+			parts = append(parts, c.theme.Primary.Bold(true).Render(sec.Name))
+		} else {
+			parts = append(parts, c.theme.Muted.Render(sec.Name))
+		}
+	}
+	return strings.Join(parts, c.theme.Muted.Render(" │ "))
+}
+
 func (c content) renderBody(width int) string {
 	if c.schema == nil {
 		if c.config != nil {
@@ -1190,45 +1146,23 @@ func (c content) renderBody(width int) string {
 	// header: two-column (or narrow fallback)
 	b.WriteString(c.renderHeader(width))
 
+	// section tabs
+	if tabs := c.renderTabs(width); tabs != "" {
+		b.WriteString(tabs)
+		b.WriteByte('\n')
+	}
+
 	// search bar (when active)
 	if c.searching {
-		// count visible field rows (not section headers)
-		fieldRows := 0
-		for _, r := range c.visible {
-			if !r.isSection {
-				fieldRows++
-			}
-		}
 		prompt := c.theme.Primary.Render("/ ")
-		count := c.theme.Muted.Render(fmt.Sprintf("  %d/%d fields", fieldRows, len(c.fields)))
+		count := c.theme.Muted.Render(fmt.Sprintf("  %d/%d fields", len(c.visible), len(c.fields)))
 		b.WriteString(prompt + c.search.View() + count)
 		b.WriteByte('\n')
 	}
 
 	labelW := c.labelColumnWidth()
 
-	firstVisibleSection := true
 	for i, r := range c.visible {
-		if r.isSection {
-			// blank line before section headers (only when a previous section was emitted)
-			if !firstVisibleSection {
-				b.WriteByte('\n')
-			}
-			firstVisibleSection = false
-			sec := c.schema.Sections[r.sectionIdx]
-			if c.collapsed[r.sectionIdx] {
-				// collapsed: show count of fields in section
-				count := len(sec.Fields)
-				header := c.theme.Muted.Render(fmt.Sprintf("▸ %s (%d fields)", sec.Name, count))
-				b.WriteString(header)
-			} else {
-				header := c.theme.Subtext.Bold(true).Render("▾ " + sec.Name)
-				b.WriteString(header)
-			}
-			b.WriteByte('\n')
-			continue
-		}
-
 		f := &c.fields[r.fieldIdx]
 		isCursor := c.focused && i == c.cursor
 

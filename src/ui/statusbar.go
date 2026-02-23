@@ -31,23 +31,26 @@ func newStatusbar(th *theme.Theme) statusbar {
 func (s *statusbar) View() string {
 	style := s.theme.Statusbar.Width(s.width)
 
-	// left side: transient status only
-	left := s.status
+	// derive key/label styles that carry the statusbar background
+	// so inner Render resets don't strip it
+	bg := s.theme.Palette.Surface
+	keyStyle := lipgloss.NewStyle().Foreground(s.theme.Palette.Subtext).Background(bg)
+	labelStyle := lipgloss.NewStyle().Foreground(s.theme.Palette.Muted).Background(bg)
 
-	// right side: key-cap hints + theme badge
-	keyCap := lipgloss.NewStyle().
-		Background(s.theme.Palette.Overlay).
-		Foreground(s.theme.Palette.Text)
-	label := s.theme.Muted
-
-	var parts []string
-	for _, h := range s.hints {
-		k := keyCap.Render(" " + h.Key + " ")
-		l := label.Render(h.Label)
-		parts = append(parts, k+" "+l)
+	// left: transient status or keyboard hints
+	var left string
+	if s.status != "" {
+		left = labelStyle.Render(s.status)
+	} else {
+		var parts []string
+		for _, h := range s.hints {
+			parts = append(parts, keyStyle.Render(h.Key)+" "+labelStyle.Render(h.Label))
+		}
+		left = strings.Join(parts, labelStyle.Render(" · "))
 	}
-	themeBadge := s.theme.Primary.Render(s.themeName)
-	right := strings.Join(parts, "  ") + "  " + themeBadge
+
+	// right: theme name
+	right := labelStyle.Render(s.themeName)
 
 	// fill middle with spaces
 	gap := s.width - lipgloss.Width(left) - lipgloss.Width(right) - 2

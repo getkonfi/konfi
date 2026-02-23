@@ -15,6 +15,7 @@ type sidebarItem struct {
 	icon      string
 	name      string
 	installed bool
+	system    bool // system items render in bottom section
 }
 
 type sidebar struct {
@@ -216,16 +217,27 @@ func (s sidebar) View() string {
 	if len(s.filtered) == 0 {
 		b.WriteString(s.theme.Muted.Render("no matches"))
 	} else {
+		drawnSystemSep := false
 		for fi, origIdx := range s.filtered {
-			if fi > 0 {
+			item := s.items[origIdx]
+
+			// visual separator before first system item
+			if item.system && !drawnSystemSep {
+				if fi > 0 {
+					b.WriteByte('\n')
+				}
+				b.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
+				drawnSystemSep = true
+			}
+
+			if fi > 0 || drawnSystemSep {
 				b.WriteByte('\n')
 			}
-			item := s.items[origIdx]
 			isCursor := fi == s.cursor
 
 			var indicator, icon, name string
 			if isCursor {
-				indicator = s.theme.Primary.Render("▎")
+				indicator = " "
 				icon = " " + item.icon + " "
 				if item.installed {
 					icon = s.theme.Primary.Render(icon)

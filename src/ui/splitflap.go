@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	splitFlapTickRate = 60 * time.Millisecond
-	splitFlapMaxSteps = 20
+	splitFlapTickRate = 45 * time.Millisecond
+	splitFlapMaxSteps = 14
 	splitFlapCharSet  = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-~:_"
 )
 

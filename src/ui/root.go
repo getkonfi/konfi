@@ -21,14 +21,15 @@ const (
 const sidebarWidth = 24
 
 type root struct {
-	app     *setup.App
-	sidebar sidebar
-	content content
-	status  statusbar
-	focus   pane
-	width   int
-	height  int
-	ready   bool
+	app      *setup.App
+	sidebar  sidebar
+	content  content
+	status   statusbar
+	focus    pane
+	width    int
+	height   int
+	ready    bool
+	showHelp bool
 
 	// all konfables (indexed by sidebar item order)
 	allKonfables []konfables.Konfable
@@ -61,8 +62,8 @@ func NewRoot(app *setup.App) tea.Model {
 	// build sidebar items and konfable lookup from all registered apps
 	var items []sidebarItem
 	var allK []konfables.Konfable
-	for _, d := range setup.AllKonfables() {
-		if k, ok := d.(konfables.Konfable); ok {
+	for _, ki := range setup.AllKonfablesWithInfo() {
+		if k, ok := ki.Konfable.(konfables.Konfable); ok {
 			info := k.Info()
 			icon := info.NerdIcon
 			if icon == "" {
@@ -72,10 +73,11 @@ func NewRoot(app *setup.App) tea.Model {
 				icon:      icon,
 				name:      k.Name(),
 				installed: installed[k.Name()],
+				system:    ki.System,
 			})
 			allK = append(allK, k)
 		} else {
-			app.Logger.Warn().Str("app", d.Name()).Msg("registered app does not satisfy full Konfable interface")
+			app.Logger.Warn().Str("app", ki.Konfable.Name()).Msg("registered app does not satisfy full Konfable interface")
 		}
 	}
 
@@ -146,6 +148,18 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.content, cmd = r.content.Update(msg)
 			r.updateHints()
 			return r, cmd
+		}
+	}
+
+	// when help overlay is shown, swallow all keys except ?/esc to dismiss
+	if r.showHelp {
+		if km, ok := msg.(tea.KeyMsg); ok {
+			switch km.String() {
+			case "?", "esc":
+				r.showHelp = false
+				r.updateHints()
+			}
+			return r, nil
 		}
 	}
 
@@ -239,11 +253,17 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.status.theme = r.app.Theme
 			r.status.themeName = r.app.Theme.Palette.Name
 			return r, tea.Batch(cmds...)
+
+		case "?":
+			r.showHelp = true
+			r.updateHints()
+			return r, nil
 		}
 
 	case AppSelectedMsg:
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
 			k := r.allKonfables[msg.Index]
+			r.status.status = ""
 
 			if !r.installed[k.Name()] {
 				r.content.showNotInstalled(k)
@@ -290,6 +310,25 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.updateHints()
 		return r, nil
 
+	case KonfSettingChangedMsg:
+		switch msg.Key {
+		case "theme":
+			p := theme.PaletteByName(msg.Value)
+			r.app.Theme.SetPalette(p)
+			themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
+			var cmd tea.Cmd
+			r.sidebar, cmd = r.sidebar.Update(themeMsg)
+			cmds = append(cmds, cmd)
+			r.content, cmd = r.content.Update(themeMsg)
+			cmds = append(cmds, cmd)
+			r.status.theme = r.app.Theme
+			r.status.themeName = r.app.Theme.Palette.Name
+			r.app.Config.Theme = msg.Value
+		case "log_level":
+			r.app.Config.LogLevel = msg.Value
+		}
+		return r, tea.Batch(cmds...)
+
 	case insightTickMsg, splitFlapTickMsg:
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
@@ -326,7 +365,13 @@ func (r *root) View() string {
 	statusView := r.status.View()
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
-	return lipgloss.JoinVertical(lipgloss.Left, body, statusView)
+	view := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
+
+	if r.showHelp {
+		return renderHelpCard(r.width, r.height, r.focus, r.content.editing, r.app.Theme)
+	}
+
+	return view
 }
 
 func (r *root) layout() {
@@ -379,45 +424,48 @@ func (r *root) cyclePane(dir int) {
 
 func (r *root) updateHints() {
 	if r.content.editing {
-		r.status.hints = []keyHint{
+		r.content.hints = []keyHint{
 			{"⏎", "confirm"},
 			{"esc", "cancel"},
 		}
+		r.status.hints = r.content.hints
 		return
 	}
 
 	switch r.focus {
 	case paneSidebar:
 		if r.sidebar.searching {
-			r.status.hints = []keyHint{
+			r.content.hints = []keyHint{
 				{"↑↓", "navigate"},
 				{"⏎", "select"},
 				{"esc", "clear"},
 			}
 		} else {
-			r.status.hints = []keyHint{
+			r.content.hints = []keyHint{
 				{"↑↓", "navigate"},
 				{"⏎", "open"},
 				{"/", "search"},
 				{"→", "content"},
 				{"t", "theme"},
+				{"?", "help"},
 				{"q", "quit"},
 			}
 		}
 	case paneContent:
 		if r.content.searching {
-			r.status.hints = []keyHint{
+			r.content.hints = []keyHint{
 				{"↑↓", "navigate"},
 				{"⏎", "lock"},
 				{"esc", "clear"},
 			}
+			r.status.hints = r.content.hints
 			return
 		}
 		hints := []keyHint{
 			{"↑↓", "navigate"},
 			{"⏎", "edit"},
+			{"[]", "section"},
 			{"/", "search"},
-			{"z", "fold"},
 			{"f", "filter"},
 		}
 		if r.content.currentDocURL() != "" {
@@ -430,9 +478,13 @@ func (r *root) updateHints() {
 		if r.content.config != nil && r.content.config.Dirty() {
 			hints = append(hints, keyHint{"^S", "save"})
 		}
-		hints = append(hints, keyHint{"q", "quit"})
-		r.status.hints = hints
+		hints = append(hints, []keyHint{
+			{"?", "help"},
+			{"q", "quit"},
+		}...)
+		r.content.hints = hints
 	}
+	r.status.hints = r.content.hints
 }
 
 func (r *root) cycleTheme() {
