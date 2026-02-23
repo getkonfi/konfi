@@ -1,0 +1,94 @@
+app: hyprland
+format: hyprland
+docs_url: "https://wiki.hyprland.org/Configuring/Variables/"
+hints:
+  - "keyword = value syntax — no section headers"
+  - "supports dynamic reloading via hyprctl reload"
+  - "use variables with $VAR = value syntax"
+sections:
+  - name: General
+    key: general
+    fields:
+      - key: general.border_size
+        label: Border Size
+        type: number
+        default: "1"
+        description: Window border width in pixels
+        min: 0
+        max: 20
+        example: "border_size = 2"
+        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        since: "0.1.0"
+      - key: general.gaps_in
+        label: Inner Gaps
+        type: number
+        default: "5"
+        description: Gaps between windows in pixels
+        min: 0
+        max: 100
+        example: "gaps_in = 8"
+        hint: applies between adjacent tiled windows
+        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        since: "0.1.0"
+      - key: general.gaps_out
+        label: Outer Gaps
+        type: number
+        default: "20"
+        description: Gaps between windows and screen edge
+        min: 0
+        max: 100
+      - key: general.layout
+        label: Layout
+        type: enum
+        default: dwindle
+        description: Default tiling layout
+        options: [dwindle, master]
+  - name: Decoration
+    key: decoration
+    fields:
+      - key: decoration.rounding
+        label: Corner Rounding
+        type: number
+        default: "10"
+        description: Window corner rounding in pixels
+        min: 0
+        max: 50
+        example: "rounding = 15"
+        hint: set to 0 for sharp corners
+        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        since: "0.1.0"
+      - key: decoration.blur.enabled
+        label: Blur Enabled
+        type: bool
+        default: "true"
+        description: Enable window blur effect
+      - key: decoration.blur.size
+        label: Blur Size
+        type: number
+        default: "3"
+        description: Blur kernel size
+        min: 1
+        max: 20
+  - name: Input
+    key: input
+    fields:
+      - key: input.sensitivity
+        label: Mouse Sensitivity
+        type: number
+        default: "0.0"
+        description: Pointer sensitivity (-1.0 to 1.0)
+        min: -1
+        max: 1
+      - key: input.kb_layout
+        label: Keyboard Layout
+        type: string
+        default: us
+        description: XKB keyboard layout
+  - name: Animations
+    key: animations
+    fields:
+      - key: animations.enabled
+        label: Enabled
+        type: bool
+        default: "true"
+        description: Enable window animations

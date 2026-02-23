@@ -1,0 +1,82 @@
+app: alacritty
+format: toml
+docs_url: "https://alacritty.org/config-alacritty.html"
+hints:
+  - "TOML config — sections are [tables], nested via dots"
+  - "live reload on save — no restart needed"
+  - "import other config files with import = [paths]"
+sections:
+  - name: Font
+    key: font
+    fields:
+      - key: font.normal.family
+        label: Font Family
+        type: string
+        default: monospace
+        description: Primary font family
+        example: '[font.normal]\nfamily = "JetBrains Mono"'
+        hint: nested under [font.normal] in TOML
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+        since: "0.13.0"
+      - key: font.size
+        label: Font Size
+        type: number
+        default: "11.25"
+        description: Font size in points
+        min: 6
+        max: 72
+        example: "[font]\nsize = 14.0"
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+        since: "0.13.0"
+      - key: font.bold.family
+        label: Bold Font Family
+        type: string
+        default: ""
+        description: Bold variant font family
+  - name: Colors
+    key: colors
+    fields:
+      - key: colors.primary.background
+        label: Background
+        type: color
+        default: "#1d1f21"
+        description: Primary background color
+      - key: colors.primary.foreground
+        label: Foreground
+        type: color
+        default: "#c5c8c6"
+        description: Primary foreground color
+  - name: Window
+    key: window
+    fields:
+      - key: window.opacity
+        label: Opacity
+        type: number
+        default: "1.0"
+        description: Window opacity (0.0 to 1.0)
+        min: 0
+        max: 1
+        example: "[window]\nopacity = 0.9"
+        hint: requires a compositor that supports transparency
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+        since: "0.13.0"
+      - key: window.padding.x
+        label: Padding X
+        type: number
+        default: "0"
+        description: Horizontal padding in pixels
+        min: 0
+        max: 100
+      - key: window.padding.y
+        label: Padding Y
+        type: number
+        default: "0"
+        description: Vertical padding in pixels
+        min: 0
+        max: 100
+      - key: window.decorations
+        label: Decorations
+        type: enum
+        default: Full
+        description: Window decoration mode
+        options: [Full, None, Transparent, Buttonless]

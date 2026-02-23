@@ -1,0 +1,12 @@
+# starship config
+format = "$all"
+
+[character]
+success_symbol = "[➜](bold green)"
+error_symbol = "[✗](bold red)"
+
+[git_branch]
+style = "bold purple"
+
+[package]
+disabled = true

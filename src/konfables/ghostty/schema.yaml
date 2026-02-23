@@ -1,0 +1,99 @@
+app: ghostty
+format: ghostty
+docs_url: https://ghostty.org/docs/config
+hints:
+  - "gpu-accelerated terminal with zero-config defaults"
+  - "supports ligatures and font features via font-feature"
+  - "use keybind to customize shortcuts"
+sections:
+  - name: Appearance
+    key: ""
+    fields:
+      - key: font-family
+        label: Font Family
+        type: string
+        default: ""
+        description: Primary font family
+        example: font-family = "JetBrains Mono"
+        hint: must be a font installed on the system
+        doc_url: https://ghostty.org/docs/config/reference#font-family
+        since: 1.0.0
+      - key: font-size
+        label: Font Size
+        type: number
+        default: "13"
+        description: Font size in points
+        min: 6
+        max: 72
+        example: font-size = 14
+        doc_url: https://ghostty.org/docs/config/reference#font-size
+        since: 1.0.0
+      - key: background
+        label: Background
+        type: color
+        default: "282828"
+        description: 'Background color (hex without #)'
+      - key: foreground
+        label: Foreground
+        type: color
+        default: ebdbb2
+        description: 'Foreground text color (hex without #)'
+      - key: cursor-color
+        label: Cursor Color
+        type: color
+        default: ""
+        description: Cursor color
+      - key: cursor-style
+        label: Cursor Style
+        type: enum
+        default: block
+        description: Cursor shape
+        options:
+          - block
+          - bar
+          - underline
+        example: cursor-style = bar
+        hint: bar works well with blinking enabled
+        doc_url: https://ghostty.org/docs/config/reference#cursor-style
+        since: 1.0.0
+  - name: Window
+    key: ""
+    fields:
+      - key: window-decoration
+        label: Window Decoration
+        type: bool
+        default: "true"
+        description: Show window decorations
+      - key: window-padding-x
+        label: Padding X
+        type: number
+        default: "0"
+        description: Horizontal window padding in pixels
+        min: 0
+        max: 100
+      - key: window-padding-y
+        label: Padding Y
+        type: number
+        default: "0"
+        description: Vertical window padding in pixels
+        min: 0
+        max: 100
+  - name: Shell
+    key: ""
+    fields:
+      - key: shell-integration
+        label: Shell Integration
+        type: enum
+        default: detect
+        description: Shell integration mode
+        options:
+          - none
+          - detect
+          - bash
+          - zsh
+          - fish
+      - key: shell-integration-features
+        label: Integration Features
+        type: string
+        default: ""
+        description: Comma-separated shell integration features

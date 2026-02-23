@@ -1,0 +1,12 @@
+# starship config
+format = "$all"
+scan_timeout = 30
+
+[character]
+success_symbol = "[➜](bold green)"
+
+[git_branch]
+style = "bold purple"
+
+[package]
+disabled = true

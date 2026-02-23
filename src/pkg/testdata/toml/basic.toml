@@ -1,0 +1,16 @@
+# basic test config
+title = "TOML Example"
+debug = false
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27
+
+[database]
+server = "192.168.1.1"
+ports = [8001, 8001, 8002]
+enabled = true
+
+[servers.alpha]
+ip = "10.0.0.1"
+dc = "eqdc10"

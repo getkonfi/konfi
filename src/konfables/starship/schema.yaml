@@ -1,0 +1,73 @@
+app: starship
+format: toml
+docs_url: "https://starship.rs/config/"
+hints:
+  - "module variables like $git_branch compose the prompt"
+  - "disable_modules to hide individual prompt segments"
+  - "palette lets you define reusable color aliases"
+sections:
+  - name: General
+    key: ""
+    fields:
+      - key: format
+        label: Prompt Format
+        type: string
+        default: "$all"
+        description: Main prompt format string
+        example: 'format = "$git_branch$character"'
+        hint: use module variables like $git_branch to compose the prompt
+        doc_url: "https://starship.rs/config/#prompt"
+        since: "0.1.0"
+      - key: scan_timeout
+        label: Scan Timeout
+        type: number
+        default: "30"
+        description: Timeout for scanning files in milliseconds
+        min: 1
+        max: 5000
+      - key: add_newline
+        label: Add Newline
+        type: bool
+        default: "true"
+        description: Add blank line before prompt
+        example: "add_newline = false"
+        doc_url: "https://starship.rs/config/#prompt"
+        since: "0.1.0"
+  - name: Character
+    key: character
+    fields:
+      - key: character.success_symbol
+        label: Success Symbol
+        type: string
+        default: "[➜](bold green)"
+        description: Symbol shown on successful command
+        example: 'success_symbol = "[❯](bold green)"'
+        hint: supports starship style strings like [text](style)
+        doc_url: "https://starship.rs/config/#character"
+        since: "0.1.0"
+      - key: character.error_symbol
+        label: Error Symbol
+        type: string
+        default: "[✗](bold red)"
+        description: Symbol shown on failed command
+  - name: Git Branch
+    key: git_branch
+    fields:
+      - key: git_branch.style
+        label: Branch Style
+        type: string
+        default: "bold purple"
+        description: Style for git branch name
+      - key: git_branch.format
+        label: Branch Format
+        type: string
+        default: "[$symbol$branch]($style) "
+        description: Format string for git branch module
+  - name: Package
+    key: package
+    fields:
+      - key: package.disabled
+        label: Disabled
+        type: bool
+        default: "false"
+        description: Disable the package module

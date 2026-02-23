@@ -1,0 +1,31 @@
+# hyprland configuration
+
+$mainMod = SUPER
+
+
+general {
+    border_size = 2
+    gaps_in = 5
+    gaps_out = 10
+    col.active_border = rgba(cba6f7ee)
+}
+
+decoration {
+    rounding = 10
+    blur {
+        enabled = true
+        size = 3
+    }
+}
+
+input {
+    sensitivity = 0.0
+    kb_layout = us
+}
+
+animations {
+    enabled = true
+}
+
+# window rules
+windowrule = float, ^(pavucontrol)$
