@@ -8,6 +8,7 @@ import (
 	"github.com/emin/konfigurator/konfables/alacritty"
 	"github.com/emin/konfigurator/konfables/ghostty"
 	"github.com/emin/konfigurator/konfables/hyprland"
+	"github.com/emin/konfigurator/konfables/konfigurator"
 	"github.com/emin/konfigurator/konfables/starship"
 )
 
@@ -19,13 +20,30 @@ type versioned interface {
 type konfableEntry struct {
 	binary string
 	create func() Konfable
+	system bool // virtual konfable, skip PATH detection
 }
 
 var allKonfables = []konfableEntry{
-	{"ghostty", func() Konfable { return ghostty.New() }},
-	{"starship", func() Konfable { return starship.New() }},
-	{"alacritty", func() Konfable { return alacritty.New() }},
-	{"Hyprland", func() Konfable { return hyprland.New() }},
+	{"ghostty", func() Konfable { return ghostty.New() }, false},
+	{"starship", func() Konfable { return starship.New() }, false},
+	{"alacritty", func() Konfable { return alacritty.New() }, false},
+	{"Hyprland", func() Konfable { return hyprland.New() }, false},
+	{"", func() Konfable { return konfigurator.New() }, true},
+}
+
+// KonfableInfo pairs a konfable with its registration metadata.
+type KonfableInfo struct {
+	Konfable Konfable
+	System   bool
+}
+
+// AllKonfablesWithInfo returns every registered konfable with metadata.
+func AllKonfablesWithInfo() []KonfableInfo {
+	out := make([]KonfableInfo, len(allKonfables))
+	for i, k := range allKonfables {
+		out[i] = KonfableInfo{Konfable: k.create(), System: k.system}
+	}
+	return out
 }
 
 // AllKonfables returns every registered konfable without probing PATH.
@@ -38,8 +56,13 @@ func AllKonfables() []Konfable {
 }
 
 // InitDetection probes PATH for known konfable binaries and populates app.Detected.
+// system entries bypass PATH detection and are always included.
 func InitDetection(_ context.Context, app *App) error {
 	for _, k := range allKonfables {
+		if k.system {
+			app.Detected = append(app.Detected, k.create())
+			continue
+		}
 		if _, err := exec.LookPath(k.binary); err == nil {
 			inst := k.create()
 			app.Detected = append(app.Detected, inst)

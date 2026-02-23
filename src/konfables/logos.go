@@ -5,10 +5,11 @@ import "github.com/emin/konfigurator/pkg"
 // Logos maps app names to their pixel art representations.
 // each logo is 16×12 pixels using 256-color indices (0 = transparent).
 var Logos = map[string]pkg.PixelArt{
-	"ghostty":   ghosttyLogo,
-	"alacritty": alacrittyLogo,
-	"starship":  starshipLogo,
-	"hyprland":  hyprlandLogo,
+	"ghostty":      ghosttyLogo,
+	"alacritty":    alacrittyLogo,
+	"starship":     starshipLogo,
+	"hyprland":     hyprlandLogo,
+	"konfigurator": konfiguratorLogo,
 }
 
 // color aliases for readability
@@ -80,6 +81,25 @@ var starshipLogo = pkg.PixelArt{
 		{__, __, __, __, __, __, bl, bl, bl, bl, __, __, __, __, __, __},
 		{__, __, __, __, __, __, rd, rd, rd, rd, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, rd, rd, __, __, __, __, __, __, __},
+	},
+}
+
+// konfigurator — gear/cog icon
+var konfiguratorLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, __, __, lg, lg, __, __, lg, lg, __, __, __, __, __},
+		{__, __, __, __, lg, lg, lg, lg, lg, lg, lg, lg, __, __, __, __},
+		{__, __, __, __, lg, lg, dk, dk, dk, dk, lg, lg, __, __, __, __},
+		{__, __, lg, lg, lg, dk, dk, __, __, dk, dk, lg, lg, lg, __, __},
+		{__, lg, lg, lg, dk, dk, __, __, __, __, dk, dk, lg, lg, lg, __},
+		{__, lg, lg, lg, dk, __, __, __, __, __, __, dk, lg, lg, lg, __},
+		{__, lg, lg, lg, dk, __, __, __, __, __, __, dk, lg, lg, lg, __},
+		{__, lg, lg, lg, dk, dk, __, __, __, __, dk, dk, lg, lg, lg, __},
+		{__, __, lg, lg, lg, dk, dk, __, __, dk, dk, lg, lg, lg, __, __},
+		{__, __, __, __, lg, lg, dk, dk, dk, dk, lg, lg, __, __, __, __},
+		{__, __, __, __, lg, lg, lg, lg, lg, lg, lg, lg, __, __, __, __},
+		{__, __, __, __, __, lg, lg, __, __, lg, lg, __, __, __, __, __},
 	},
 }
 

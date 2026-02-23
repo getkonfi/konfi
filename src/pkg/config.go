@@ -22,6 +22,20 @@ type ConfigFile struct {
 	mu        sync.Mutex
 }
 
+// LoadOrCreateConfigFile loads the config at path, or creates it with
+// defaultContent if it doesn't exist.
+func LoadOrCreateConfigFile(path string, defaultContent []byte) (*ConfigFile, error) {
+	if !FileExists(path) {
+		if err := EnsureDir(filepath.Dir(path)); err != nil {
+			return nil, fmt.Errorf("ensure dir for %s: %w", path, err)
+		}
+		if err := os.WriteFile(path, defaultContent, 0o644); err != nil {
+			return nil, fmt.Errorf("create default %s: %w", path, err)
+		}
+	}
+	return LoadConfigFile(path)
+}
+
 // LoadConfigFile reads a config file from disk.
 func LoadConfigFile(path string) (*ConfigFile, error) {
 	data, err := os.ReadFile(path)

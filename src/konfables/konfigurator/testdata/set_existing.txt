@@ -1,0 +1,3 @@
+# konfigurator settings
+theme: tokyonight
+log_level: info

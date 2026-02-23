@@ -1,0 +1,3 @@
+# konfigurator settings
+theme: catppuccin
+log_level: info
