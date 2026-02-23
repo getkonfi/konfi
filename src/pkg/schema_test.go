@@ -40,6 +40,49 @@ func TestLoadSchema(t *testing.T) {
 				t.Error("expected at least one section")
 			}
 
+			// ghostty should have 50+ fields after schema expansion
+			if tt.app == "ghostty" {
+				total := 0
+				for _, sec := range s.Sections {
+					total += len(sec.Fields)
+				}
+				if total < 50 {
+					t.Errorf("ghostty schema too small: got %d fields, want at least 50", total)
+				}
+				if len(s.Sections) < 14 {
+					t.Errorf("ghostty schema too few sections: got %d, want at least 14", len(s.Sections))
+				}
+			}
+
+			// enriched app schemas should meet minimum field counts
+			if tt.app == "alacritty" {
+				total := 0
+				for _, sec := range s.Sections {
+					total += len(sec.Fields)
+				}
+				if total < 40 {
+					t.Errorf("alacritty schema too small: got %d fields, want at least 40", total)
+				}
+			}
+			if tt.app == "hyprland" {
+				total := 0
+				for _, sec := range s.Sections {
+					total += len(sec.Fields)
+				}
+				if total < 50 {
+					t.Errorf("hyprland schema too small: got %d fields, want at least 50", total)
+				}
+			}
+			if tt.app == "starship" {
+				total := 0
+				for _, sec := range s.Sections {
+					total += len(sec.Fields)
+				}
+				if total < 60 {
+					t.Errorf("starship schema too small: got %d fields, want at least 60", total)
+				}
+			}
+
 			// verify every field has required attributes
 			for _, sec := range s.Sections {
 				if sec.Name == "" {
@@ -333,6 +376,73 @@ func TestFilterByVersion_WithoutVPrefix(t *testing.T) {
 				t.Errorf("new-field (since=2.0.0) should be hidden at 1.0.0 (no v prefix)")
 			}
 		}
+	}
+}
+
+func TestSchemaKeys(t *testing.T) {
+	s := makeVersionSchema()
+	keys := s.SchemaKeys()
+
+	if len(keys) != 5 {
+		t.Errorf("expected 5 schema keys, got %d", len(keys))
+	}
+
+	// no dupes possible in a map, but verify expected keys exist
+	expected := []string{"always", "new-field", "deprecated", "window", "removed"}
+	for _, k := range expected {
+		if _, ok := keys[k]; !ok {
+			t.Errorf("missing expected key %q", k)
+		}
+	}
+}
+
+func TestDiagnose_Unknown(t *testing.T) {
+	s := makeVersionSchema()
+	diags := Diagnose([]string{"always", "bogus-key", "another-unknown"}, s, "")
+	if len(diags) != 2 {
+		t.Fatalf("expected 2 unknown diagnostics, got %d", len(diags))
+	}
+	for _, d := range diags {
+		if d.Kind != "unknown" {
+			t.Errorf("expected kind=unknown, got %q", d.Kind)
+		}
+	}
+}
+
+func TestDiagnose_Deprecated(t *testing.T) {
+	s := makeVersionSchema()
+	// deprecated field has Until=2.0.0, should trigger at v2.0.0+
+	diags := Diagnose([]string{"deprecated"}, s, "2.0.0")
+	if len(diags) != 1 {
+		t.Fatalf("expected 1 deprecated diagnostic, got %d", len(diags))
+	}
+	if diags[0].Kind != "deprecated" {
+		t.Errorf("expected kind=deprecated, got %q", diags[0].Kind)
+	}
+}
+
+func TestDiagnose_DeprecatedNotYet(t *testing.T) {
+	s := makeVersionSchema()
+	// deprecated field has Until=2.0.0, should NOT trigger at v1.9.0
+	diags := Diagnose([]string{"deprecated"}, s, "1.9.0")
+	if len(diags) != 0 {
+		t.Errorf("expected 0 diagnostics at v1.9.0, got %d", len(diags))
+	}
+}
+
+func TestDiagnose_Clean(t *testing.T) {
+	s := makeVersionSchema()
+	diags := Diagnose([]string{"always", "window"}, s, "2.0.0")
+	if len(diags) != 0 {
+		t.Errorf("expected 0 diagnostics for known non-deprecated keys, got %d", len(diags))
+	}
+}
+
+func TestDiagnose_DuplicateKeys(t *testing.T) {
+	s := makeVersionSchema()
+	diags := Diagnose([]string{"bogus", "bogus", "bogus"}, s, "")
+	if len(diags) != 1 {
+		t.Errorf("duplicate config keys should produce 1 diagnostic, got %d", len(diags))
 	}
 }
 

@@ -10,11 +10,12 @@ import (
 
 // Schema describes the configurable fields of an application.
 type Schema struct {
-	App      string    `yaml:"app"`
-	Format   string    `yaml:"format"`
-	DocsURL  string    `yaml:"docs_url,omitempty"`
-	Hints    []string  `yaml:"hints,omitempty"`
-	Sections []Section `yaml:"sections"`
+	App           string    `yaml:"app"`
+	Format        string    `yaml:"format"`
+	SchemaVersion string    `yaml:"schema_version,omitempty"`
+	DocsURL       string    `yaml:"docs_url,omitempty"`
+	Hints         []string  `yaml:"hints,omitempty"`
+	Sections      []Section `yaml:"sections"`
 }
 
 // Section groups related config fields.
@@ -34,6 +35,7 @@ type Field struct {
 	Options     []string `yaml:"options,omitempty"`
 	Min         *float64 `yaml:"min,omitempty"`
 	Max         *float64 `yaml:"max,omitempty"`
+	Palette     []string `yaml:"palette,omitempty"`
 	Example     string   `yaml:"example,omitempty"`
 	Hint        string   `yaml:"hint,omitempty"`
 	DocURL      string   `yaml:"doc_url,omitempty"`
@@ -46,10 +48,11 @@ type Field struct {
 // sections that become empty after filtering are dropped.
 func (s *Schema) FilterByVersion(v string) *Schema {
 	out := &Schema{
-		App:     s.App,
-		Format:  s.Format,
-		DocsURL: s.DocsURL,
-		Hints:   slices.Clone(s.Hints),
+		App:           s.App,
+		Format:        s.Format,
+		SchemaVersion: s.SchemaVersion,
+		DocsURL:       s.DocsURL,
+		Hints:         slices.Clone(s.Hints),
 	}
 
 	nv := NormalizeSemver(v)
@@ -93,6 +96,71 @@ func fieldVisibleAt(f Field, v string) bool {
 		}
 	}
 	return true
+}
+
+// SchemaKeys returns the set of all field keys across all sections.
+func (s *Schema) SchemaKeys() map[string]struct{} {
+	keys := make(map[string]struct{})
+	for si := range s.Sections {
+		for fi := range s.Sections[si].Fields {
+			keys[s.Sections[si].Fields[fi].Key] = struct{}{}
+		}
+	}
+	return keys
+}
+
+// Diagnostic describes a config issue (unknown key or deprecated field).
+type Diagnostic struct {
+	Key     string
+	Kind    string // "unknown" or "deprecated"
+	Message string
+}
+
+// Diagnose compares config keys against a schema and returns diagnostics.
+// unknown: key not in schema. deprecated: field has Until and version >= Until.
+func Diagnose(configKeys []string, schema *Schema, appVersion string) []Diagnostic {
+	known := schema.SchemaKeys()
+	nv := NormalizeSemver(appVersion)
+
+	// build deprecated set
+	deprecated := make(map[string]string) // key → Until
+	for si := range schema.Sections {
+		for fi := range schema.Sections[si].Fields {
+			if schema.Sections[si].Fields[fi].Until != "" {
+				deprecated[schema.Sections[si].Fields[fi].Key] = schema.Sections[si].Fields[fi].Until
+			}
+		}
+	}
+
+	seen := make(map[string]bool)
+	var diags []Diagnostic
+	for _, key := range configKeys {
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		if _, ok := known[key]; !ok {
+			diags = append(diags, Diagnostic{
+				Key:     key,
+				Kind:    "unknown",
+				Message: fmt.Sprintf("unknown key %q not in schema", key),
+			})
+			continue
+		}
+
+		if until, ok := deprecated[key]; ok && nv != "" {
+			nu := NormalizeSemver(until)
+			if nu != "" && semver.Compare(nv, nu) >= 0 {
+				diags = append(diags, Diagnostic{
+					Key:     key,
+					Kind:    "deprecated",
+					Message: fmt.Sprintf("key %q deprecated since %s", key, until),
+				})
+			}
+		}
+	}
+	return diags
 }
 
 // LoadSchema parses a YAML schema definition.

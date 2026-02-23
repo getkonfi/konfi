@@ -18,6 +18,7 @@ type Parser interface {
 	FindLine(data []byte, key string) (int, bool)
 	SetValue(data []byte, key, value string) ([]byte, error)
 	DeleteKey(data []byte, key string) ([]byte, error)
+	ListKeys(data []byte) []string
 }
 
 // Konfable represents a configurable application.
@@ -28,6 +29,13 @@ type Konfable interface {
 	Schema() ([]byte, error)
 	Name() string
 	ConfigPath() string
+}
+
+// MultiValueParser is an optional interface for parsers that support
+// multi-value keys (e.g., ghostty keybind, palette).
+type MultiValueParser interface {
+	FindValues(data []byte, key string) ([]string, bool)
+	SetValues(data []byte, key string, values []string) ([]byte, error)
 }
 
 // Versioned is an optional interface for apps that can report their version.

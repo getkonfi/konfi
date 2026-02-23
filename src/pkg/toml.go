@@ -20,7 +20,7 @@ func FindTopLevelKey(data []byte, key string) (value string, lineIdx int, found 
 		if trimmed[0] == '[' {
 			break
 		}
-		k, v, ok := parseKVLine(trimmed)
+		k, v, ok := ParseKVLine(trimmed)
 		if ok && k == key {
 			return v, i, true
 		}
@@ -38,7 +38,7 @@ func FindKeyInSection(data []byte, section, key string) (value string, lineIdx i
 
 		// section header
 		if trimmed != "" && trimmed[0] == '[' {
-			sectionName := parseSectionHeader(trimmed)
+			sectionName := ParseSectionHeader(trimmed)
 			inSection = sectionName == section
 			continue
 		}
@@ -51,7 +51,7 @@ func FindKeyInSection(data []byte, section, key string) (value string, lineIdx i
 			continue
 		}
 
-		k, v, ok := parseKVLine(trimmed)
+		k, v, ok := ParseKVLine(trimmed)
 		if ok && k == key {
 			return v, i, true
 		}
@@ -100,7 +100,7 @@ func InsertKeyInSection(data []byte, section, key, value string) []byte {
 				// found next section, insert before it
 				return insertLine(lines, i, key+" = "+value)
 			}
-			sectionName := parseSectionHeader(trimmed)
+			sectionName := ParseSectionHeader(trimmed)
 			inSection = sectionName == section
 			if inSection {
 				sectionEnd = i
@@ -154,7 +154,8 @@ func DeleteKeyOnLine(data []byte, lineIdx int) []byte {
 
 // --- helpers ---
 
-func parseSectionHeader(line string) string {
+// ParseSectionHeader extracts the section name from a [section] line.
+func ParseSectionHeader(line string) string {
 	line = strings.TrimSpace(line)
 	if len(line) < 2 || line[0] != '[' {
 		return ""
@@ -166,7 +167,8 @@ func parseSectionHeader(line string) string {
 	return strings.TrimSpace(line[1:end])
 }
 
-func parseKVLine(line string) (key, value string, ok bool) {
+// ParseKVLine extracts key and value from a "key = value" line.
+func ParseKVLine(line string) (key, value string, ok bool) {
 	eqIdx := strings.IndexByte(line, '=')
 	if eqIdx < 0 {
 		return "", "", false
