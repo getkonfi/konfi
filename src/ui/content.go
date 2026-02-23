@@ -285,6 +285,30 @@ func (c *content) toggleBool(f pkg.Field) {
 	c.refreshValues()
 }
 
+// showNotInstalled sets the active konfable for display without loading config or schema.
+func (c *content) showNotInstalled(k konfables.Konfable) {
+	if c.config != nil {
+		c.config.StopWatching()
+	}
+	c.konfable = k
+	c.title = k.Name()
+	c.config = nil
+	c.schema = nil
+	c.fields = nil
+	c.values = make(map[string]string)
+	c.scrollY = 0
+	c.cursor = 0
+	c.editing = false
+	c.editor = nil
+	c.previewLine = -1
+	c.previewFound = false
+	c.previewKey = ""
+	c.docsURL = ""
+	c.insightLines = nil
+	c.insightIdx = 0
+	c.insightGen++
+}
+
 // loadApp sets the active konfable, loads its config and schema, and reads values.
 func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	// snapshot current header lines for split-flap transition
@@ -652,14 +676,21 @@ func (c content) renderHeader(width int) string {
 		art := logo.Render()
 		rightLines = strings.Split(art, "\n")
 	}
-	nameBadge := c.theme.Badge.Render(c.konfable.Name())
-	rightLines = append(rightLines, nameBadge)
-	rightBlock := strings.Join(rightLines, "\n")
-	rightW := 0
+	// compute logo width before appending badge
+	logoW := 0
 	for _, l := range rightLines {
-		if w := lipgloss.Width(l); w > rightW {
-			rightW = w
+		if w := lipgloss.Width(l); w > logoW {
+			logoW = w
 		}
+	}
+	nameBadge := c.theme.Badge.Render(c.konfable.Name())
+	// center badge under logo
+	rightLines = append(rightLines, centerLine(nameBadge, logoW))
+	rightBlock := strings.Join(rightLines, "\n")
+	rightW := logoW
+	badgeW := lipgloss.Width(nameBadge)
+	if badgeW > rightW {
+		rightW = badgeW
 	}
 
 	leftW := width - rightW - 2 // 2 chars gap
@@ -742,6 +773,13 @@ func (c content) renderBody(width int) string {
 	if c.schema == nil {
 		if c.config != nil {
 			return c.theme.Text.Render(string(c.config.Content()))
+		}
+		if c.konfable != nil {
+			// not-installed state — show logo header, then hint
+			header := c.renderHeader(width)
+			msg := c.theme.Muted.Render(c.konfable.Name() + " is not installed")
+			hint := c.theme.Muted.Italic(true).Render("install it to configure")
+			return header + "\n" + centerLine(msg, width) + "\n" + centerLine(hint, width)
 		}
 		return c.theme.Muted.Render("select an app to view its configuration")
 	}

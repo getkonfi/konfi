@@ -16,7 +16,7 @@ const (
 	paneContent
 )
 
-const railWidth = 5
+const sidebarWidth = 24
 
 type root struct {
 	app     *setup.App
@@ -28,8 +28,9 @@ type root struct {
 	height  int
 	ready   bool
 
-	// detected konfables for lookup by sidebar index
-	detected []konfables.Konfable
+	// all konfables (indexed by sidebar item order)
+	allKonfables []konfables.Konfable
+	installed    map[string]bool
 
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
@@ -49,20 +50,30 @@ func (r *root) SetProgram(p *tea.Program) {
 func NewRoot(app *setup.App) tea.Model {
 	th := app.Theme
 
-	// build sidebar items and konfable lookup from detected apps
-	var items []sidebarItem
-	var detected []konfables.Konfable
+	// build installed set from detected apps
+	installed := make(map[string]bool)
 	for _, d := range app.Detected {
+		installed[d.Name()] = true
+	}
+
+	// build sidebar items and konfable lookup from all registered apps
+	var items []sidebarItem
+	var allK []konfables.Konfable
+	for _, d := range setup.AllKonfables() {
 		if k, ok := d.(konfables.Konfable); ok {
 			info := k.Info()
 			icon := info.NerdIcon
 			if icon == "" {
 				icon = info.Icon
 			}
-			items = append(items, sidebarItem{icon: icon, name: k.Name()})
-			detected = append(detected, k)
+			items = append(items, sidebarItem{
+				icon:      icon,
+				name:      k.Name(),
+				installed: installed[k.Name()],
+			})
+			allK = append(allK, k)
 		} else {
-			app.Logger.Warn().Str("app", d.Name()).Msg("detected app does not satisfy full Konfable interface")
+			app.Logger.Warn().Str("app", d.Name()).Msg("registered app does not satisfy full Konfable interface")
 		}
 	}
 
@@ -72,23 +83,28 @@ func NewRoot(app *setup.App) tea.Model {
 	st := newStatusbar(th)
 
 	r := &root{
-		app:      app,
-		sidebar:  sb,
-		content:  ct,
-		status:   st,
-		focus:    paneSidebar,
-		detected: detected,
+		app:          app,
+		sidebar:      sb,
+		content:      ct,
+		status:       st,
+		focus:        paneSidebar,
+		allKonfables: allK,
+		installed:    installed,
 	}
 	r.updateHints()
 	return r
 }
 
 func (r *root) Init() tea.Cmd {
-	// auto-select first app if any detected
-	if len(r.detected) > 0 {
-		k := r.detected[0]
+	// auto-select first app
+	if len(r.allKonfables) > 0 {
+		k := r.allKonfables[0]
 		r.status.appVersion = r.app.Versions[k.Name()]
-		return r.content.loadApp(k)
+		if r.installed[k.Name()] {
+			return r.content.loadApp(k)
+		}
+		r.content.showNotInstalled(k)
+		return nil
 	}
 	return nil
 }
@@ -125,6 +141,29 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case tea.KeyMsg:
+		// when sidebar is searching, don't intercept keys that should reach the textinput
+		if r.sidebar.searching {
+			switch msg.String() {
+			case "ctrl+c":
+				if r.content.config != nil {
+					r.content.config.StopWatching()
+				}
+				return r, tea.Quit
+			case "esc":
+				// let sidebar handle esc to clear search
+				var cmd tea.Cmd
+				r.sidebar, cmd = r.sidebar.Update(msg)
+				r.updateHints()
+				return r, cmd
+			default:
+				// forward everything else to sidebar
+				var cmd tea.Cmd
+				r.sidebar, cmd = r.sidebar.Update(msg)
+				r.updateHints()
+				return r, cmd
+			}
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			if r.content.config != nil {
@@ -183,20 +222,29 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case AppSelectedMsg:
-		if msg.Index >= 0 && msg.Index < len(r.detected) {
-			k := r.detected[msg.Index]
-			cmd := r.content.loadApp(k)
-			if r.content.config != nil {
-				r.status.filePath = r.content.config.Path
-				r.status.dirty = r.content.config.Dirty()
-			} else {
-				r.status.filePath = k.ConfigPath()
-			}
-			r.status.appVersion = r.app.Versions[k.Name()]
-			cmds = append(cmds, cmd)
+		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
+			k := r.allKonfables[msg.Index]
 
-			if msg.Confirmed {
-				r.focusPane(paneContent)
+			if !r.installed[k.Name()] {
+				r.content.showNotInstalled(k)
+				r.status.filePath = ""
+				r.status.appVersion = ""
+				r.status.dirty = false
+				// don't focus content for not-installed apps
+			} else {
+				cmd := r.content.loadApp(k)
+				if r.content.config != nil {
+					r.status.filePath = r.content.config.Path
+					r.status.dirty = r.content.config.Dirty()
+				} else {
+					r.status.filePath = k.ConfigPath()
+				}
+				r.status.appVersion = r.app.Versions[k.Name()]
+				cmds = append(cmds, cmd)
+
+				if msg.Confirmed {
+					r.focusPane(paneContent)
+				}
 			}
 		}
 		return r, tea.Batch(cmds...)
@@ -258,17 +306,17 @@ func (r *root) layout() {
 	// statusbar: 1 line at bottom
 	r.status.width = r.width
 
-	// sidebar: narrow icon rail, full height minus statusbar
+	// sidebar: wider panel, full height minus statusbar
 	bodyH := r.height - 1
 	if bodyH < 3 {
 		bodyH = 3
 	}
 
-	r.sidebar.width = railWidth
+	r.sidebar.width = sidebarWidth
 	r.sidebar.height = bodyH
 
 	// content: fill remaining width
-	r.content.width = r.width - railWidth
+	r.content.width = r.width - sidebarWidth
 	if r.content.width < 10 {
 		r.content.width = 10
 	}
@@ -313,12 +361,21 @@ func (r *root) updateHints() {
 
 	switch r.focus {
 	case paneSidebar:
-		r.status.hints = []keyHint{
-			{"↑↓", "navigate"},
-			{"⏎", "open"},
-			{"→", "content"},
-			{"t", "theme"},
-			{"q", "quit"},
+		if r.sidebar.searching {
+			r.status.hints = []keyHint{
+				{"↑↓", "navigate"},
+				{"⏎", "select"},
+				{"esc", "clear"},
+			}
+		} else {
+			r.status.hints = []keyHint{
+				{"↑↓", "navigate"},
+				{"⏎", "open"},
+				{"/", "search"},
+				{"→", "content"},
+				{"t", "theme"},
+				{"q", "quit"},
+			}
 		}
 	case paneContent:
 		hints := []keyHint{

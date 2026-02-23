@@ -28,6 +28,15 @@ var allKonfables = []konfableEntry{
 	{"Hyprland", func() Konfable { return hyprland.New() }},
 }
 
+// AllKonfables returns every registered konfable without probing PATH.
+func AllKonfables() []Konfable {
+	all := make([]Konfable, len(allKonfables))
+	for i, k := range allKonfables {
+		all[i] = k.create()
+	}
+	return all
+}
+
 // InitDetection probes PATH for known konfable binaries and populates app.Detected.
 func InitDetection(_ context.Context, app *App) error {
 	for _, k := range allKonfables {
