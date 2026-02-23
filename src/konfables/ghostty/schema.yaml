@@ -1,99 +1,547 @@
 app: ghostty
 format: ghostty
+schema_version: 1.1.0
 docs_url: https://ghostty.org/docs/config
 hints:
-  - "gpu-accelerated terminal with zero-config defaults"
-  - "supports ligatures and font features via font-feature"
-  - "use keybind to customize shortcuts"
+  - gpu-accelerated terminal with zero-config defaults
+  - supports ligatures and font features via font-feature
+  - use keybind to customize shortcuts
 sections:
-  - name: Appearance
+  - name: Font Family
     key: ""
     fields:
       - key: font-family
         label: Font Family
         type: string
         default: ""
-        description: Primary font family
-        example: font-family = "JetBrains Mono"
+        description: primary font family
+        example: font-family = JetBrains Mono
         hint: must be a font installed on the system
         doc_url: https://ghostty.org/docs/config/reference#font-family
         since: 1.0.0
+      - key: font-family-bold
+        label: Bold Font
+        type: string
+        default: ""
+        description: font family for bold text
+        since: 1.0.0
+      - key: font-family-italic
+        label: Italic Font
+        type: string
+        default: ""
+        description: font family for italic text
+        since: 1.0.0
+      - key: font-family-bold-italic
+        label: Bold Italic Font
+        type: string
+        default: ""
+        description: font family for bold italic text
+        since: 1.0.0
+  - name: Font Style
+    key: ""
+    fields:
       - key: font-size
         label: Font Size
         type: number
         default: "13"
-        description: Font size in points
+        description: font size in points
         min: 6
         max: 72
-        example: font-size = 14
         doc_url: https://ghostty.org/docs/config/reference#font-size
         since: 1.0.0
+      - key: font-style
+        label: Font Style
+        type: string
+        default: ""
+        description: default font style (e.g., regular, medium, light)
+        since: 1.0.0
+      - key: font-style-bold
+        label: Bold Style
+        type: string
+        default: ""
+        description: font style to use for bold
+        since: 1.0.0
+      - key: font-style-italic
+        label: Italic Style
+        type: string
+        default: ""
+        description: font style to use for italic
+        since: 1.0.0
+  - name: Font Advanced
+    key: ""
+    fields:
+      - key: font-feature
+        label: Font Feature
+        type: list
+        default: ""
+        description: OpenType font features to enable (e.g., ss01, calt)
+        hint: repeated key — one feature per line
+        since: 1.0.0
+      - key: font-variation
+        label: Font Variation
+        type: list
+        default: ""
+        description: font variation axis settings (e.g., wght=400)
+        since: 1.0.0
+      - key: font-thicken
+        label: Font Thicken
+        type: bool
+        default: "false"
+        description: thicken font glyphs for better visibility on HiDPI
+        since: 1.0.0
+  - name: Color Theme
+    key: ""
+    fields:
+      - key: theme
+        label: Theme
+        type: string
+        default: ""
+        description: color theme name (overrides individual colors)
+        hint: use 'ghostty +list-themes' to see available themes
       - key: background
         label: Background
         type: color
         default: "282828"
-        description: 'Background color (hex without #)'
+        description: 'background color (hex without #)'
+        palette:
+          - "282828"
+          - 1d2021
+          - 32302f
+          - 3c3836
+          - "504945"
+          - 665c54
+          - 1a1b26
+          - 24283b
+          - "011628"
+          - 002b36
       - key: foreground
         label: Foreground
         type: color
         default: ebdbb2
-        description: 'Foreground text color (hex without #)'
+        description: 'foreground text color (hex without #)'
+        palette:
+          - ebdbb2
+          - fbf1c7
+          - d5c4a1
+          - bdae93
+          - a9b1d6
+          - c0caf5
+          - a89984
+          - "839496"
+          - 93a1a1
+          - fdf6e3
+  - name: Color Selection
+    key: ""
+    fields:
+      - key: selection-foreground
+        label: Selection FG
+        type: color
+        default: ""
+        description: text color in selected regions
+        palette:
+          - ebdbb2
+          - fbf1c7
+          - d5c4a1
+          - bdae93
+          - a9b1d6
+          - c0caf5
+          - a89984
+          - "839496"
+          - 93a1a1
+          - fdf6e3
+      - key: selection-background
+        label: Selection BG
+        type: color
+        default: ""
+        description: background color in selected regions
+        palette:
+          - "282828"
+          - 1d2021
+          - 32302f
+          - 3c3836
+          - "504945"
+          - 665c54
+          - 1a1b26
+          - 24283b
+          - "011628"
+          - 002b36
       - key: cursor-color
         label: Cursor Color
         type: color
         default: ""
-        description: Cursor color
+        description: cursor color
+        palette:
+          - ebdbb2
+          - cc241d
+          - d65d0e
+          - d79921
+          - 98971a
+          - 689d6a
+          - "458588"
+          - b16286
+      - key: cursor-text
+        label: Cursor Text
+        type: color
+        default: ""
+        description: text color under the cursor
+        palette:
+          - "282828"
+          - 1d2021
+          - 32302f
+          - 3c3836
+          - "504945"
+          - 665c54
+          - 1a1b26
+          - 24283b
+          - "011628"
+          - 002b36
+      - key: unfocused-split-fill
+        label: Unfocused Fill
+        type: color
+        default: ""
+        description: fill color for unfocused splits
+  - name: Color Appearance
+    key: ""
+    fields:
+      - key: background-opacity
+        label: BG Opacity
+        type: number
+        default: "1.0"
+        description: background opacity (0.0–1.0)
+        min: 0
+        max: 1
+      - key: minimum-contrast
+        label: Min Contrast
+        type: number
+        default: "1"
+        description: minimum contrast ratio (1–21)
+        min: 1
+        max: 21
+  - name: Cursor
+    key: ""
+    fields:
       - key: cursor-style
         label: Cursor Style
         type: enum
         default: block
-        description: Cursor shape
+        description: cursor shape
         options:
           - block
           - bar
           - underline
-        example: cursor-style = bar
-        hint: bar works well with blinking enabled
         doc_url: https://ghostty.org/docs/config/reference#cursor-style
         since: 1.0.0
-  - name: Window
+      - key: cursor-style-blink
+        label: Cursor Blink
+        type: bool
+        default: "true"
+        description: whether the cursor blinks
+      - key: cursor-opacity
+        label: Cursor Opacity
+        type: number
+        default: "1.0"
+        description: cursor opacity (0.0–1.0)
+        min: 0
+        max: 1
+      - key: cursor-click-to-move
+        label: Click to Move
+        type: bool
+        default: "false"
+        description: click to reposition cursor in supporting apps
+      - key: mouse-hide-while-typing
+        label: Hide Mouse Typing
+        type: bool
+        default: "false"
+        description: hide the mouse cursor while typing
+  - name: Window Chrome
     key: ""
     fields:
       - key: window-decoration
         label: Window Decoration
         type: bool
         default: "true"
-        description: Show window decorations
+        description: show window decorations (title bar, etc.)
+      - key: window-title-font-family
+        label: Title Font
+        type: string
+        default: ""
+        description: font family for window title bar (macOS)
+      - key: window-inherit-font-size
+        label: Inherit Font Size
+        type: bool
+        default: "true"
+        description: new windows inherit font size from focused window
+      - key: title
+        label: Title
+        type: string
+        default: ""
+        description: fixed window title (overrides dynamic title)
+  - name: Window Padding
+    key: ""
+    fields:
       - key: window-padding-x
         label: Padding X
         type: number
         default: "0"
-        description: Horizontal window padding in pixels
+        description: horizontal window padding in pixels
         min: 0
-        max: 100
+        max: 200
       - key: window-padding-y
         label: Padding Y
         type: number
         default: "0"
-        description: Vertical window padding in pixels
+        description: vertical window padding in pixels
         min: 0
-        max: 100
+        max: 200
+      - key: window-padding-balance
+        label: Pad Balance
+        type: bool
+        default: "false"
+        description: automatically balance padding on both sides
+      - key: window-padding-color
+        label: Pad Color
+        type: enum
+        default: background
+        description: color source for padding area
+        options:
+          - background
+          - extend
+          - extend-always
+  - name: Window State
+    key: ""
+    fields:
+      - key: window-save-state
+        label: Save State
+        type: enum
+        default: default
+        description: save/restore window position and size
+        options:
+          - default
+          - never
+          - always
+      - key: fullscreen
+        label: Fullscreen
+        type: bool
+        default: "false"
+        description: start in fullscreen mode
+      - key: maximize
+        label: Maximize
+        type: bool
+        default: "false"
+        description: start in maximized mode
+  - name: Cell Adjustment
+    key: ""
+    fields:
+      - key: adjust-cell-width
+        label: Cell Width
+        type: string
+        default: ""
+        description: cell width adjustment (e.g., +1, -1, 10%)
+        hint: can be absolute (+1) or percentage (10%)
+      - key: adjust-cell-height
+        label: Cell Height
+        type: string
+        default: ""
+        description: cell height adjustment (e.g., +1, -1, 10%)
+      - key: adjust-font-baseline
+        label: Font Baseline
+        type: string
+        default: ""
+        description: font baseline adjustment (e.g., +1, -1)
+      - key: adjust-underline-position
+        label: Underline Pos
+        type: string
+        default: ""
+        description: underline position adjustment
+      - key: adjust-underline-thickness
+        label: Underline Thick
+        type: string
+        default: ""
+        description: underline thickness adjustment
+      - key: adjust-cursor-thickness
+        label: Cursor Thick
+        type: string
+        default: ""
+        description: cursor bar/underline thickness adjustment
+  - name: Input
+    key: ""
+    fields:
+      - key: keybind
+        label: Key Bindings
+        type: list
+        default: ""
+        description: custom key bindings (repeated key)
+        hint: 'format: trigger=action (e.g., ctrl+c=copy_to_clipboard)'
+      - key: mouse-scroll-multiplier
+        label: Scroll Multiplier
+        type: number
+        default: "1"
+        description: mouse scroll speed multiplier
+        min: 0
+        max: 50
+      - key: focus-follows-mouse
+        label: Focus Follows Mouse
+        type: bool
+        default: "false"
+        description: split focus follows mouse pointer
+      - key: macos-option-as-alt
+        label: Option as Alt
+        type: enum
+        default: "false"
+        description: treat macOS Option key as Alt
+        options:
+          - "false"
+          - "true"
+          - left
+          - right
+      - key: link-url
+        label: Clickable URLs
+        type: bool
+        default: "true"
+        description: detect and make URLs clickable
+      - key: mouse-shift-capture
+        label: Shift+Click
+        type: enum
+        default: "false"
+        description: shift+click capture behavior
+        options:
+          - "false"
+          - "true"
+          - always
   - name: Shell
     key: ""
     fields:
+      - key: command
+        label: Shell Command
+        type: string
+        default: ""
+        description: command to run instead of default shell
+        hint: leave empty for login shell
       - key: shell-integration
         label: Shell Integration
         type: enum
         default: detect
-        description: Shell integration mode
+        description: shell integration mode
         options:
           - none
           - detect
           - bash
           - zsh
           - fish
+          - elvish
       - key: shell-integration-features
         label: Integration Features
+        type: multi
+        default: ""
+        description: shell integration features to enable
+        options:
+          - cursor
+          - sudo
+          - title
+          - no-cursor
+          - no-sudo
+          - no-title
+      - key: scrollback-limit
+        label: Scrollback Limit
+        type: number
+        default: "10000"
+        description: max scrollback lines (0 = unlimited)
+        min: 0
+        max: 1e+06
+      - key: wait-after-command
+        label: Wait After Exit
+        type: bool
+        default: "false"
+        description: keep surface open after command exits
+      - key: abnormal-command-exit-runtime
+        label: Abnormal Exit Time
+        type: number
+        default: "250"
+        description: ms threshold for abnormal exit detection
+        min: 0
+        max: 60000
+  - name: Clipboard
+    key: ""
+    fields:
+      - key: copy-on-select
+        label: Copy on Select
+        type: enum
+        default: "false"
+        description: copy to clipboard on text selection
+        options:
+          - "false"
+          - "true"
+          - clipboard
+          - primary
+      - key: clipboard-read
+        label: Clipboard Read
+        type: enum
+        default: ask
+        description: allow programs to read clipboard
+        options:
+          - allow
+          - deny
+          - ask
+      - key: clipboard-write
+        label: Clipboard Write
+        type: enum
+        default: allow
+        description: allow programs to write clipboard
+        options:
+          - allow
+          - deny
+          - ask
+      - key: clipboard-trim-trailing-spaces
+        label: Trim Trailing
+        type: bool
+        default: "true"
+        description: trim trailing spaces when copying
+      - key: clipboard-paste-protection
+        label: Paste Protection
+        type: bool
+        default: "true"
+        description: warn before pasting potentially unsafe text
+  - name: Advanced
+    key: ""
+    fields:
+      - key: config-file
+        label: Extra Config
+        type: list
+        default: ""
+        description: additional config files to load
+      - key: confirm-close-surface
+        label: Confirm Close
+        type: bool
+        default: "true"
+        description: confirm before closing a terminal surface
+      - key: image-storage-limit
+        label: Image Limit
+        type: number
+        default: "320000000"
+        description: max bytes for in-memory image storage
+        min: 0
+      - key: class
+        label: Window Class
         type: string
         default: ""
-        description: Comma-separated shell integration features
+        description: X11/Wayland window class override
+      - key: custom-shader
+        label: Custom Shader
+        type: list
+        default: ""
+        description: GLSL shader files for post-processing
+        hint: path to .glsl files
+      - key: bold-is-bright
+        label: Bold is Bright
+        type: bool
+        default: "false"
+        description: render bold text as bright color variant
+      - key: grapheme-width-method
+        label: Grapheme Width
+        type: enum
+        default: unicode
+        description: method for computing grapheme width
+        options:
+          - unicode
+          - wcswidth
+          - legacy

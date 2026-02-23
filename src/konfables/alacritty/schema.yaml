@@ -1,11 +1,13 @@
 app: alacritty
 format: toml
+schema_version: 1.0.0
 docs_url: "https://alacritty.org/config-alacritty.html"
 hints:
   - "TOML config — sections are [tables], nested via dots"
   - "live reload on save — no restart needed"
   - "import other config files with import = [paths]"
 sections:
+  # ── Font ────────────────────────────────────────────────────────────
   - name: Font
     key: font
     fields:
@@ -13,39 +15,289 @@ sections:
         label: Font Family
         type: string
         default: monospace
-        description: Primary font family
+        description: primary font family (platform-dependent default)
         example: '[font.normal]\nfamily = "JetBrains Mono"'
-        hint: nested under [font.normal] in TOML
+        hint: linux/bsd=monospace, macos=Menlo, windows=Consolas
         doc_url: "https://alacritty.org/config-alacritty.html#font"
-        since: "0.13.0"
+      - key: font.normal.style
+        label: Font Style
+        type: string
+        default: Regular
+        description: style of the normal font face
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.bold.family
+        label: Bold Font
+        type: string
+        default: ""
+        description: bold variant font family (inherits normal if empty)
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.bold.style
+        label: Bold Style
+        type: string
+        default: Bold
+        description: style of the bold font face
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.italic.family
+        label: Italic Font
+        type: string
+        default: ""
+        description: italic variant font family (inherits normal if empty)
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.italic.style
+        label: Italic Style
+        type: string
+        default: Italic
+        description: style of the italic font face
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.bold_italic.family
+        label: Bold Italic Font
+        type: string
+        default: ""
+        description: bold-italic variant font family (inherits normal if empty)
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.bold_italic.style
+        label: Bold Italic Style
+        type: string
+        default: Bold Italic
+        description: style of the bold-italic font face
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.size
         label: Font Size
         type: number
         default: "11.25"
-        description: Font size in points
-        min: 6
+        description: font size in points
+        min: 1
         max: 72
-        example: "[font]\nsize = 14.0"
         doc_url: "https://alacritty.org/config-alacritty.html#font"
-        since: "0.13.0"
-      - key: font.bold.family
-        label: Bold Font Family
-        type: string
-        default: ""
-        description: Bold variant font family
-  - name: Colors
+      - key: font.offset.x
+        label: Letter Spacing
+        type: number
+        default: "0"
+        description: extra horizontal spacing between characters in pixels
+        min: -10
+        max: 20
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.offset.y
+        label: Line Spacing
+        type: number
+        default: "0"
+        description: extra vertical spacing between lines in pixels
+        min: -10
+        max: 20
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.builtin_box_drawing
+        label: Builtin Box Drawing
+        type: bool
+        default: "true"
+        description: use built-in font for box drawing and powerline glyphs
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+
+  # ── Colors Primary ─────────────────────────────────────────────────
+  - name: Colors Primary
     key: colors
     fields:
       - key: colors.primary.background
         label: Background
         type: color
-        default: "#1d1f21"
-        description: Primary background color
+        default: "#181818"
+        description: default background color
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-primary"
+        palette:
+          - "#181818"
+          - "#1d2021"
+          - "#282828"
+          - "#1a1b26"
+          - "#24283b"
+          - "#002b36"
+          - "#011628"
+          - "#0d1117"
+          - "#1e1e2e"
+          - "#000000"
       - key: colors.primary.foreground
         label: Foreground
         type: color
-        default: "#c5c8c6"
-        description: Primary foreground color
+        default: "#d8d8d8"
+        description: default foreground text color
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-primary"
+        palette:
+          - "#d8d8d8"
+          - "#ebdbb2"
+          - "#c0caf5"
+          - "#a9b1d6"
+          - "#839496"
+          - "#93a1a1"
+          - "#cdd6f4"
+          - "#d5c4a1"
+          - "#c6d0f5"
+          - "#f8f8f2"
+      - key: colors.primary.dim_foreground
+        label: Dim Foreground
+        type: color
+        default: "#828482"
+        description: dimmed text color (auto-calculated if unset)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-primary"
+      - key: colors.draw_bold_text_with_bright_colors
+        label: Bold as Bright
+        type: bool
+        default: "false"
+        description: draw bold text using bright color variants
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
+      - key: colors.transparent_background_colors
+        label: Transparent BG Colors
+        type: bool
+        default: "false"
+        description: apply window.opacity to all cell backgrounds (not just default)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
+
+  # ── Colors Cursor ──────────────────────────────────────────────────
+  - name: Colors Cursor
+    key: colors
+    fields:
+      - key: colors.cursor.text
+        label: Cursor Text
+        type: enum
+        default: CellBackground
+        description: text color under the block cursor
+        options: [CellForeground, CellBackground]
+        hint: or set a hex color string like "#ffffff"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-cursor"
+      - key: colors.cursor.cursor
+        label: Cursor Color
+        type: enum
+        default: CellForeground
+        description: color of the cursor itself
+        options: [CellForeground, CellBackground]
+        hint: or set a hex color string like "#ffffff"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-cursor"
+
+  # ── Colors Selection ───────────────────────────────────────────────
+  - name: Colors Selection
+    key: colors
+    fields:
+      - key: colors.selection.text
+        label: Selection Text
+        type: enum
+        default: CellBackground
+        description: text color in selected regions
+        options: [CellForeground, CellBackground]
+        hint: or set a hex color string like "#ffffff"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-selection"
+      - key: colors.selection.background
+        label: Selection BG
+        type: enum
+        default: CellForeground
+        description: background color of selected regions
+        options: [CellForeground, CellBackground]
+        hint: or set a hex color string like "#ffffff"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-selection"
+
+  # ── Colors Normal (ANSI 0-7) ───────────────────────────────────────
+  - name: Colors Normal
+    key: colors
+    fields:
+      - key: colors.normal.black
+        label: Black
+        type: color
+        default: "#181818"
+        description: normal black (ANSI 0)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.red
+        label: Red
+        type: color
+        default: "#ac4242"
+        description: normal red (ANSI 1)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.green
+        label: Green
+        type: color
+        default: "#90a959"
+        description: normal green (ANSI 2)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.yellow
+        label: Yellow
+        type: color
+        default: "#f4bf75"
+        description: normal yellow (ANSI 3)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.blue
+        label: Blue
+        type: color
+        default: "#6a9fb5"
+        description: normal blue (ANSI 4)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.magenta
+        label: Magenta
+        type: color
+        default: "#aa759f"
+        description: normal magenta (ANSI 5)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.cyan
+        label: Cyan
+        type: color
+        default: "#75b5aa"
+        description: normal cyan (ANSI 6)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+      - key: colors.normal.white
+        label: White
+        type: color
+        default: "#d8d8d8"
+        description: normal white (ANSI 7)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+
+  # ── Colors Bright (ANSI 8-15) ──────────────────────────────────────
+  - name: Colors Bright
+    key: colors
+    fields:
+      - key: colors.bright.black
+        label: Bright Black
+        type: color
+        default: "#6b6b6b"
+        description: bright black (ANSI 8)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.red
+        label: Bright Red
+        type: color
+        default: "#c55555"
+        description: bright red (ANSI 9)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.green
+        label: Bright Green
+        type: color
+        default: "#aac474"
+        description: bright green (ANSI 10)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.yellow
+        label: Bright Yellow
+        type: color
+        default: "#feca88"
+        description: bright yellow (ANSI 11)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.blue
+        label: Bright Blue
+        type: color
+        default: "#82b8c8"
+        description: bright blue (ANSI 12)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.magenta
+        label: Bright Magenta
+        type: color
+        default: "#c28cb8"
+        description: bright magenta (ANSI 13)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.cyan
+        label: Bright Cyan
+        type: color
+        default: "#93d3c3"
+        description: bright cyan (ANSI 14)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+      - key: colors.bright.white
+        label: Bright White
+        type: color
+        default: "#f8f8f8"
+        description: bright white (ANSI 15)
+        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+
+  # ── Window ─────────────────────────────────────────────────────────
   - name: Window
     key: window
     fields:
@@ -53,30 +305,204 @@ sections:
         label: Opacity
         type: number
         default: "1.0"
-        description: Window opacity (0.0 to 1.0)
+        description: background opacity (0.0 transparent to 1.0 opaque)
         min: 0
         max: 1
-        example: "[window]\nopacity = 0.9"
         hint: requires a compositor that supports transparency
         doc_url: "https://alacritty.org/config-alacritty.html#window"
-        since: "0.13.0"
+      - key: window.blur
+        label: Blur
+        type: bool
+        default: "false"
+        description: request compositor to blur content behind transparent window
+        hint: macOS and KDE Wayland only
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.padding.x
         label: Padding X
         type: number
         default: "0"
-        description: Horizontal padding in pixels
+        description: horizontal blank space around content in pixels (DPI-scaled)
         min: 0
-        max: 100
+        max: 200
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.padding.y
         label: Padding Y
         type: number
         default: "0"
-        description: Vertical padding in pixels
+        description: vertical blank space around content in pixels (DPI-scaled)
         min: 0
-        max: 100
+        max: 200
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.dynamic_padding
+        label: Dynamic Padding
+        type: bool
+        default: "false"
+        description: spread extra padding evenly around terminal content
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.decorations
         label: Decorations
         type: enum
         default: Full
-        description: Window decoration mode
+        description: window decoration style
         options: [Full, None, Transparent, Buttonless]
+        hint: Transparent and Buttonless are macOS only
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.startup_mode
+        label: Startup Mode
+        type: enum
+        default: Windowed
+        description: initial window mode at launch
+        options: [Windowed, Maximized, Fullscreen, SimpleFullscreen]
+        hint: SimpleFullscreen is macOS only
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.title
+        label: Title
+        type: string
+        default: Alacritty
+        description: window title text
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.dynamic_title
+        label: Dynamic Title
+        type: bool
+        default: "true"
+        description: allow terminal programs to change the window title
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.resize_increments
+        label: Resize Increments
+        type: bool
+        default: "false"
+        description: prefer resizing in discrete cell-sized steps
+        hint: macOS and X11 only
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.decorations_theme_variant
+        label: Theme Variant
+        type: enum
+        default: None
+        description: override system theme for window decorations
+        options: [Dark, Light, None]
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+
+  # ── Scrolling ──────────────────────────────────────────────────────
+  - name: Scrolling
+    key: scrolling
+    fields:
+      - key: scrolling.history
+        label: History
+        type: number
+        default: "10000"
+        description: max lines in scrollback buffer (0 disables)
+        min: 0
+        max: 100000
+        doc_url: "https://alacritty.org/config-alacritty.html#scrolling"
+      - key: scrolling.multiplier
+        label: Multiplier
+        type: number
+        default: "3"
+        description: lines scrolled per input scroll increment
+        min: 1
+        max: 50
+        doc_url: "https://alacritty.org/config-alacritty.html#scrolling"
+
+  # ── Cursor ─────────────────────────────────────────────────────────
+  - name: Cursor
+    key: cursor
+    fields:
+      - key: cursor.style.shape
+        label: Shape
+        type: enum
+        default: Block
+        description: cursor shape
+        options: [Block, Underline, Beam]
+        doc_url: "https://alacritty.org/config-alacritty.html#cursor"
+      - key: cursor.style.blinking
+        label: Blinking
+        type: enum
+        default: "Off"
+        description: cursor blink behavior
+        options: [Never, "Off", "On", Always]
+        hint: "Off/On=default state, togglable by escape. Never/Always=locked."
+        doc_url: "https://alacritty.org/config-alacritty.html#cursor"
+      - key: cursor.blink_interval
+        label: Blink Interval
+        type: number
+        default: "750"
+        description: cursor blink period in milliseconds
+        min: 50
+        max: 5000
+        doc_url: "https://alacritty.org/config-alacritty.html#cursor"
+      - key: cursor.blink_timeout
+        label: Blink Timeout
+        type: number
+        default: "5"
+        description: seconds until cursor stops blinking (0 disables timeout)
+        min: 0
+        max: 60
+        doc_url: "https://alacritty.org/config-alacritty.html#cursor"
+      - key: cursor.unfocused_hollow
+        label: Unfocused Hollow
+        type: bool
+        default: "true"
+        description: render cursor as hollow box when window is unfocused
+        doc_url: "https://alacritty.org/config-alacritty.html#cursor"
+      - key: cursor.thickness
+        label: Thickness
+        type: number
+        default: "0.15"
+        description: cursor width as fraction of cell width (beam/underline)
+        min: 0
+        max: 1
+        doc_url: "https://alacritty.org/config-alacritty.html#cursor"
+
+  # ── Mouse ──────────────────────────────────────────────────────────
+  - name: Mouse
+    key: mouse
+    fields:
+      - key: mouse.hide_when_typing
+        label: Hide When Typing
+        type: bool
+        default: "false"
+        description: temporarily hide mouse cursor while typing
+        doc_url: "https://alacritty.org/config-alacritty.html#mouse"
+
+  # ── Terminal ───────────────────────────────────────────────────────
+  - name: Terminal
+    key: terminal
+    fields:
+      - key: terminal.shell.program
+        label: Shell Program
+        type: string
+        default: ""
+        description: shell executable path (uses $SHELL or login shell if empty)
+        hint: leave empty to use system default
+        doc_url: "https://alacritty.org/config-alacritty.html#terminal"
+      - key: terminal.osc52
+        label: OSC 52
+        type: enum
+        default: OnlyCopy
+        description: clipboard access via OSC 52 escape sequences
+        options: [Disabled, OnlyCopy, OnlyPaste, CopyPaste]
+        doc_url: "https://alacritty.org/config-alacritty.html#terminal"
+
+  # ── General ────────────────────────────────────────────────────────
+  - name: General
+    key: general
+    fields:
+      - key: general.live_config_reload
+        label: Live Config Reload
+        type: bool
+        default: "true"
+        description: automatically apply config changes without restart
+        doc_url: "https://alacritty.org/config-alacritty.html#general"
+      - key: general.ipc_socket
+        label: IPC Socket
+        type: bool
+        default: "true"
+        description: enable IPC via alacritty msg (unix only)
+        doc_url: "https://alacritty.org/config-alacritty.html#general"
+      - key: general.working_directory
+        label: Working Directory
+        type: string
+        default: None
+        description: starting directory for the shell (uses parent process dir if None)
+        hint: set to "None" or an absolute path
+        doc_url: "https://alacritty.org/config-alacritty.html#general"
