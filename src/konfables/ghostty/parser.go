@@ -78,6 +78,71 @@ func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
 	return bytes.Join(out, []byte("\n")), nil
 }
 
+// FindValues collects all values for a repeated key (e.g., keybind, palette).
+func (p *parser) FindValues(data []byte, key string) ([]string, bool) {
+	lines := bytes.Split(data, []byte("\n"))
+	var vals []string
+	for _, line := range lines {
+		s := strings.TrimSpace(string(line))
+		if s == "" || s[0] == '#' {
+			continue
+		}
+		k, v, ok := splitKV(s)
+		if ok && k == key {
+			vals = append(vals, v)
+		}
+	}
+	if len(vals) == 0 {
+		return nil, false
+	}
+	return vals, true
+}
+
+// SetValues replaces all instances of a repeated key with the given values.
+func (p *parser) SetValues(data []byte, key string, values []string) ([]byte, error) {
+	lines := bytes.Split(data, []byte("\n"))
+	// remove all existing lines for this key
+	out := make([][]byte, 0, len(lines))
+	for _, line := range lines {
+		s := strings.TrimSpace(string(line))
+		if s != "" && s[0] != '#' {
+			k, _, ok := splitKV(s)
+			if ok && k == key {
+				continue
+			}
+		}
+		out = append(out, line)
+	}
+	// append new values
+	for _, v := range values {
+		newLine := []byte(key + " = " + v)
+		// insert before trailing empty line if present
+		if len(out) > 0 && len(bytes.TrimSpace(out[len(out)-1])) == 0 {
+			out = append(out[:len(out)-1], newLine, out[len(out)-1])
+		} else {
+			out = append(out, newLine)
+		}
+	}
+	return bytes.Join(out, []byte("\n")), nil
+}
+
+// ListKeys returns all config keys defined in the data.
+func (p *parser) ListKeys(data []byte) []string {
+	lines := bytes.Split(data, []byte("\n"))
+	var keys []string
+	for _, line := range lines {
+		s := strings.TrimSpace(string(line))
+		if s == "" || s[0] == '#' {
+			continue
+		}
+		k, _, ok := splitKV(s)
+		if ok {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
 // splitKV parses "key = value" returning trimmed key, value, ok.
 func splitKV(s string) (key, value string, ok bool) {
 	idx := strings.Index(s, "=")

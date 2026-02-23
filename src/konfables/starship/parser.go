@@ -69,6 +69,33 @@ func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
 	return pkg.DeleteKeyOnLine(data, lineIdx), nil
 }
 
+// ListKeys returns all config keys defined in the data as dotted paths.
+func (p *parser) ListKeys(data []byte) []string {
+	lines := strings.Split(string(data), "\n")
+	var keys []string
+	currentSection := ""
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || trimmed[0] == '#' {
+			continue
+		}
+		if trimmed[0] == '[' {
+			currentSection = pkg.ParseSectionHeader(trimmed)
+			continue
+		}
+		k, _, ok := pkg.ParseKVLine(trimmed)
+		if !ok {
+			continue
+		}
+		if currentSection != "" {
+			keys = append(keys, currentSection+"."+k)
+		} else {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
 // splitKey splits "section.field" into parts. returns nested=false for bare keys.
 func splitKey(key string) (section, field string, nested bool) {
 	idx := strings.IndexByte(key, '.')

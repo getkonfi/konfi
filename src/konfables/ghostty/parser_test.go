@@ -148,6 +148,115 @@ func TestDeleteKey(t *testing.T) {
 	})
 }
 
+func TestFindValues(t *testing.T) {
+	p := &parser{}
+
+	data := []byte(`font-family = JetBrains Mono
+keybind = ctrl+c=copy
+keybind = ctrl+v=paste
+keybind = ctrl+shift+v=paste_from_clipboard
+font-size = 14
+`)
+
+	t.Run("multi-value key", func(t *testing.T) {
+		vals, ok := p.FindValues(data, "keybind")
+		if !ok {
+			t.Fatal("expected to find keybind values")
+		}
+		if len(vals) != 3 {
+			t.Fatalf("got %d values, want 3", len(vals))
+		}
+		if vals[0] != "ctrl+c=copy" {
+			t.Errorf("vals[0] = %q, want %q", vals[0], "ctrl+c=copy")
+		}
+	})
+
+	t.Run("single-value key", func(t *testing.T) {
+		vals, ok := p.FindValues(data, "font-family")
+		if !ok {
+			t.Fatal("expected to find font-family")
+		}
+		if len(vals) != 1 {
+			t.Fatalf("got %d values, want 1", len(vals))
+		}
+	})
+
+	t.Run("missing key", func(t *testing.T) {
+		_, ok := p.FindValues(data, "nonexistent")
+		if ok {
+			t.Fatal("expected not to find nonexistent key")
+		}
+	})
+}
+
+func TestSetValues(t *testing.T) {
+	p := &parser{}
+
+	data := []byte(`font-family = JetBrains Mono
+keybind = ctrl+c=copy
+keybind = ctrl+v=paste
+font-size = 14
+`)
+
+	t.Run("replace multi-value", func(t *testing.T) {
+		newVals := []string{"ctrl+a=select_all", "ctrl+c=copy"}
+		got, err := p.SetValues(data, "keybind", newVals)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// verify round-trip
+		vals, ok := p.FindValues(got, "keybind")
+		if !ok {
+			t.Fatal("expected to find keybind after set")
+		}
+		if len(vals) != 2 {
+			t.Fatalf("got %d values, want 2", len(vals))
+		}
+		if vals[0] != "ctrl+a=select_all" {
+			t.Errorf("vals[0] = %q, want %q", vals[0], "ctrl+a=select_all")
+		}
+
+		// other keys preserved
+		v, ok := p.FindValue(got, "font-family")
+		if !ok || v != "JetBrains Mono" {
+			t.Error("other keys should be preserved")
+		}
+	})
+
+	t.Run("set empty removes all", func(t *testing.T) {
+		got, err := p.SetValues(data, "keybind", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, ok := p.FindValues(got, "keybind")
+		if ok {
+			t.Error("expected no keybind values after setting empty")
+		}
+	})
+}
+
+func TestListKeys(t *testing.T) {
+	p := &parser{}
+	data := loadTestdata(t, "config.txt")
+	keys := p.ListKeys(data)
+
+	if len(keys) == 0 {
+		t.Fatal("expected at least one key")
+	}
+
+	// verify known keys are present
+	found := make(map[string]bool)
+	for _, k := range keys {
+		found[k] = true
+	}
+	for _, want := range []string{"font-family", "font-size", "window-decoration", "shell-integration"} {
+		if !found[want] {
+			t.Errorf("missing key %q in ListKeys output", want)
+		}
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	p := &parser{}
 	data := loadTestdata(t, "config.txt")

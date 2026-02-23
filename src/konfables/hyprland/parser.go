@@ -45,6 +45,53 @@ func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
 	return deleteNested(data, block, inner)
 }
 
+// ListKeys returns all config keys defined in the data as dotted paths.
+func (p *parser) ListKeys(data []byte) []string {
+	lines := bytes.Split(data, []byte("\n"))
+	var keys []string
+	var stack []string
+	depth := 0
+
+	for _, line := range lines {
+		trimmed := bytes.TrimSpace(line)
+		if len(trimmed) == 0 || trimmed[0] == '#' {
+			continue
+		}
+
+		// check for block open: "name {" or "name{"
+		s := string(trimmed)
+		if bytes.HasSuffix(trimmed, []byte("{")) {
+			name := strings.TrimSpace(strings.TrimSuffix(s, "{"))
+			if name != "" {
+				stack = append(stack, name)
+			}
+			depth++
+			continue
+		}
+
+		// closing brace
+		if bytes.Equal(trimmed, []byte("}")) {
+			depth--
+			if len(stack) > 0 {
+				stack = stack[:len(stack)-1]
+			}
+			continue
+		}
+
+		// key = value line
+		if k, _, ok := parseLine(trimmed); ok {
+			if len(stack) > 0 {
+				keys = append(keys, strings.Join(stack, ".")+"."+k)
+			} else {
+				keys = append(keys, k)
+			}
+		}
+	}
+	_ = depth // not needed beyond tracking
+
+	return keys
+}
+
 // splitKey splits a dotted key into block and inner key.
 // returns (block, inner, isNested).
 func splitKey(key string) (block, inner string, nested bool) {
