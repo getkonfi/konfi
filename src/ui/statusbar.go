@@ -14,14 +14,11 @@ type keyHint struct {
 }
 
 type statusbar struct {
-	filePath   string
-	appVersion string
-	dirty      bool
-	themeName  string
-	status     string
-	hints      []keyHint
-	width      int
-	theme      *theme.Theme
+	themeName string
+	status    string
+	hints     []keyHint
+	width     int
+	theme     *theme.Theme
 }
 
 func newStatusbar(th *theme.Theme) statusbar {
@@ -34,22 +31,8 @@ func newStatusbar(th *theme.Theme) statusbar {
 func (s *statusbar) View() string {
 	style := s.theme.Statusbar.Width(s.width)
 
-	// left side: version + file path + dirty indicator
-	left := ""
-	if s.appVersion != "" {
-		left = s.appVersion + " "
-	}
-	if s.filePath != "" {
-		left += s.filePath
-	} else {
-		left += "no file loaded"
-	}
-	if s.dirty {
-		left += " [*]"
-	}
-	if s.status != "" {
-		left = s.status
-	}
+	// left side: transient status only
+	left := s.status
 
 	// right side: key-cap hints + theme badge
 	keyCap := lipgloss.NewStyle().

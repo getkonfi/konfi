@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -9,9 +11,17 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// glamourCache holds the glamour renderer, rebuilt on width or theme change.
+type glamourCache struct {
+	renderer *glamour.TermRenderer
+	width    int
+}
 
 // field type icons (nerd font glyphs)
 var fieldTypeIcon = map[string]string{
@@ -20,6 +30,15 @@ var fieldTypeIcon = map[string]string{
 	"bool":   "\uf444",  //
 	"enum":   "\uf150",  //
 	"color":  "\uf53f",  //
+	"list":   "\uf03a",  //
+	"multi":  "\uf046",  //
+}
+
+// row represents a navigable item in the field list — either a section header or a field.
+type row struct {
+	isSection  bool
+	sectionIdx int // index into schema.Sections
+	fieldIdx   int // index into c.fields (-1 for section rows)
 }
 
 type content struct {
@@ -29,7 +48,13 @@ type content struct {
 	schema   *pkg.Schema
 	values   map[string]string
 	cursor   int
-	fields  []pkg.Field // flattened field list across all sections
+	fields       []pkg.Field // flattened field list across all sections
+	fieldSection []int       // len == len(c.fields), maps field → section index
+	visible      []row       // navigable rows (section headers + fields)
+	collapsed    map[int]bool // section index → collapsed
+	configuredOnly bool
+	searching      bool
+	search         textinput.Model
 	scrollY int
 	focused bool
 	width   int
@@ -54,18 +79,33 @@ type content struct {
 	// app-level docs fallback
 	docsURL string
 
+	// glamour markdown renderer cache (pointer survives value-receiver copies)
+	glamCache *glamourCache
+
+	// file state indicator ("", "unsaved", "saved", "reloaded", "new")
+	fileState string
+
 	// insight cycling + split-flap animation
-	insightIdx   int
-	insightLines []string
-	insightGen   int
-	splitFlap    *splitFlapState
+	insightIdx          int
+	insightLines        []string
+	insightWarningCount int
+	insightGen          int
+	splitFlap           *splitFlapState
 }
 
 func newContent(th *theme.Theme) content {
+	ti := textinput.New()
+	ti.Placeholder = "search..."
+	ti.CharLimit = 64
+	ti.Prompt = ""
+
 	return content{
-		title:  "konfigurator",
-		values: make(map[string]string),
-		theme:  th,
+		title:     "konfigurator",
+		values:    make(map[string]string),
+		collapsed: make(map[int]bool),
+		search:    ti,
+		theme:     th,
+		glamCache: &glamourCache{},
 	}
 }
 
@@ -84,27 +124,89 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		return c, cmd
 	}
 
+	// when searching, forward keys to search textinput
+	if c.searching {
+		if km, ok := msg.(tea.KeyMsg); ok {
+			switch km.String() {
+			case "esc":
+				c.searching = false
+				c.search.SetValue("")
+				c.search.Blur()
+				c.refilter()
+				c.updatePreviewLine()
+				return c, nil
+			case "enter":
+				// lock filter and exit search mode
+				c.searching = false
+				c.search.Blur()
+				return c, nil
+			case "j", "down":
+				if c.cursor < len(c.visible)-1 {
+					c.cursor++
+				}
+				c.updatePreviewLine()
+				return c, nil
+			case "k", "up":
+				if c.cursor > 0 {
+					c.cursor--
+				}
+				c.updatePreviewLine()
+				return c, nil
+			default:
+				var cmd tea.Cmd
+				c.search, cmd = c.search.Update(msg)
+				c.refilter()
+				c.updatePreviewLine()
+				return c, cmd
+			}
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if !c.focused {
 			return c, nil
 		}
-		hasFields := c.schema != nil && len(c.fields) > 0
+		hasRows := c.schema != nil && len(c.visible) > 0
 
 		switch msg.String() {
 		case "enter":
-			if hasFields && c.cursor >= 0 && c.cursor < len(c.fields) {
-				f := c.fields[c.cursor]
+			if f := c.currentField(); f != nil {
 				if f.Type == "bool" {
-					c.toggleBool(f)
+					c.toggleBool(*f)
 					return c, nil
 				}
 				cmd := c.openEditor()
 				return c, cmd
 			}
+			// enter on section header toggles collapse
+			if hasRows && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
+				c.toggleCollapse(c.visible[c.cursor].sectionIdx)
+			}
+		case "z":
+			if hasRows && c.cursor < len(c.visible) {
+				r := c.visible[c.cursor]
+				if r.isSection {
+					c.toggleCollapse(r.sectionIdx)
+				} else {
+					c.toggleCollapse(c.fieldSection[r.fieldIdx])
+				}
+			}
+		case "f":
+			if c.schema != nil {
+				c.configuredOnly = !c.configuredOnly
+				c.refilter()
+				c.updatePreviewLine()
+			}
+		case "/":
+			if c.schema != nil {
+				c.searching = true
+				c.search.SetValue("")
+				return c, c.search.Focus()
+			}
 		case "j", "down":
-			if hasFields {
-				if c.cursor < len(c.fields)-1 {
+			if hasRows {
+				if c.cursor < len(c.visible)-1 {
 					c.cursor++
 				}
 				c.updatePreviewLine()
@@ -112,7 +214,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.scrollY++
 			}
 		case "k", "up":
-			if hasFields {
+			if hasRows {
 				if c.cursor > 0 {
 					c.cursor--
 				}
@@ -121,23 +223,23 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.scrollY--
 			}
 		case "home":
-			if hasFields {
+			if hasRows {
 				c.cursor = 0
 				c.updatePreviewLine()
 			} else {
 				c.scrollY = 0
 			}
 		case "end":
-			if hasFields {
-				c.cursor = len(c.fields) - 1
+			if hasRows {
+				c.cursor = len(c.visible) - 1
 				c.updatePreviewLine()
 			}
 		case "pgdown":
 			page := c.pageSize()
-			if hasFields {
+			if hasRows {
 				c.cursor += page
-				if c.cursor >= len(c.fields) {
-					c.cursor = len(c.fields) - 1
+				if c.cursor >= len(c.visible) {
+					c.cursor = len(c.visible) - 1
 				}
 				c.updatePreviewLine()
 			} else {
@@ -145,7 +247,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			}
 		case "pgup":
 			page := c.pageSize()
-			if hasFields {
+			if hasRows {
 				c.cursor -= page
 				if c.cursor < 0 {
 					c.cursor = 0
@@ -157,11 +259,14 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 					c.scrollY = 0
 				}
 			}
+		case "o":
+			if url := c.currentDocURL(); url != "" {
+				return c, c.openDocs(url)
+			}
 		default:
 			// type-through: printable chars seed a new editor in replace mode
-			if hasFields && len(msg.Runes) > 0 {
-				f := c.fields[c.cursor]
-				if f.Type != "bool" && f.Type != "enum" {
+			if f := c.currentField(); f != nil && len(msg.Runes) > 0 {
+				if f.Type != "bool" && f.Type != "enum" && f.Type != "list" && f.Type != "multi" {
 					cmd := c.openEditorWithSeed(msg.Runes[0])
 					return c, cmd
 				}
@@ -170,6 +275,9 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 
 	case ThemeChangedMsg:
 		c.theme = msg.Theme
+		if c.glamCache != nil {
+			c.glamCache.renderer = nil
+		}
 
 	case ExternalChangeMsg:
 		if c.config != nil && c.config.Path == msg.Path {
@@ -203,36 +311,48 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 
 // openEditor creates and initializes an editor for the current cursor field.
 func (c *content) openEditor() tea.Cmd {
-	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+	f := c.currentField()
+	if f == nil || c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return nil
 	}
 
-	f := c.fields[c.cursor]
-	c.editField = c.cursor
+	c.editField = c.visible[c.cursor].fieldIdx
 	c.editOrigVal = c.values[f.Key]
 
-	e := editorForField(f)
+	// for list fields, pass the actual multi-values (newline-joined)
+	initVal := c.editOrigVal
+	if f.Type == "list" {
+		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
+			if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
+				initVal = strings.Join(vals, "\n")
+			} else {
+				initVal = ""
+			}
+		}
+	}
+
+	e := editorForField(*f)
 	c.editor = e
 	c.editing = true
-	return e.Init(f, c.editOrigVal, c.theme)
+	return e.Init(*f, initVal, c.theme)
 }
 
 // openEditorWithSeed starts the editor in replace mode (empty value) and
 // injects the seed rune as the first keystroke.
 func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
-	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+	f := c.currentField()
+	if f == nil || c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return nil
 	}
 
-	f := c.fields[c.cursor]
-	c.editField = c.cursor
+	c.editField = c.visible[c.cursor].fieldIdx
 	c.editOrigVal = c.values[f.Key]
 
-	e := editorForField(f)
+	e := editorForField(*f)
 	c.editor = e
 	c.editing = true
 
-	initCmd := e.Init(f, "", c.theme)
+	initCmd := e.Init(*f, "", c.theme)
 	seedCmd := func() tea.Msg {
 		return tea.KeyMsg{Runes: []rune{seed}, Type: tea.KeyRunes}
 	}
@@ -249,9 +369,26 @@ func (c *content) commitEdit(value string) {
 	}
 
 	f := c.fields[c.editField]
-	serialized := formatValue(value, f.Type, c.konfable.Info().Format)
-
 	data := c.config.Content()
+
+	// list fields use MultiValueParser
+	if f.Type == "list" {
+		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
+			var vals []string
+			if value != "" {
+				vals = strings.Split(value, "\n")
+			}
+			newData, err := mvp.SetValues(data, f.Key, vals)
+			if err != nil {
+				return
+			}
+			c.config.SetContent(newData)
+			c.refreshValues()
+			return
+		}
+	}
+
+	serialized := formatValue(value, f.Type, c.konfable.Info().Format)
 	newData, err := c.konfable.Parser().SetValue(data, f.Key, serialized)
 	if err != nil {
 		return
@@ -295,6 +432,13 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.config = nil
 	c.schema = nil
 	c.fields = nil
+	c.fieldSection = nil
+	c.visible = nil
+	c.collapsed = make(map[int]bool)
+	c.configuredOnly = false
+	c.searching = false
+	c.search.SetValue("")
+	c.search.Blur()
 	c.values = make(map[string]string)
 	c.scrollY = 0
 	c.cursor = 0
@@ -330,6 +474,13 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.scrollY = 0
 	c.cursor = 0
 	c.fields = nil
+	c.fieldSection = nil
+	c.visible = nil
+	c.collapsed = make(map[int]bool)
+	c.configuredOnly = false
+	c.searching = false
+	c.search.SetValue("")
+	c.search.Blur()
 	c.values = make(map[string]string)
 	c.config = nil
 	c.schema = nil
@@ -339,6 +490,9 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.previewFound = false
 	c.previewKey = ""
 	c.docsURL = ""
+	if c.glamCache != nil {
+		c.glamCache.renderer = nil
+	}
 
 	info := k.Info()
 
@@ -396,11 +550,171 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 
 func (c *content) buildFieldList() {
 	c.fields = nil
+	c.fieldSection = nil
 	if c.schema == nil {
 		return
 	}
-	for _, sec := range c.schema.Sections {
+	for si, sec := range c.schema.Sections {
+		for range sec.Fields {
+			c.fieldSection = append(c.fieldSection, si)
+		}
 		c.fields = append(c.fields, sec.Fields...)
+	}
+	c.refilter()
+}
+
+// refilter rebuilds the visible row slice from current collapse/filter/search state.
+// two-pass: first count visible fields per section, then emit rows — skipping
+// section headers with zero visible fields.
+func (c *content) refilter() {
+	c.visible = c.visible[:0]
+	if c.schema == nil {
+		return
+	}
+
+	query := strings.ToLower(strings.TrimSpace(c.search.Value()))
+	hasSearch := c.searching && query != ""
+
+	// pass 1: count visible fields per section (ignoring collapse state)
+	sectionCount := make([]int, len(c.schema.Sections))
+	fieldIdx := 0
+	for si, sec := range c.schema.Sections {
+		for range sec.Fields {
+			f := c.fields[fieldIdx]
+			visible := true
+			if c.configuredOnly {
+				if _, ok := c.values[f.Key]; !ok {
+					visible = false
+				}
+			}
+			if visible && hasSearch {
+				label := strings.ToLower(f.Label)
+				key := strings.ToLower(f.Key)
+				if !strings.Contains(label, query) && !strings.Contains(key, query) {
+					visible = false
+				}
+			}
+			if visible {
+				sectionCount[si]++
+			}
+			fieldIdx++
+		}
+	}
+
+	// pass 2: emit rows, skipping empty sections
+	fieldIdx = 0
+	for si, sec := range c.schema.Sections {
+		if sectionCount[si] == 0 {
+			fieldIdx += len(sec.Fields)
+			continue
+		}
+
+		c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
+
+		if c.collapsed[si] && !hasSearch {
+			fieldIdx += len(sec.Fields)
+			continue
+		}
+
+		for range sec.Fields {
+			f := c.fields[fieldIdx]
+
+			if c.configuredOnly {
+				if _, ok := c.values[f.Key]; !ok {
+					fieldIdx++
+					continue
+				}
+			}
+
+			if hasSearch {
+				label := strings.ToLower(f.Label)
+				key := strings.ToLower(f.Key)
+				if !strings.Contains(label, query) && !strings.Contains(key, query) {
+					fieldIdx++
+					continue
+				}
+			}
+
+			c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: fieldIdx})
+			fieldIdx++
+		}
+	}
+
+	// clamp cursor
+	if len(c.visible) == 0 {
+		c.cursor = 0
+	} else if c.cursor >= len(c.visible) {
+		c.cursor = len(c.visible) - 1
+	}
+	if c.cursor < 0 {
+		c.cursor = 0
+	}
+}
+
+// toggleCollapse toggles the collapsed state of a section and refilters.
+// if the cursor is on a field inside the section being collapsed, move it to the section header.
+func (c *content) toggleCollapse(sectionIdx int) {
+	c.collapsed[sectionIdx] = !c.collapsed[sectionIdx]
+
+	// if collapsing and cursor is on a field in this section, move cursor to section header
+	if c.collapsed[sectionIdx] {
+		if c.cursor < len(c.visible) {
+			r := c.visible[c.cursor]
+			if !r.isSection && c.fieldSection[r.fieldIdx] == sectionIdx {
+				// find the section header row for this section
+				for i, vr := range c.visible {
+					if vr.isSection && vr.sectionIdx == sectionIdx {
+						c.cursor = i
+						break
+					}
+				}
+			}
+		}
+	}
+
+	c.refilter()
+	c.updatePreviewLine()
+}
+
+// currentField returns the field under the cursor, or nil if on a section header or empty.
+func (c *content) currentField() *pkg.Field {
+	if len(c.visible) == 0 || c.cursor < 0 || c.cursor >= len(c.visible) {
+		return nil
+	}
+	r := c.visible[c.cursor]
+	if r.isSection {
+		return nil
+	}
+	return &c.fields[r.fieldIdx]
+}
+
+// currentDocURL returns the best doc URL for the cursor position:
+// field-specific doc_url, then app-level docsURL, or empty on section header.
+func (c content) currentDocURL() string {
+	f := c.currentField()
+	if f == nil {
+		return ""
+	}
+	if f.DocURL != "" {
+		return f.DocURL
+	}
+	return c.docsURL
+}
+
+// openDocs launches the system browser for the given URL.
+func (c content) openDocs(url string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", url)
+		case "windows":
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		default:
+			cmd = exec.Command("xdg-open", url)
+		}
+		_ = cmd.Start()
+		return DocOpenedMsg{URL: url}
 	}
 }
 
@@ -416,10 +730,16 @@ func (c *content) refreshValues() {
 	}
 
 	data := c.config.Content()
+	mvp, hasMVP := p.(konfables.MultiValueParser)
 	for _, sec := range c.schema.Sections {
 		for i := range sec.Fields {
-			if v, ok := p.FindValue(data, sec.Fields[i].Key); ok {
-				c.values[sec.Fields[i].Key] = v
+			f := &sec.Fields[i]
+			if f.Type == "list" && hasMVP {
+				if vals, ok := mvp.FindValues(data, f.Key); ok {
+					c.values[f.Key] = fmt.Sprintf("%d values", len(vals))
+				}
+			} else if v, ok := p.FindValue(data, f.Key); ok {
+				c.values[f.Key] = v
 			}
 		}
 	}
@@ -430,14 +750,13 @@ func (c *content) refreshValues() {
 }
 
 func (c *content) updatePreviewLine() {
-	if c.config == nil || c.konfable == nil || c.konfable.Parser() == nil ||
-		len(c.fields) == 0 || c.cursor < 0 || c.cursor >= len(c.fields) {
+	f := c.currentField()
+	if f == nil || c.config == nil || c.konfable == nil || c.konfable.Parser() == nil {
 		c.previewLine = -1
 		c.previewFound = false
 		c.previewKey = ""
 		return
 	}
-	f := c.fields[c.cursor]
 	if f.Key == c.previewKey {
 		return
 	}
@@ -483,36 +802,39 @@ func (c content) pageSize() int {
 	return p
 }
 
-// headerHeight returns the fixed number of rendered lines the header occupies.
-// must be constant regardless of rendering mode — cursorLine() depends on it.
+// headerHeight returns the number of rendered lines the header occupies.
+// includes the search bar when active.
 func (c content) headerHeight() int {
-	return 8
+	h := 8
+	if c.searching {
+		h++ // search bar line
+	}
+	return h
 }
 
-// cursorLine returns the rendered line number for the current cursor field.
-// walks sections with headers to account for divider lines.
+// cursorLine returns the rendered line number for the current cursor position.
+// walks visible rows to account for section headers, blank lines, and editors.
 func (c content) cursorLine() int {
-	if c.schema == nil || len(c.fields) == 0 {
+	if c.schema == nil || len(c.visible) == 0 {
 		return 0
 	}
 	line := c.headerHeight()
-	fieldIdx := 0
-	for si, sec := range c.schema.Sections {
-		// blank line before section (except first)
-		if si > 0 {
-			line++
+	firstVisibleSection := true
+	for i, r := range c.visible {
+		// blank line before section headers (only when a previous section was emitted)
+		if r.isSection {
+			if !firstVisibleSection {
+				line++
+			}
+			firstVisibleSection = false
 		}
-		// section header line
+		if i == c.cursor {
+			return line
+		}
+		// section header = 1 line, field = 1 line + optional editor height
 		line++
-		for range sec.Fields {
-			if fieldIdx == c.cursor {
-				return line
-			}
-			line++
-			if c.editing && c.editor != nil && fieldIdx == c.editField {
-				line += c.editor.Height()
-			}
-			fieldIdx++
+		if !r.isSection && c.editing && c.editor != nil && r.fieldIdx == c.editField {
+			line += c.editor.Height()
 		}
 	}
 	return 0
@@ -538,7 +860,7 @@ func (c content) View() string {
 	showPreview := previewH > 0
 
 	// auto-scroll to keep cursor visible (schema mode)
-	if c.schema != nil && len(c.fields) > 0 {
+	if c.schema != nil && len(c.visible) > 0 {
 		cl := c.cursorLine()
 		visibleEnd := cl
 		if c.editing && c.editor != nil {
@@ -585,7 +907,7 @@ func (c content) View() string {
 		fieldLines++
 	}
 
-	sep := c.theme.Muted.Render(strings.Repeat("─", innerW))
+	sep := c.renderSeparator(innerW)
 	preview := c.renderPreview(innerW, previewH)
 	combined := fieldView + "\n" + sep + "\n" + preview
 
@@ -595,6 +917,48 @@ func (c content) View() string {
 		Align(lipgloss.Left, lipgloss.Top)
 
 	return style.Render(combined)
+}
+
+// renderSeparator draws the line between field list and preview with scroll info.
+func (c content) renderSeparator(width int) string {
+	if len(c.visible) == 0 {
+		info := "0/0"
+		lineW := width - len(info) - 2
+		if lineW < 4 {
+			lineW = 4
+		}
+		left := lineW / 2
+		right := lineW - left
+		return c.theme.Muted.Render(strings.Repeat("─", left) + " " + info + " " + strings.Repeat("─", right))
+	}
+
+	var parts []string
+
+	// current section name
+	if c.cursor >= 0 && c.cursor < len(c.visible) {
+		r := c.visible[c.cursor]
+		if r.sectionIdx >= 0 && r.sectionIdx < len(c.schema.Sections) {
+			parts = append(parts, c.schema.Sections[r.sectionIdx].Name)
+		}
+	}
+
+	// position indicator
+	parts = append(parts, fmt.Sprintf("%d/%d", c.cursor+1, len(c.visible)))
+
+	// configured filter badge
+	if c.configuredOnly {
+		parts = append(parts, "configured")
+	}
+
+	info := strings.Join(parts, " · ")
+	infoW := lipgloss.Width(info)
+	lineW := width - infoW - 2 // 2 spaces padding
+	if lineW < 4 {
+		lineW = 4
+	}
+	left := lineW / 2
+	right := lineW - left
+	return c.theme.Muted.Render(strings.Repeat("─", left) + " " + info + " " + strings.Repeat("─", right))
 }
 
 // labelColumnWidth computes the max label width for the active section.
@@ -609,12 +973,28 @@ func (c content) labelColumnWidth() int {
 }
 
 // buildInsights computes the cycling insight lines from current state.
+// linter warnings come first, then stats and schema hints.
 func (c *content) buildInsights() {
 	c.insightLines = nil
 	c.insightIdx = 0
+	c.insightWarningCount = 0
 
 	if c.schema == nil {
 		return
+	}
+
+	// linter warnings from Diagnose
+	if c.config != nil && c.konfable != nil && c.konfable.Parser() != nil {
+		keys := c.konfable.Parser().ListKeys(c.config.Content())
+		version := ""
+		if v, ok := c.versions[c.konfable.Name()]; ok {
+			version = v
+		}
+		diags := pkg.Diagnose(keys, c.schema, version)
+		for _, d := range diags {
+			c.insightLines = append(c.insightLines, d.Message)
+		}
+		c.insightWarningCount = len(diags)
 	}
 
 	totalFields := 0
@@ -647,6 +1027,9 @@ func (c content) headerLeftLines() []string {
 	path := ""
 	if c.config != nil {
 		path = c.config.Path
+	}
+	if c.fileState != "" {
+		path += " [" + c.fileState + "]"
 	}
 
 	insight := ""
@@ -684,8 +1067,8 @@ func (c content) renderHeader(width int) string {
 		}
 	}
 	nameBadge := c.theme.Badge.Render(c.konfable.Name())
-	// center badge under logo
-	rightLines = append(rightLines, centerLine(nameBadge, logoW))
+	// center badge under logo (must be full-width so right-align doesn't shift it)
+	rightLines = append(rightLines, lipgloss.PlaceHorizontal(logoW, lipgloss.Center, nameBadge))
 	rightBlock := strings.Join(rightLines, "\n")
 	rightW := logoW
 	badgeW := lipgloss.Width(nameBadge)
@@ -730,6 +1113,24 @@ func (c content) renderHeader(width int) string {
 		s := c.theme.Text
 		if i < len(styles) {
 			s = styles[i]
+		}
+		// line 1 (path): color fileState suffix
+		if i == 1 && c.fileState != "" {
+			switch c.fileState {
+			case "unsaved":
+				s = c.theme.Warning
+			case "reloaded":
+				s = c.theme.Accent
+			case "new":
+				s = c.theme.Muted
+			}
+		}
+		// line 3 (insight): use warning style for linter diagnostics
+		if i == 3 && c.insightWarningCount > 0 {
+			idx := c.insightIdx % len(c.insightLines)
+			if idx < c.insightWarningCount {
+				s = c.theme.Warning
+			}
 		}
 		styledLeft[i] = s.Render(line)
 	}
@@ -789,94 +1190,168 @@ func (c content) renderBody(width int) string {
 	// header: two-column (or narrow fallback)
 	b.WriteString(c.renderHeader(width))
 
-	// section headers + column-aligned field table
-	labelW := c.labelColumnWidth()
-	fieldIdx := 0
-	for si, sec := range c.schema.Sections {
-		// blank line before section (except first)
-		if si > 0 {
-			b.WriteByte('\n')
+	// search bar (when active)
+	if c.searching {
+		// count visible field rows (not section headers)
+		fieldRows := 0
+		for _, r := range c.visible {
+			if !r.isSection {
+				fieldRows++
+			}
 		}
-		// section header
-		header := c.theme.Subtext.Bold(true).Render(sec.Name)
-		b.WriteString(header)
+		prompt := c.theme.Primary.Render("/ ")
+		count := c.theme.Muted.Render(fmt.Sprintf("  %d/%d fields", fieldRows, len(c.fields)))
+		b.WriteString(prompt + c.search.View() + count)
 		b.WriteByte('\n')
+	}
 
-		for fi := range sec.Fields {
-			f := &sec.Fields[fi]
-			isCursor := c.focused && fieldIdx == c.cursor
+	labelW := c.labelColumnWidth()
 
-			// type icon
-			icon := fieldTypeIcon[f.Type]
-			if icon == "" {
-				icon = " "
-			}
-
-			// value rendering
-			val, hasVal := c.values[f.Key]
-			var renderedVal string
-			if !hasVal {
-				val = f.Default
-				renderedVal = c.renderFieldValue(*f, val, true)
-			} else {
-				renderedVal = c.renderFieldValue(*f, val, false)
-			}
-
-			// inline min/max bounds for number fields
-			if f.Type == "number" && (f.Min != nil || f.Max != nil) {
-				lo, hi := "*", "*"
-				if f.Min != nil {
-					lo = formatNum(*f.Min)
-				}
-				if f.Max != nil {
-					hi = formatNum(*f.Max)
-				}
-				renderedVal += c.theme.Muted.Render(fmt.Sprintf(" (%s\u2013%s)", lo, hi))
-			}
-
-			// label + prefix
-			paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
-			var line string
-			if isCursor {
-				prefix := c.theme.Primary.Render("▸ " + icon + " ")
-				label := c.theme.Text.Bold(true).Render(paddedLabel)
-				line = prefix + label + "  " + renderedVal
-			} else {
-				prefix := "  " + c.theme.Muted.Render(icon) + " "
-				label := c.theme.FieldLabel.Render(paddedLabel)
-				line = prefix + label + "  " + renderedVal
-			}
-
-			b.WriteString(line)
-			b.WriteByte('\n')
-
-			// inline editor below cursor row
-			if c.editing && c.editor != nil && fieldIdx == c.editField {
-				b.WriteString(c.editor.View(width))
+	firstVisibleSection := true
+	for i, r := range c.visible {
+		if r.isSection {
+			// blank line before section headers (only when a previous section was emitted)
+			if !firstVisibleSection {
 				b.WriteByte('\n')
 			}
-			fieldIdx++
+			firstVisibleSection = false
+			sec := c.schema.Sections[r.sectionIdx]
+			if c.collapsed[r.sectionIdx] {
+				// collapsed: show count of fields in section
+				count := len(sec.Fields)
+				header := c.theme.Muted.Render(fmt.Sprintf("▸ %s (%d fields)", sec.Name, count))
+				b.WriteString(header)
+			} else {
+				header := c.theme.Subtext.Bold(true).Render("▾ " + sec.Name)
+				b.WriteString(header)
+			}
+			b.WriteByte('\n')
+			continue
+		}
+
+		f := &c.fields[r.fieldIdx]
+		isCursor := c.focused && i == c.cursor
+
+		// type icon
+		icon := fieldTypeIcon[f.Type]
+		if icon == "" {
+			icon = " "
+		}
+
+		// configured indicator
+		_, isConfigured := c.values[f.Key]
+		var dot string
+		if isConfigured {
+			dot = c.theme.Success.Render("●")
+		} else {
+			dot = c.theme.Muted.Render("○")
+		}
+
+		// value rendering
+		val, hasVal := c.values[f.Key]
+		var renderedVal string
+		if !hasVal {
+			val = f.Default
+			renderedVal = c.renderFieldValue(*f, val, true)
+		} else {
+			renderedVal = c.renderFieldValue(*f, val, false)
+		}
+
+		// inline min/max bounds for number fields (skipped when inline-editing)
+		showBounds := f.Type == "number" && (f.Min != nil || f.Max != nil)
+
+		// build prefix and label
+		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
+		var prefix, label string
+		if isCursor {
+			prefix = c.theme.Primary.Render("▸ " + icon + " ")
+			label = c.theme.Text.Bold(true).Render(paddedLabel)
+		} else {
+			prefix = "  " + c.theme.Muted.Render(icon) + " "
+			label = c.theme.FieldLabel.Render(paddedLabel)
+		}
+
+		// inline editor replaces value on the same row
+		isInlineEdit := false
+		if c.editing && c.editor != nil && r.fieldIdx == c.editField {
+			if ie, ok := c.editor.(InlineEditor); ok {
+				isInlineEdit = true
+				usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + 2
+				inlineW := width - usedW
+				if inlineW < 10 {
+					inlineW = 10
+				}
+				renderedVal = ie.InlineView(inlineW)
+				showBounds = false
+			}
+		}
+
+		if showBounds {
+			lo, hi := "*", "*"
+			if f.Min != nil {
+				lo = formatNum(*f.Min)
+			}
+			if f.Max != nil {
+				hi = formatNum(*f.Max)
+			}
+			renderedVal += c.theme.Muted.Render(fmt.Sprintf(" (%s\u2013%s)", lo, hi))
+		}
+
+		line := prefix + label + " " + dot + " " + renderedVal
+		b.WriteString(line)
+		b.WriteByte('\n')
+
+		// below-row editor (enum, color — non-inline only)
+		if c.editing && c.editor != nil && r.fieldIdx == c.editField && !isInlineEdit {
+			b.WriteString(c.editor.View(width))
+			b.WriteByte('\n')
 		}
 	}
 
 	return b.String()
 }
 
+// glamourRender renders markdown using glamour, rebuilding the renderer on width/theme change.
+// falls back to plain lipgloss on error.
+func (c content) glamourRender(md string, width int) string {
+	if c.glamCache == nil {
+		return c.theme.Muted.Render(md)
+	}
+	if c.glamCache.renderer == nil || c.glamCache.width != width {
+		r, err := glamour.NewTermRenderer(
+			c.theme.GlamourStyle(),
+			glamour.WithWordWrap(width),
+		)
+		if err != nil {
+			return c.theme.Muted.Render(md)
+		}
+		c.glamCache.renderer = r
+		c.glamCache.width = width
+	}
+	out, err := c.glamCache.renderer.Render(md)
+	if err != nil {
+		return c.theme.Muted.Render(md)
+	}
+	return strings.TrimRight(out, "\n")
+}
+
 func (c content) renderPreview(width, height int) string {
-	if c.config == nil || len(c.fields) == 0 {
+	if c.config == nil {
 		return c.theme.Muted.Render("no preview")
 	}
 
+	f := c.currentField()
+
 	var b strings.Builder
 
-	if c.focused {
-		f := c.fields[c.cursor]
-
-		// field description
+	if c.focused && f != nil {
+		// field description (rendered as markdown via glamour)
 		if f.Description != "" {
-			b.WriteString(c.theme.Muted.Render(f.Description))
+			rendered := c.glamourRender(f.Description, width)
+			renderedLines := strings.Count(rendered, "\n") + 1
+			b.WriteString(rendered)
 			b.WriteByte('\n')
-			height--
+			height -= renderedLines
 		}
 
 		// example value
@@ -933,15 +1408,18 @@ func (c content) renderPreview(width, height int) string {
 			link := c.theme.Secondary.Underline(true).Render(c.docsURL)
 			b.WriteString(label + link)
 			b.WriteByte('\n')
-			height--
 		}
+		return b.String()
+	}
+
+	// cursor on section header or no field — show file snippet without highlight
+	if f == nil {
 		return b.String()
 	}
 
 	data := c.config.Content()
 	rawLines := strings.Split(string(data), "\n")
 
-	f := c.fields[c.cursor]
 	if !c.previewFound {
 		val := f.Default
 		if v, ok := c.values[f.Key]; ok {

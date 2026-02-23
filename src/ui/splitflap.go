@@ -91,11 +91,12 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 	out := make([]rune, maxLen)
 	for i := range out {
 		charStep := effectiveStep - i
-		if charStep <= 0 {
+		switch {
+		case charStep <= 0:
 			out[i] = srcRunes[i]
-		} else if charStep >= splitFlapMaxSteps || srcRunes[i] == tgtRunes[i] {
+		case charStep >= splitFlapMaxSteps || srcRunes[i] == tgtRunes[i]:
 			out[i] = tgtRunes[i]
-		} else {
+		default:
 			// cycle through charset
 			idx := strings.IndexRune(splitFlapCharSet, tgtRunes[i])
 			if idx < 0 {

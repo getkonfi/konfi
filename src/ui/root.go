@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/emin/konfigurator/konfables"
 	"github.com/emin/konfigurator/setup"
 	"github.com/emin/konfigurator/theme"
@@ -99,7 +101,6 @@ func (r *root) Init() tea.Cmd {
 	// auto-select first app
 	if len(r.allKonfables) > 0 {
 		k := r.allKonfables[0]
-		r.status.appVersion = r.app.Versions[k.Name()]
 		if r.installed[k.Name()] {
 			return r.content.loadApp(k)
 		}
@@ -124,12 +125,28 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
 		cmds = append(cmds, cmd)
-		// sync dirty state after edit commits
-		if r.content.config != nil {
-			r.status.dirty = r.content.config.Dirty()
+		// sync file state after edit commits
+		if r.content.config != nil && r.content.config.Dirty() {
+			r.content.fileState = "unsaved"
 		}
 		r.updateHints()
 		return r, tea.Batch(cmds...)
+	}
+
+	// when content is searching, forward keys to content (same pattern as sidebar search)
+	if r.content.searching {
+		if km, ok := msg.(tea.KeyMsg); ok {
+			if km.String() == "ctrl+c" {
+				if r.content.config != nil {
+					r.content.config.StopWatching()
+				}
+				return r, tea.Quit
+			}
+			var cmd tea.Cmd
+			r.content, cmd = r.content.Update(msg)
+			r.updateHints()
+			return r, cmd
+		}
 	}
 
 	switch msg := msg.(type) {
@@ -176,8 +193,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err := r.content.config.Save(); err != nil {
 					r.status.status = "save failed: " + err.Error()
 				} else {
-					r.status.dirty = false
+					r.content.fileState = "saved"
 					r.status.status = "saved"
+					return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+						return fileStateClearMsg{}
+					})
 				}
 			}
 			return r, nil
@@ -227,19 +247,8 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if !r.installed[k.Name()] {
 				r.content.showNotInstalled(k)
-				r.status.filePath = ""
-				r.status.appVersion = ""
-				r.status.dirty = false
-				// don't focus content for not-installed apps
 			} else {
 				cmd := r.content.loadApp(k)
-				if r.content.config != nil {
-					r.status.filePath = r.content.config.Path
-					r.status.dirty = r.content.config.Dirty()
-				} else {
-					r.status.filePath = k.ConfigPath()
-				}
-				r.status.appVersion = r.app.Versions[k.Name()]
 				cmds = append(cmds, cmd)
 
 				if msg.Confirmed {
@@ -250,8 +259,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, tea.Batch(cmds...)
 
 	case StatusMsg:
-		r.status.status = ""
-		r.status.filePath = msg.Text
+		r.status.status = msg.Text
 		return r, nil
 
 	case ErrorMsg:
@@ -261,8 +269,26 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ExternalChangeMsg:
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
+		r.content.fileState = "reloaded"
 		cmds = append(cmds, cmd)
 		return r, tea.Batch(cmds...)
+
+	case fileStateClearMsg:
+		if r.content.config != nil && r.content.config.Dirty() {
+			r.content.fileState = "unsaved"
+		} else {
+			r.content.fileState = ""
+		}
+		return r, nil
+
+	case DocOpenedMsg:
+		if msg.URL != "" {
+			r.status.status = "opened docs"
+		} else {
+			r.status.status = "no docs available"
+		}
+		r.updateHints()
+		return r, nil
 
 	case insightTickMsg, splitFlapTickMsg:
 		var cmd tea.Cmd
@@ -277,12 +303,13 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.sidebar, cmd = r.sidebar.Update(msg)
 	case paneContent:
 		r.content, cmd = r.content.Update(msg)
-		// sync dirty after potential bool toggle
-		if r.content.config != nil {
-			r.status.dirty = r.content.config.Dirty()
+		// sync file state after potential bool toggle
+		if r.content.config != nil && r.content.config.Dirty() {
+			r.content.fileState = "unsaved"
 		}
 	}
 	cmds = append(cmds, cmd)
+	r.updateHints()
 
 	return r, tea.Batch(cmds...)
 }
@@ -378,12 +405,28 @@ func (r *root) updateHints() {
 			}
 		}
 	case paneContent:
+		if r.content.searching {
+			r.status.hints = []keyHint{
+				{"↑↓", "navigate"},
+				{"⏎", "lock"},
+				{"esc", "clear"},
+			}
+			return
+		}
 		hints := []keyHint{
 			{"↑↓", "navigate"},
 			{"⏎", "edit"},
+			{"/", "search"},
+			{"z", "fold"},
+			{"f", "filter"},
+		}
+		if r.content.currentDocURL() != "" {
+			hints = append(hints, keyHint{"o", "docs"})
+		}
+		hints = append(hints, []keyHint{
 			{"←", "back"},
 			{"t", "theme"},
-		}
+		}...)
 		if r.content.config != nil && r.content.config.Dirty() {
 			hints = append(hints, keyHint{"^S", "save"})
 		}

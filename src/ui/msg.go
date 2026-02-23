@@ -38,3 +38,9 @@ type insightTickMsg struct{ gen int }
 
 // splitFlapTickMsg fires every ~60ms to advance the split-flap animation.
 type splitFlapTickMsg struct{ gen int }
+
+// DocOpenedMsg is sent after attempting to open a doc URL in the browser.
+type DocOpenedMsg struct{ URL string }
+
+// fileStateClearMsg resets the transient file state after a delay.
+type fileStateClearMsg struct{}
