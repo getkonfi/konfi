@@ -1,0 +1,18 @@
+# build output
+bin/
+konfigurator
+
+# IDE
+.idea/
+
+# local config
+.mcp.json
+
+# claude local state
+.claude/settings.local.json
+.claude/plans/
+.claude/memory/
+.claude/agents/
+.claude/scripts/
+.claude/research/
+.claude/verify/
