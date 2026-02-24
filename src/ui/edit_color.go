@@ -219,8 +219,10 @@ func (e *colorEditor) Height() int {
 }
 
 func swatch(hex string) string {
+	c := lipgloss.Color(hex)
 	return lipgloss.NewStyle().
-		Background(lipgloss.Color(hex)).
+		Foreground(c).
+		Background(c).
 		Render("██")
 }
 

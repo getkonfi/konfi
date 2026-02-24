@@ -64,8 +64,8 @@ func (e *enumEditor) View(width int) string {
 		} else {
 			line = fmt.Sprintf("      %s", e.th.Subtext.Render(opt))
 		}
-		if i == e.current {
-			line += e.th.Muted.Render(" ← current")
+		if i == e.current && i != e.cursor {
+			line = fmt.Sprintf("      %s", e.th.Accent.Render(opt))
 		}
 		b.WriteString(line)
 		if i < len(e.options)-1 {
