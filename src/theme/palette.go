@@ -33,7 +33,7 @@ type Palette struct {
 }
 
 // built-in palettes
-var Palettes = []Palette{Catppuccin, TokyoNight, Gruvbox, Nord}
+var Palettes = []Palette{GhDash, Catppuccin, TokyoNight, Gruvbox, Nord}
 
 // PaletteByName returns the palette with the given name, or Catppuccin as default.
 func PaletteByName(name string) *Palette {
@@ -70,6 +70,24 @@ var Catppuccin = Palette{
 	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d20f39", ANSI256: "160", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#f38ba8", ANSI256: "211", ANSI: "9"}},
 	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9ca0b0", ANSI256: "246", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#585b70", ANSI256: "240", ANSI: "8"}},
 	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#8839ef", ANSI256: "129", ANSI: "5"}, Dark: lipgloss.CompleteColor{TrueColor: "#cba6f7", ANSI256: "183", ANSI: "13"}},
+}
+
+var GhDash = Palette{
+	Name:        "gh-dash",
+	Base:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#f6f8fa", ANSI256: "255", ANSI: "15"}, Dark: lipgloss.CompleteColor{TrueColor: "#0d1117", ANSI256: "233", ANSI: "0"}},
+	Surface:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#eef2f7", ANSI256: "254", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#161b22", ANSI256: "235", ANSI: "8"}},
+	Overlay:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d8dee4", ANSI256: "252", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#21262d", ANSI256: "236", ANSI: "8"}},
+	Text:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#24292f", ANSI256: "236", ANSI: "0"}, Dark: lipgloss.CompleteColor{TrueColor: "#c9d1d9", ANSI256: "252", ANSI: "7"}},
+	Subtext:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#57606a", ANSI256: "241", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#8b949e", ANSI256: "246", ANSI: "8"}},
+	Muted:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#6e7781", ANSI256: "243", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#6e7681", ANSI256: "242", ANSI: "8"}},
+	Primary:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#0969da", ANSI256: "25", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#58a6ff", ANSI256: "75", ANSI: "12"}},
+	Secondary:   lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#1f883d", ANSI256: "28", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#3fb950", ANSI256: "71", ANSI: "10"}},
+	Accent:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#0a7ea4", ANSI256: "31", ANSI: "6"}, Dark: lipgloss.CompleteColor{TrueColor: "#79c0ff", ANSI256: "117", ANSI: "14"}},
+	Success:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#1f883d", ANSI256: "28", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#3fb950", ANSI256: "71", ANSI: "10"}},
+	Warning:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9a6700", ANSI256: "94", ANSI: "3"}, Dark: lipgloss.CompleteColor{TrueColor: "#d29922", ANSI256: "178", ANSI: "11"}},
+	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#cf222e", ANSI256: "160", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#f85149", ANSI256: "203", ANSI: "9"}},
+	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d0d7de", ANSI256: "252", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#30363d", ANSI256: "238", ANSI: "8"}},
+	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#0969da", ANSI256: "25", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#58a6ff", ANSI256: "75", ANSI: "12"}},
 }
 
 var TokyoNight = Palette{

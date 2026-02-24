@@ -13,6 +13,7 @@ sections:
         default: catppuccin
         description: color palette for the TUI
         options:
+          - gh-dash
           - catppuccin
           - tokyonight
           - gruvbox

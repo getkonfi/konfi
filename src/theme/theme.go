@@ -45,6 +45,9 @@ type Theme struct {
 	FieldDefault lipgloss.Style
 	Rail         lipgloss.Style
 	PreviewHL    lipgloss.Style
+	RowActive    lipgloss.Style
+	RowActiveDim lipgloss.Style
+	KeyCap       lipgloss.Style
 }
 
 // NewTheme creates a fully initialized Theme from a Palette.
@@ -81,11 +84,11 @@ func (t *Theme) recompute() {
 	t.Error = lipgloss.NewStyle().Foreground(p.Error)
 
 	t.Border = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
+		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(p.Border)
 
 	t.BorderFocus = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
+		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(p.BorderFocus)
 
 	t.Title = lipgloss.NewStyle().
@@ -93,19 +96,19 @@ func (t *Theme) recompute() {
 		Bold(true)
 
 	t.Statusbar = lipgloss.NewStyle().
-		Background(p.Surface).
+		Background(p.Base).
 		Foreground(p.Subtext).
 		Padding(0, 1)
 
 	t.Sidebar = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
+		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(p.Border).
-		Padding(1, 1)
+		Padding(0, 1)
 
 	t.Content = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
+		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(p.Border).
-		Padding(1, 2)
+		Padding(0, 1)
 
 	t.Badge = lipgloss.NewStyle().
 		Background(p.Surface).
@@ -129,6 +132,19 @@ func (t *Theme) recompute() {
 	t.PreviewHL = lipgloss.NewStyle().
 		Foreground(p.Accent).
 		Bold(true)
+
+	t.RowActive = lipgloss.NewStyle().
+		Background(p.Overlay).
+		Bold(true)
+
+	t.RowActiveDim = lipgloss.NewStyle().
+		Background(p.Surface)
+
+	t.KeyCap = lipgloss.NewStyle().
+		Background(p.Surface).
+		Foreground(p.Text).
+		Bold(true).
+		Padding(0, 1)
 }
 
 // GlamourStyle returns a glamour renderer option using palette colors.
