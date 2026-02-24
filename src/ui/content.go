@@ -767,7 +767,7 @@ func (c content) pageSize() int {
 // headerHeight returns the number of rendered lines the header occupies.
 // includes the search bar when active.
 func (c content) headerHeight() int {
-	h := 8
+	h := 7
 	if c.schema != nil && len(c.schema.Sections) > 1 {
 		h++ // tab bar line
 	}
@@ -1110,20 +1110,47 @@ func (c content) insightTickCmd() tea.Cmd {
 	})
 }
 
-// renderTabs draws the horizontal section tab bar.
+// renderTabs draws a scrolling horizontal section tab bar.
+// shows a window of up to 5 tabs centered on the active one.
 func (c content) renderTabs(_ int) string {
 	if c.schema == nil || len(c.schema.Sections) <= 1 {
 		return ""
 	}
+
+	total := len(c.schema.Sections)
+	const maxVisible = 5
+
+	start := 0
+	end := total
+	if total > maxVisible {
+		start = c.activeSection - maxVisible/2
+		start = max(0, start)
+		if start+maxVisible > total {
+			start = total - maxVisible
+		}
+		end = start + maxVisible
+	}
+
 	var parts []string
-	for i, sec := range c.schema.Sections {
+	for i := start; i < end; i++ {
 		if i == c.activeSection {
-			parts = append(parts, c.theme.Primary.Bold(true).Render(sec.Name))
+			parts = append(parts, c.theme.Primary.Bold(true).Render(c.schema.Sections[i].Name))
 		} else {
-			parts = append(parts, c.theme.Muted.Render(sec.Name))
+			parts = append(parts, c.theme.Muted.Render(c.schema.Sections[i].Name))
 		}
 	}
-	return strings.Join(parts, c.theme.Muted.Render(" │ "))
+
+	sep := c.theme.Muted.Render(" │ ")
+	line := strings.Join(parts, sep)
+
+	if start > 0 {
+		line = c.theme.Muted.Render("‹ ") + line
+	}
+	if end < total {
+		line += c.theme.Muted.Render(" ›")
+	}
+
+	return line
 }
 
 func (c content) renderBody(width int) string {
