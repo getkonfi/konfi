@@ -16,33 +16,44 @@ const (
 // splitFlapState drives a Solari-board text transition.
 // operates on plain strings — styling applied after frame generation.
 type splitFlapState struct {
-	source  []string
-	target  []string
-	current []string
-	step    int
-	done    bool
-	gen     int
+	source   []string
+	target   []string
+	current  []string
+	step     int
+	done     bool
+	gen      int
+	maxChars int
 }
 
 func newSplitFlap(source, target []string, gen int) *splitFlapState {
-	// pad to equal length
-	maxLen := len(source)
-	if len(target) > maxLen {
-		maxLen = len(target)
+	// pad to equal number of lines
+	maxLines := len(source)
+	if len(target) > maxLines {
+		maxLines = len(target)
 	}
-	src := make([]string, maxLen)
-	tgt := make([]string, maxLen)
-	cur := make([]string, maxLen)
+	src := make([]string, maxLines)
+	tgt := make([]string, maxLines)
+	cur := make([]string, maxLines)
 	copy(src, source)
 	copy(tgt, target)
 	copy(cur, source)
+
+	// find longest line to set proper animation duration
+	maxChars := 0
+	for _, s := range tgt {
+		if n := len([]rune(s)); n > maxChars {
+			maxChars = n
+		}
+	}
+
 	return &splitFlapState{
-		source:  src,
-		target:  tgt,
-		current: cur,
-		step:    0,
-		done:    false,
-		gen:     gen,
+		source:   src,
+		target:   tgt,
+		current:  cur,
+		step:     0,
+		done:     false,
+		gen:      gen,
+		maxChars: maxChars,
 	}
 }
 
@@ -59,7 +70,7 @@ func (s *splitFlapState) tick() bool {
 			allDone = false
 		}
 	}
-	if allDone || s.step >= splitFlapMaxSteps+len(s.current) {
+	if allDone || s.step >= splitFlapMaxSteps+s.maxChars+len(s.current) {
 		s.done = true
 		copy(s.current, s.target)
 	}
@@ -67,6 +78,7 @@ func (s *splitFlapState) tick() bool {
 }
 
 // advanceLine settles characters left-to-right with a 1-step stagger per line.
+// positions beyond the target length settle to space immediately (no cycling).
 func advanceLine(src, tgt string, step, lineOffset int) string {
 	effectiveStep := step - lineOffset
 	if effectiveStep <= 0 {
@@ -75,11 +87,12 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 
 	srcRunes := []rune(src)
 	tgtRunes := []rune(tgt)
+	tgtLen := len(tgtRunes)
 
 	// pad to equal length
 	maxLen := len(srcRunes)
-	if len(tgtRunes) > maxLen {
-		maxLen = len(tgtRunes)
+	if tgtLen > maxLen {
+		maxLen = tgtLen
 	}
 	for len(srcRunes) < maxLen {
 		srcRunes = append(srcRunes, ' ')
@@ -94,10 +107,12 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 		switch {
 		case charStep <= 0:
 			out[i] = srcRunes[i]
+		case i >= tgtLen:
+			// beyond target text: blank immediately, no cycling
+			out[i] = ' '
 		case charStep >= splitFlapMaxSteps || srcRunes[i] == tgtRunes[i]:
 			out[i] = tgtRunes[i]
 		default:
-			// cycle through charset
 			idx := strings.IndexRune(splitFlapCharSet, tgtRunes[i])
 			if idx < 0 {
 				out[i] = tgtRunes[i]
@@ -107,7 +122,7 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 			}
 		}
 	}
-	return string(out)
+	return strings.TrimRight(string(out), " ")
 }
 
 func splitFlapCmd(gen int) tea.Cmd {
