@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/emin/konfigurator/theme"
@@ -32,7 +33,7 @@ type sidebar struct {
 
 func newSidebar(items []sidebarItem, th *theme.Theme) sidebar {
 	ti := textinput.New()
-	ti.Placeholder = "filter..."
+	ti.Placeholder = "filter"
 	ti.CharLimit = 32
 	ti.Prompt = ""
 
@@ -195,72 +196,102 @@ func (s sidebar) selectCurrent(confirmed bool) (sidebar, tea.Cmd) {
 }
 
 func (s sidebar) View() string {
-	var b strings.Builder
+	var top, bot strings.Builder
+	innerW := s.width - 2 - 2 // border + padding
+	if innerW < 6 {
+		innerW = 6
+	}
+
+	title := s.theme.Primary.Bold(true).Render("APPS")
+	count := s.theme.Muted.Render(fmt.Sprintf("  %d", len(s.filtered)))
+	top.WriteString(title + count)
+	top.WriteByte('\n')
 
 	// search box
 	if s.searching {
 		prompt := s.theme.Primary.Render("/ ")
-		b.WriteString(prompt + s.search.View())
+		top.WriteString(prompt + s.search.View())
 	} else {
-		b.WriteString(s.theme.Muted.Render("/ filter..."))
+		top.WriteString(s.theme.Muted.Render("/ filter"))
 	}
-	b.WriteByte('\n')
+	top.WriteByte('\n')
 
-	// separator
-	innerW := s.width - 2 - 2 // border + padding
-	if innerW < 4 {
-		innerW = 4
-	}
-	b.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
-	b.WriteByte('\n')
+	top.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
 
 	if len(s.filtered) == 0 {
-		b.WriteString(s.theme.Muted.Render("no matches"))
+		top.WriteByte('\n')
+		top.WriteString(s.theme.Muted.Render("no matches"))
 	} else {
-		drawnSystemSep := false
 		for fi, origIdx := range s.filtered {
 			item := s.items[origIdx]
-
-			// visual separator before first system item
-			if item.system && !drawnSystemSep {
-				if fi > 0 {
-					b.WriteByte('\n')
-				}
-				b.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
-				drawnSystemSep = true
-			}
-
-			if fi > 0 || drawnSystemSep {
-				b.WriteByte('\n')
-			}
 			isCursor := fi == s.cursor
+			line := s.renderItem(item, isCursor, innerW)
 
-			var indicator, icon, name string
-			if isCursor {
-				indicator = " "
-				icon = " " + item.icon + " "
-				if item.installed {
-					icon = s.theme.Primary.Render(icon)
-					name = s.theme.Text.Render(item.name)
-				} else {
-					icon = s.theme.Muted.Render(icon)
-					name = s.theme.Muted.Render(item.name)
+			if item.system {
+				if bot.Len() > 0 {
+					bot.WriteByte('\n')
 				}
+				bot.WriteString(line)
 			} else {
-				indicator = " "
-				if item.installed {
-					icon = s.theme.Subtext.Render(" " + item.icon + " ")
-					name = s.theme.Subtext.Render(item.name)
-				} else {
-					icon = s.theme.Muted.Render(" " + item.icon + " ")
-					name = s.theme.Muted.Render(item.name)
-				}
+				top.WriteByte('\n')
+				top.WriteString(line)
 			}
-			b.WriteString(indicator + icon + name)
 		}
 	}
 
-	return s.renderPanel(b.String())
+	// pin system items to bottom with gap
+	topStr := top.String()
+	topLines := strings.Count(topStr, "\n") + 1
+	innerH := s.height - 2 - 2 // border + padding
+	if innerH < 1 {
+		innerH = 1
+	}
+
+	botStr := bot.String()
+	if botStr != "" {
+		sep := s.theme.Muted.Render(strings.Repeat("─", innerW))
+		title := s.theme.Muted.Bold(true).Render("SYSTEM")
+		botStr = sep + "\n" + title + "\n" + botStr
+		botLines := strings.Count(botStr, "\n") + 1
+		gap := innerH - topLines - botLines
+		if gap < 1 {
+			gap = 1
+		}
+		return s.renderPanel(topStr + strings.Repeat("\n", gap) + botStr)
+	}
+
+	return s.renderPanel(topStr)
+}
+
+func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
+	iconGlyph := item.icon
+	if iconGlyph == "" {
+		iconGlyph = "•"
+	}
+
+	iconStyle := s.theme.Subtext
+	nameStyle := s.theme.Subtext
+	if item.installed {
+		nameStyle = s.theme.Text
+	} else {
+		iconStyle = s.theme.Muted
+		nameStyle = s.theme.Muted
+	}
+
+	if isCursor {
+		iconStyle = s.theme.Primary
+	}
+
+	body := iconStyle.Render(iconGlyph) + " " + nameStyle.Render(item.name)
+	if isCursor {
+		rowStyle := s.theme.RowActive
+		if !item.installed {
+			rowStyle = s.theme.RowActiveDim
+		}
+		return rowStyle.Width(width).MaxWidth(width).Render("▌ " + body)
+	}
+
+	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
 }
 
 // renderPanel wraps content in the sidebar bordered style.
