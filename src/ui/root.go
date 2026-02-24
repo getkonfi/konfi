@@ -18,7 +18,7 @@ const (
 	paneContent
 )
 
-const sidebarWidth = 24
+const sidebarWidth = 30
 
 type root struct {
 	app      *setup.App
@@ -95,6 +95,7 @@ func NewRoot(app *setup.App) tea.Model {
 		allKonfables: allK,
 		installed:    installed,
 	}
+	r.sidebar.focused = true
 	r.updateHints()
 	return r
 }
@@ -333,6 +334,16 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
 		return r, cmd
+	}
+
+	// bounce nav keys from empty content back to sidebar
+	if km, ok := msg.(tea.KeyMsg); ok && r.focus == paneContent {
+		switch km.String() {
+		case "j", "k", "up", "down":
+			if c := &r.content; c.schema == nil && c.config == nil {
+				r.focusPane(paneSidebar)
+			}
+		}
 	}
 
 	// fan-out to focused child
