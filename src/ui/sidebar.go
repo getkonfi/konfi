@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/emin/konfigurator/theme"
@@ -202,21 +201,13 @@ func (s sidebar) View() string {
 		innerW = 6
 	}
 
-	title := s.theme.Primary.Bold(true).Render("APPS")
-	count := s.theme.Muted.Render(fmt.Sprintf("  %d", len(s.filtered)))
-	top.WriteString(title + count)
-	top.WriteByte('\n')
-
-	// search box
+	// search box (only when active)
 	if s.searching {
 		prompt := s.theme.Primary.Render("/ ")
 		top.WriteString(prompt + s.search.View())
-	} else {
-		top.WriteString(s.theme.Muted.Render("/ filter"))
+		top.WriteByte('\n')
+		top.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
 	}
-	top.WriteByte('\n')
-
-	top.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
 
 	if len(s.filtered) == 0 {
 		top.WriteByte('\n')
@@ -280,17 +271,12 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 
 	if isCursor {
 		iconStyle = s.theme.Primary
+		if item.installed {
+			nameStyle = s.theme.Primary
+		}
 	}
 
 	body := iconStyle.Render(iconGlyph) + " " + nameStyle.Render(item.name)
-	if isCursor {
-		rowStyle := s.theme.RowActive
-		if !item.installed {
-			rowStyle = s.theme.RowActiveDim
-		}
-		return rowStyle.Width(width).MaxWidth(width).Render("▌ " + body)
-	}
-
 	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
 }
 
@@ -300,6 +286,10 @@ func (s sidebar) renderPanel(content string) string {
 		Width(s.width - 2). // subtract border
 		Height(s.height - 2).
 		Align(lipgloss.Left, lipgloss.Top)
+
+	if s.focused {
+		style = style.BorderForeground(s.theme.Palette.BorderFocus)
+	}
 
 	return style.Render(content)
 }

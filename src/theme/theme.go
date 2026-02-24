@@ -96,7 +96,6 @@ func (t *Theme) recompute() {
 		Bold(true)
 
 	t.Statusbar = lipgloss.NewStyle().
-		Background(p.Base).
 		Foreground(p.Subtext).
 		Padding(0, 1)
 

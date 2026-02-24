@@ -38,16 +38,38 @@ func (s *statusbar) View() string {
 	}
 
 	// right side: key-cap hints + theme badge
-	var parts []string
+	// build hint parts, then trim from the left until they fit
+	var hintParts []string
 	for _, h := range s.hints {
 		k := s.theme.KeyCap.Render(h.Key)
 		l := s.theme.Muted.Render(h.Label)
-		parts = append(parts, k+" "+l)
+		hintParts = append(hintParts, k+" "+l)
 	}
 	themeKey := s.theme.KeyCap.Render("theme")
 	themeName := s.theme.Primary.Bold(true).Render(s.themeName)
-	parts = append(parts, themeKey+" "+themeName)
-	right := strings.Join(parts, "  ")
+	themeBadge := themeKey + " " + themeName
+
+	// available space: total width minus left, padding (2), and minimum gap (2)
+	budget := s.width - lipgloss.Width(left) - 4
+	if budget < lipgloss.Width(themeBadge) {
+		budget = lipgloss.Width(themeBadge)
+	}
+
+	// drop hints from the beginning until the right side fits
+	for len(hintParts) > 0 {
+		candidate := strings.Join(hintParts, "  ") + "  " + themeBadge
+		if lipgloss.Width(candidate) <= budget {
+			break
+		}
+		hintParts = hintParts[1:]
+	}
+
+	var right string
+	if len(hintParts) > 0 {
+		right = strings.Join(hintParts, "  ") + "  " + themeBadge
+	} else {
+		right = themeBadge
+	}
 
 	// fill middle with spaces
 	gap := s.width - lipgloss.Width(left) - lipgloss.Width(right) - 2
