@@ -131,6 +131,7 @@ sections:
       - key: decoration.active_opacity
         label: Active Opacity
         type: number
+        widget: slider
         default: "1.0"
         description: opacity of active windows
         min: 0
@@ -139,6 +140,7 @@ sections:
       - key: decoration.inactive_opacity
         label: Inactive Opacity
         type: number
+        widget: slider
         default: "1.0"
         description: opacity of inactive windows
         min: 0
@@ -147,6 +149,7 @@ sections:
       - key: decoration.fullscreen_opacity
         label: Fullscreen Opacity
         type: number
+        widget: slider
         default: "1.0"
         description: opacity of fullscreen windows
         min: 0
@@ -161,6 +164,7 @@ sections:
       - key: decoration.dim_strength
         label: Dim Strength
         type: number
+        widget: slider
         default: "0.5"
         description: how much inactive windows should be dimmed
         min: 0
@@ -169,6 +173,7 @@ sections:
       - key: decoration.dim_special
         label: Dim Special
         type: number
+        widget: slider
         default: "0.2"
         description: how much to dim the screen when a special workspace is open
         min: 0
@@ -177,6 +182,7 @@ sections:
       - key: decoration.dim_around
         label: Dim Around
         type: number
+        widget: slider
         default: "0.4"
         description: how much the dim_around window rule should dim by
         min: 0
@@ -185,6 +191,7 @@ sections:
       - key: decoration.screen_shader
         label: Screen Shader
         type: string
+        widget: path
         default: ""
         description: path to custom screen shader applied at rendering end
         hint: leave empty to disable
@@ -232,6 +239,7 @@ sections:
       - key: decoration.shadow.scale
         label: Shadow Scale
         type: number
+        widget: slider
         default: "1.0"
         description: shadow scale factor
         min: 0
@@ -282,6 +290,7 @@ sections:
       - key: decoration.blur.noise
         label: Blur Noise
         type: number
+        widget: slider
         default: "0.0117"
         description: noise amount applied to blur
         min: 0
@@ -290,6 +299,7 @@ sections:
       - key: decoration.blur.contrast
         label: Blur Contrast
         type: number
+        widget: slider
         default: "0.8916"
         description: contrast modulation for blur
         min: 0
@@ -298,6 +308,7 @@ sections:
       - key: decoration.blur.brightness
         label: Blur Brightness
         type: number
+        widget: slider
         default: "0.8172"
         description: brightness modulation for blur
         min: 0
@@ -306,6 +317,7 @@ sections:
       - key: decoration.blur.vibrancy
         label: Blur Vibrancy
         type: number
+        widget: slider
         default: "0.1696"
         description: increase saturation of blurred colors
         min: 0
@@ -314,6 +326,7 @@ sections:
       - key: decoration.blur.vibrancy_darkness
         label: Vibrancy Darkness
         type: number
+        widget: slider
         default: "0.0"
         description: how strong vibrancy effect is on dark areas
         min: 0
@@ -354,6 +367,7 @@ sections:
       - key: input.sensitivity
         label: Mouse Sensitivity
         type: number
+        widget: slider
         default: "0.0"
         description: mouse sensitivity added on top of libinput data
         min: -1
@@ -477,6 +491,7 @@ sections:
       - key: input.kb_file
         label: Keyboard File
         type: string
+        widget: path
         default: ""
         description: path to custom .xkb keymap file
         hint: overrides other kb_ settings
@@ -578,6 +593,7 @@ sections:
       - key: gestures.workspace_swipe_cancel_ratio
         label: Swipe Cancel Ratio
         type: number
+        widget: slider
         default: "0.5"
         description: how far a swipe must proceed to commit
         min: 0

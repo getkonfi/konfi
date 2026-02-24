@@ -30,6 +30,7 @@ type Field struct {
 	Key         string   `yaml:"key"`
 	Label       string   `yaml:"label"`
 	Type        string   `yaml:"type"`
+	Widget      string   `yaml:"widget,omitempty"` // ui hint: "font", "slider", "path"
 	Default     string   `yaml:"default"`
 	Description string   `yaml:"description"`
 	Options     []string `yaml:"options,omitempty"`

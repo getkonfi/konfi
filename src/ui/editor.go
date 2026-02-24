@@ -24,8 +24,16 @@ type InlineEditor interface {
 }
 
 // editorForField returns the appropriate editor for a field type.
-// falls back to string editor for unknown types.
+// widget hint takes priority over type dispatch.
 func editorForField(f pkg.Field) FieldEditor {
+	switch f.Widget {
+	case "font":
+		return &fontEditor{}
+	case "slider":
+		return &sliderEditor{}
+	case "path":
+		return &pathEditor{}
+	}
 	switch f.Type {
 	case "number":
 		return &numberEditor{}

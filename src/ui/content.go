@@ -32,6 +32,11 @@ var fieldTypeIcon = map[string]string{
 	"color":  "\uf53f",  //
 	"list":   "\uf03a",  //
 	"multi":  "\uf046",  //
+
+	// widget-specific icons (checked before type)
+	"font":   "\uf031",       //
+	"slider": "\U000F1A8A", // nf-md-tune_vertical
+	"path":   "\uf115",       // nf-fa-folder_open
 }
 
 // row represents a navigable item in the field list — either a section header or a field.
@@ -279,7 +284,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		default:
 			// type-through: printable chars seed a new editor in replace mode
 			if f := c.currentField(); f != nil && len(msg.Runes) > 0 {
-				if f.Type != "bool" && f.Type != "enum" && f.Type != "list" && f.Type != "multi" {
+				if f.Type != "bool" && f.Type != "enum" && f.Type != "list" && f.Type != "multi" && f.Widget == "" {
 					cmd := c.openEditorWithSeed(msg.Runes[0])
 					return c, cmd
 				}
@@ -378,6 +383,11 @@ func (c *content) commitEdit(value string) {
 	c.editor = nil
 
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+		return
+	}
+
+	// skip write if value is unchanged
+	if value == c.editOrigVal {
 		return
 	}
 
@@ -767,7 +777,7 @@ func (c content) pageSize() int {
 // headerHeight returns the number of rendered lines the header occupies.
 // includes the search bar when active.
 func (c content) headerHeight() int {
-	h := 7
+	h := 6
 	if c.schema != nil && len(c.schema.Sections) > 1 {
 		h++ // tab bar line
 	}
@@ -1193,14 +1203,20 @@ func (c content) renderBody(width int) string {
 		f := &c.fields[r.fieldIdx]
 		isCursor := c.focused && i == c.cursor
 
-		// type icon
-		icon := fieldTypeIcon[f.Type]
+		// type icon (widget hint takes precedence)
+		icon := fieldTypeIcon[f.Widget]
+		if icon == "" {
+			icon = fieldTypeIcon[f.Type]
+		}
 		if icon == "" {
 			icon = " "
 		}
 
-		// configured indicator
-		_, isConfigured := c.values[f.Key]
+		// configured indicator (only green when value differs from default)
+		val, isConfigured := c.values[f.Key]
+		if isConfigured && val == f.Default {
+			isConfigured = false
+		}
 		var dot string
 		if isConfigured {
 			dot = c.theme.Success.Render("●")
@@ -1218,8 +1234,8 @@ func (c content) renderBody(width int) string {
 			renderedVal = c.renderFieldValue(*f, val, false)
 		}
 
-		// inline min/max bounds for number fields (skipped when inline-editing)
-		showBounds := f.Type == "number" && (f.Min != nil || f.Max != nil)
+		// inline min/max bounds for number fields (skipped for slider widgets and inline-editing)
+		showBounds := f.Type == "number" && f.Widget != "slider" && (f.Min != nil || f.Max != nil)
 
 		// build prefix and label
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
@@ -1255,7 +1271,11 @@ func (c content) renderBody(width int) string {
 			if f.Max != nil {
 				hi = formatNum(*f.Max)
 			}
-			renderedVal += c.theme.Muted.Render(fmt.Sprintf(" (%s\u2013%s)", lo, hi))
+			boundsStr := fmt.Sprintf(" (%s\u2013%s)", lo, hi)
+			usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + 2 + lipgloss.Width(renderedVal)
+			if usedW+len(boundsStr) <= width {
+				renderedVal += c.theme.Muted.Render(boundsStr)
+			}
 		}
 
 		line := prefix + label + " " + dot + " " + renderedVal

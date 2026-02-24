@@ -14,6 +14,7 @@ sections:
       - key: font.normal.family
         label: Font Family
         type: string
+        widget: font
         default: monospace
         description: primary font family (platform-dependent default)
         example: '[font.normal]\nfamily = "JetBrains Mono"'
@@ -28,6 +29,7 @@ sections:
       - key: font.bold.family
         label: Bold Font
         type: string
+        widget: font
         default: ""
         description: bold variant font family (inherits normal if empty)
         doc_url: "https://alacritty.org/config-alacritty.html#font"
@@ -40,6 +42,7 @@ sections:
       - key: font.italic.family
         label: Italic Font
         type: string
+        widget: font
         default: ""
         description: italic variant font family (inherits normal if empty)
         doc_url: "https://alacritty.org/config-alacritty.html#font"
@@ -52,6 +55,7 @@ sections:
       - key: font.bold_italic.family
         label: Bold Italic Font
         type: string
+        widget: font
         default: ""
         description: bold-italic variant font family (inherits normal if empty)
         doc_url: "https://alacritty.org/config-alacritty.html#font"
@@ -284,6 +288,7 @@ sections:
       - key: window.opacity
         label: Opacity
         type: number
+        widget: slider
         default: "1.0"
         description: background opacity (0.0 transparent to 1.0 opaque)
         min: 0
@@ -441,6 +446,7 @@ sections:
       - key: terminal.shell.program
         label: Shell Program
         type: string
+        widget: path
         default: ""
         description: shell executable path (uses $SHELL or login shell if empty)
         hint: leave empty to use system default
@@ -472,6 +478,7 @@ sections:
       - key: general.working_directory
         label: Working Directory
         type: string
+        widget: path
         default: None
         description: starting directory for the shell (uses parent process dir if None)
         hint: set to "None" or an absolute path

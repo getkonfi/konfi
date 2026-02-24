@@ -13,6 +13,7 @@ sections:
       - key: font-family
         label: Font Family
         type: string
+        widget: font
         default: ""
         description: primary font family
         example: font-family = JetBrains Mono
@@ -22,18 +23,21 @@ sections:
       - key: font-family-bold
         label: Bold Font
         type: string
+        widget: font
         default: ""
         description: font family for bold text
         since: 1.0.0
       - key: font-family-italic
         label: Italic Font
         type: string
+        widget: font
         default: ""
         description: font family for italic text
         since: 1.0.0
       - key: font-family-bold-italic
         label: Bold Italic Font
         type: string
+        widget: font
         default: ""
         description: font family for bold italic text
         since: 1.0.0
@@ -194,6 +198,7 @@ sections:
       - key: background-opacity
         label: BG Opacity
         type: number
+        widget: slider
         default: "1.0"
         description: background opacity (0.0–1.0)
         min: 0
@@ -227,6 +232,7 @@ sections:
       - key: cursor-opacity
         label: Cursor Opacity
         type: number
+        widget: slider
         default: "1.0"
         description: cursor opacity (0.0–1.0)
         min: 0
@@ -252,6 +258,7 @@ sections:
       - key: window-title-font-family
         label: Title Font
         type: string
+        widget: font
         default: ""
         description: font family for window title bar (macOS)
       - key: window-inherit-font-size
@@ -434,6 +441,7 @@ sections:
       - key: command
         label: Shell Command
         type: string
+        widget: path
         default: ""
         description: command to run instead of default shell
         hint: leave empty for login shell
