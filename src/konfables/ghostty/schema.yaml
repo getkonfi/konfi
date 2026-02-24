@@ -7,7 +7,7 @@ hints:
   - supports ligatures and font features via font-feature
   - use keybind to customize shortcuts
 sections:
-  - name: Font Family
+  - name: Font
     key: ""
     fields:
       - key: font-family
@@ -37,9 +37,6 @@ sections:
         default: ""
         description: font family for bold italic text
         since: 1.0.0
-  - name: Font Style
-    key: ""
-    fields:
       - key: font-size
         label: Font Size
         type: number
@@ -67,9 +64,6 @@ sections:
         default: ""
         description: font style to use for italic
         since: 1.0.0
-  - name: Font Advanced
-    key: ""
-    fields:
       - key: font-feature
         label: Font Feature
         type: list
@@ -89,7 +83,7 @@ sections:
         default: "false"
         description: thicken font glyphs for better visibility on HiDPI
         since: 1.0.0
-  - name: Color Theme
+  - name: Colors
     key: ""
     fields:
       - key: theme
@@ -130,9 +124,6 @@ sections:
           - "839496"
           - 93a1a1
           - fdf6e3
-  - name: Color Selection
-    key: ""
-    fields:
       - key: selection-foreground
         label: Selection FG
         type: color
@@ -200,9 +191,6 @@ sections:
         type: color
         default: ""
         description: fill color for unfocused splits
-  - name: Color Appearance
-    key: ""
-    fields:
       - key: background-opacity
         label: BG Opacity
         type: number
@@ -253,7 +241,7 @@ sections:
         type: bool
         default: "false"
         description: hide the mouse cursor while typing
-  - name: Window Chrome
+  - name: Window
     key: ""
     fields:
       - key: window-decoration
@@ -276,9 +264,6 @@ sections:
         type: string
         default: ""
         description: fixed window title (overrides dynamic title)
-  - name: Window Padding
-    key: ""
-    fields:
       - key: window-padding-x
         label: Padding X
         type: number
@@ -307,9 +292,6 @@ sections:
           - background
           - extend
           - extend-always
-  - name: Window State
-    key: ""
-    fields:
       - key: window-save-state
         label: Save State
         type: enum
@@ -329,7 +311,7 @@ sections:
         type: bool
         default: "false"
         description: start in maximized mode
-  - name: Cell Adjustment
+  - name: Cell
     key: ""
     fields:
       - key: adjust-cell-width
@@ -408,6 +390,44 @@ sections:
           - "false"
           - "true"
           - always
+      - key: copy-on-select
+        label: Copy on Select
+        type: enum
+        default: "false"
+        description: copy to clipboard on text selection
+        options:
+          - "false"
+          - "true"
+          - clipboard
+          - primary
+      - key: clipboard-read
+        label: Clipboard Read
+        type: enum
+        default: ask
+        description: allow programs to read clipboard
+        options:
+          - allow
+          - deny
+          - ask
+      - key: clipboard-write
+        label: Clipboard Write
+        type: enum
+        default: allow
+        description: allow programs to write clipboard
+        options:
+          - allow
+          - deny
+          - ask
+      - key: clipboard-trim-trailing-spaces
+        label: Trim Trailing
+        type: bool
+        default: "true"
+        description: trim trailing spaces when copying
+      - key: clipboard-paste-protection
+        label: Paste Protection
+        type: bool
+        default: "true"
+        description: warn before pasting potentially unsafe text
   - name: Shell
     key: ""
     fields:
@@ -460,50 +480,6 @@ sections:
         description: ms threshold for abnormal exit detection
         min: 0
         max: 60000
-  - name: Clipboard
-    key: ""
-    fields:
-      - key: copy-on-select
-        label: Copy on Select
-        type: enum
-        default: "false"
-        description: copy to clipboard on text selection
-        options:
-          - "false"
-          - "true"
-          - clipboard
-          - primary
-      - key: clipboard-read
-        label: Clipboard Read
-        type: enum
-        default: ask
-        description: allow programs to read clipboard
-        options:
-          - allow
-          - deny
-          - ask
-      - key: clipboard-write
-        label: Clipboard Write
-        type: enum
-        default: allow
-        description: allow programs to write clipboard
-        options:
-          - allow
-          - deny
-          - ask
-      - key: clipboard-trim-trailing-spaces
-        label: Trim Trailing
-        type: bool
-        default: "true"
-        description: trim trailing spaces when copying
-      - key: clipboard-paste-protection
-        label: Paste Protection
-        type: bool
-        default: "true"
-        description: warn before pasting potentially unsafe text
-  - name: Advanced
-    key: ""
-    fields:
       - key: config-file
         label: Extra Config
         type: list

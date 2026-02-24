@@ -49,8 +49,8 @@ func TestLoadSchema(t *testing.T) {
 				if total < 50 {
 					t.Errorf("ghostty schema too small: got %d fields, want at least 50", total)
 				}
-				if len(s.Sections) < 14 {
-					t.Errorf("ghostty schema too few sections: got %d, want at least 14", len(s.Sections))
+				if len(s.Sections) < 7 {
+					t.Errorf("ghostty schema too few sections: got %d, want at least 7", len(s.Sections))
 				}
 			}
 

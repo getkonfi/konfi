@@ -60,10 +60,6 @@ sections:
         default: ""
         description: name of a custom color palette to use
         doc_url: "https://starship.rs/config/#prompt"
-
-  - name: Character
-    key: character
-    fields:
       - key: character.success_symbol
         label: Success Symbol
         type: string
@@ -109,6 +105,31 @@ sections:
         default: "false"
         description: disable the character module
         doc_url: "https://starship.rs/config/#character"
+      - key: line_break.disabled
+        label: Disabled
+        type: bool
+        default: "false"
+        description: disable the line_break module (single-line prompt)
+        hint: set to true for a single-line prompt
+        doc_url: "https://starship.rs/config/#line-break"
+      - key: fill.symbol
+        label: Symbol
+        type: string
+        default: "."
+        description: character used to fill the line
+        doc_url: "https://starship.rs/config/#fill"
+      - key: fill.style
+        label: Style
+        type: string
+        default: "bold black"
+        description: style for the fill character
+        doc_url: "https://starship.rs/config/#fill"
+      - key: fill.disabled
+        label: Disabled
+        type: bool
+        default: "false"
+        description: disable the fill module
+        doc_url: "https://starship.rs/config/#fill"
 
   - name: Directory
     key: directory
@@ -164,8 +185,8 @@ sections:
         description: disable the directory module
         doc_url: "https://starship.rs/config/#directory"
 
-  - name: Git Branch
-    key: git_branch
+  - name: Git
+    key: ""
     fields:
       - key: git_branch.format
         label: Format
@@ -217,10 +238,6 @@ sections:
         default: "false"
         description: disable the git_branch module
         doc_url: "https://starship.rs/config/#git-branch"
-
-  - name: Git Status
-    key: git_status
-    fields:
       - key: git_status.format
         label: Format
         type: string
@@ -299,10 +316,6 @@ sections:
         default: "false"
         description: disable the git_status module
         doc_url: "https://starship.rs/config/#git-status"
-
-  - name: Git Commit
-    key: git_commit
-    fields:
       - key: git_commit.format
         label: Format
         type: string
@@ -348,8 +361,8 @@ sections:
         description: disable the git_commit module
         doc_url: "https://starship.rs/config/#git-commit"
 
-  - name: Package
-    key: package
+  - name: Modules
+    key: ""
     fields:
       - key: package.format
         label: Format
@@ -381,9 +394,146 @@ sections:
         default: "false"
         description: disable the package module
         doc_url: "https://starship.rs/config/#package"
+      - key: battery.format
+        label: Format
+        type: string
+        default: "[$symbol$percentage]($style) "
+        description: format string for battery module
+        doc_url: "https://starship.rs/config/#battery"
+      - key: battery.full_symbol
+        label: Full Symbol
+        type: string
+        default: "🔋 "
+        description: symbol when battery is full
+        doc_url: "https://starship.rs/config/#battery"
+      - key: battery.charging_symbol
+        label: Charging Symbol
+        type: string
+        default: "⚡ "
+        description: symbol when battery is charging
+        doc_url: "https://starship.rs/config/#battery"
+      - key: battery.discharging_symbol
+        label: Discharging Symbol
+        type: string
+        default: "💀 "
+        description: symbol when battery is discharging
+        doc_url: "https://starship.rs/config/#battery"
+      - key: battery.unknown_symbol
+        label: Unknown Symbol
+        type: string
+        default: "❓ "
+        description: symbol when battery state is unknown
+        doc_url: "https://starship.rs/config/#battery"
+      - key: battery.empty_symbol
+        label: Empty Symbol
+        type: string
+        default: "🪫 "
+        description: symbol when battery is empty
+        doc_url: "https://starship.rs/config/#battery"
+      - key: battery.disabled
+        label: Disabled
+        type: bool
+        default: "false"
+        description: disable the battery module
+        doc_url: "https://starship.rs/config/#battery"
+      - key: cmd_duration.min_time
+        label: Min Time
+        type: number
+        default: "2000"
+        description: minimum duration in ms to show the module
+        min: 0
+        max: 60000
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: cmd_duration.format
+        label: Format
+        type: string
+        default: "took [$duration]($style) "
+        description: format string for command duration module
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: cmd_duration.style
+        label: Style
+        type: string
+        default: "bold yellow"
+        description: style for the duration display
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: cmd_duration.show_milliseconds
+        label: Show Milliseconds
+        type: bool
+        default: "false"
+        description: show milliseconds in addition to seconds
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: cmd_duration.show_notifications
+        label: Show Notifications
+        type: bool
+        default: "false"
+        description: show desktop notification for long commands
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: cmd_duration.min_time_to_notify
+        label: Notify Min Time
+        type: number
+        default: "45000"
+        description: minimum duration in ms to trigger notification
+        min: 0
+        max: 600000
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: cmd_duration.disabled
+        label: Disabled
+        type: bool
+        default: "false"
+        description: disable the cmd_duration module
+        doc_url: "https://starship.rs/config/#command-duration"
+      - key: status.format
+        label: Format
+        type: string
+        default: "[$symbol$status]($style) "
+        description: format string for status module
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.symbol
+        label: Symbol
+        type: string
+        default: "✖"
+        description: symbol shown on non-zero exit code
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.success_symbol
+        label: Success Symbol
+        type: string
+        default: ""
+        description: symbol shown on zero exit code (if not_found_symbol used)
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.not_found_symbol
+        label: Not Found Symbol
+        type: string
+        default: "🔍"
+        description: symbol for command-not-found errors
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.style
+        label: Style
+        type: string
+        default: "bold red"
+        description: style for the status display
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.recognize_signal_code
+        label: Recognize Signals
+        type: bool
+        default: "true"
+        description: map exit codes to signal names (e.g. SIGKILL)
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.map_symbol
+        label: Map Symbol
+        type: bool
+        default: "false"
+        description: map exit codes to symbols
+        doc_url: "https://starship.rs/config/#status"
+      - key: status.disabled
+        label: Disabled
+        type: bool
+        default: "true"
+        description: disable the status module
+        hint: disabled by default — set to false to enable
+        doc_url: "https://starship.rs/config/#status"
 
-  - name: Hostname
-    key: hostname
+  - name: Identity
+    key: ""
     fields:
       - key: hostname.ssh_only
         label: SSH Only
@@ -421,10 +571,6 @@ sections:
         default: "false"
         description: disable the hostname module
         doc_url: "https://starship.rs/config/#hostname"
-
-  - name: Username
-    key: username
-    fields:
       - key: username.style_root
         label: Root Style
         type: string
@@ -503,185 +649,3 @@ sections:
         description: disable the time module
         hint: disabled by default — set to false to enable
         doc_url: "https://starship.rs/config/#time"
-
-  - name: Battery
-    key: battery
-    fields:
-      - key: battery.format
-        label: Format
-        type: string
-        default: "[$symbol$percentage]($style) "
-        description: format string for battery module
-        doc_url: "https://starship.rs/config/#battery"
-      - key: battery.full_symbol
-        label: Full Symbol
-        type: string
-        default: "🔋 "
-        description: symbol when battery is full
-        doc_url: "https://starship.rs/config/#battery"
-      - key: battery.charging_symbol
-        label: Charging Symbol
-        type: string
-        default: "⚡ "
-        description: symbol when battery is charging
-        doc_url: "https://starship.rs/config/#battery"
-      - key: battery.discharging_symbol
-        label: Discharging Symbol
-        type: string
-        default: "💀 "
-        description: symbol when battery is discharging
-        doc_url: "https://starship.rs/config/#battery"
-      - key: battery.unknown_symbol
-        label: Unknown Symbol
-        type: string
-        default: "❓ "
-        description: symbol when battery state is unknown
-        doc_url: "https://starship.rs/config/#battery"
-      - key: battery.empty_symbol
-        label: Empty Symbol
-        type: string
-        default: "🪫 "
-        description: symbol when battery is empty
-        doc_url: "https://starship.rs/config/#battery"
-      - key: battery.disabled
-        label: Disabled
-        type: bool
-        default: "false"
-        description: disable the battery module
-        doc_url: "https://starship.rs/config/#battery"
-
-  - name: Command Duration
-    key: cmd_duration
-    fields:
-      - key: cmd_duration.min_time
-        label: Min Time
-        type: number
-        default: "2000"
-        description: minimum duration in ms to show the module
-        min: 0
-        max: 60000
-        doc_url: "https://starship.rs/config/#command-duration"
-      - key: cmd_duration.format
-        label: Format
-        type: string
-        default: "took [$duration]($style) "
-        description: format string for command duration module
-        doc_url: "https://starship.rs/config/#command-duration"
-      - key: cmd_duration.style
-        label: Style
-        type: string
-        default: "bold yellow"
-        description: style for the duration display
-        doc_url: "https://starship.rs/config/#command-duration"
-      - key: cmd_duration.show_milliseconds
-        label: Show Milliseconds
-        type: bool
-        default: "false"
-        description: show milliseconds in addition to seconds
-        doc_url: "https://starship.rs/config/#command-duration"
-      - key: cmd_duration.show_notifications
-        label: Show Notifications
-        type: bool
-        default: "false"
-        description: show desktop notification for long commands
-        doc_url: "https://starship.rs/config/#command-duration"
-      - key: cmd_duration.min_time_to_notify
-        label: Notify Min Time
-        type: number
-        default: "45000"
-        description: minimum duration in ms to trigger notification
-        min: 0
-        max: 600000
-        doc_url: "https://starship.rs/config/#command-duration"
-      - key: cmd_duration.disabled
-        label: Disabled
-        type: bool
-        default: "false"
-        description: disable the cmd_duration module
-        doc_url: "https://starship.rs/config/#command-duration"
-
-  - name: Line Break
-    key: line_break
-    fields:
-      - key: line_break.disabled
-        label: Disabled
-        type: bool
-        default: "false"
-        description: disable the line_break module (single-line prompt)
-        hint: set to true for a single-line prompt
-        doc_url: "https://starship.rs/config/#line-break"
-
-  - name: Status
-    key: status
-    fields:
-      - key: status.format
-        label: Format
-        type: string
-        default: "[$symbol$status]($style) "
-        description: format string for status module
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.symbol
-        label: Symbol
-        type: string
-        default: "✖"
-        description: symbol shown on non-zero exit code
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.success_symbol
-        label: Success Symbol
-        type: string
-        default: ""
-        description: symbol shown on zero exit code (if not_found_symbol used)
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.not_found_symbol
-        label: Not Found Symbol
-        type: string
-        default: "🔍"
-        description: symbol for command-not-found errors
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.style
-        label: Style
-        type: string
-        default: "bold red"
-        description: style for the status display
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.recognize_signal_code
-        label: Recognize Signals
-        type: bool
-        default: "true"
-        description: map exit codes to signal names (e.g. SIGKILL)
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.map_symbol
-        label: Map Symbol
-        type: bool
-        default: "false"
-        description: map exit codes to symbols
-        doc_url: "https://starship.rs/config/#status"
-      - key: status.disabled
-        label: Disabled
-        type: bool
-        default: "true"
-        description: disable the status module
-        hint: disabled by default — set to false to enable
-        doc_url: "https://starship.rs/config/#status"
-
-  - name: Fill
-    key: fill
-    fields:
-      - key: fill.symbol
-        label: Symbol
-        type: string
-        default: "."
-        description: character used to fill the line
-        doc_url: "https://starship.rs/config/#fill"
-      - key: fill.style
-        label: Style
-        type: string
-        default: "bold black"
-        description: style for the fill character
-        doc_url: "https://starship.rs/config/#fill"
-      - key: fill.disabled
-        label: Disabled
-        type: bool
-        default: "false"
-        description: disable the fill module
-        doc_url: "https://starship.rs/config/#fill"

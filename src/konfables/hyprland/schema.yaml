@@ -189,10 +189,6 @@ sections:
         description: path to custom screen shader applied at rendering end
         hint: leave empty to disable
         doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
-
-  - name: Shadow
-    key: decoration
-    fields:
       - key: decoration.shadow.enabled
         label: Shadows Enabled
         type: bool
@@ -241,10 +237,6 @@ sections:
         min: 0
         max: 1
         doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
-
-  - name: Blur
-    key: decoration
-    fields:
       - key: decoration.blur.enabled
         label: Blur Enabled
         type: bool
@@ -449,10 +441,6 @@ sections:
         default: "false"
         description: allow focusing regular windows when special ws has only floats
         doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
-
-  - name: Keyboard
-    key: input
-    fields:
       - key: input.kb_layout
         label: Keyboard Layout
         type: string
@@ -515,10 +503,6 @@ sections:
         min: 100
         max: 2000
         doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
-
-  - name: Touchpad
-    key: input
-    fields:
       - key: input.touchpad.disable_while_typing
         label: Disable While Typing
         type: bool
@@ -563,10 +547,6 @@ sections:
         default: "false"
         description: 1/2/3-finger presses map to LMB/RMB/MMB
         doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
-
-  - name: Gestures
-    key: gestures
-    fields:
       - key: gestures.workspace_swipe_distance
         label: Swipe Distance
         type: number

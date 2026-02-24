@@ -92,8 +92,8 @@ sections:
         description: use built-in font for box drawing and powerline glyphs
         doc_url: "https://alacritty.org/config-alacritty.html#font"
 
-  # ── Colors Primary ─────────────────────────────────────────────────
-  - name: Colors Primary
+  # ── Colors ────────────────────────────────────────────────────────────
+  - name: Colors
     key: colors
     fields:
       - key: colors.primary.background
@@ -148,11 +148,6 @@ sections:
         default: "false"
         description: apply window.opacity to all cell backgrounds (not just default)
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
-
-  # ── Colors Cursor ──────────────────────────────────────────────────
-  - name: Colors Cursor
-    key: colors
-    fields:
       - key: colors.cursor.text
         label: Cursor Text
         type: enum
@@ -169,11 +164,6 @@ sections:
         options: [CellForeground, CellBackground]
         hint: or set a hex color string like "#ffffff"
         doc_url: "https://alacritty.org/config-alacritty.html#colors-cursor"
-
-  # ── Colors Selection ───────────────────────────────────────────────
-  - name: Colors Selection
-    key: colors
-    fields:
       - key: colors.selection.text
         label: Selection Text
         type: enum
@@ -190,11 +180,6 @@ sections:
         options: [CellForeground, CellBackground]
         hint: or set a hex color string like "#ffffff"
         doc_url: "https://alacritty.org/config-alacritty.html#colors-selection"
-
-  # ── Colors Normal (ANSI 0-7) ───────────────────────────────────────
-  - name: Colors Normal
-    key: colors
-    fields:
       - key: colors.normal.black
         label: Black
         type: color
@@ -243,11 +228,6 @@ sections:
         default: "#d8d8d8"
         description: normal white (ANSI 7)
         doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
-
-  # ── Colors Bright (ANSI 8-15) ──────────────────────────────────────
-  - name: Colors Bright
-    key: colors
-    fields:
       - key: colors.bright.black
         label: Bright Black
         type: color
@@ -297,7 +277,7 @@ sections:
         description: bright white (ANSI 15)
         doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
 
-  # ── Window ─────────────────────────────────────────────────────────
+  # ── Window ────────────────────────────────────────────────────────────
   - name: Window
     key: window
     fields:
@@ -381,11 +361,6 @@ sections:
         description: override system theme for window decorations
         options: [Dark, Light, None]
         doc_url: "https://alacritty.org/config-alacritty.html#window"
-
-  # ── Scrolling ──────────────────────────────────────────────────────
-  - name: Scrolling
-    key: scrolling
-    fields:
       - key: scrolling.history
         label: History
         type: number
@@ -403,7 +378,7 @@ sections:
         max: 50
         doc_url: "https://alacritty.org/config-alacritty.html#scrolling"
 
-  # ── Cursor ─────────────────────────────────────────────────────────
+  # ── Cursor ────────────────────────────────────────────────────────────
   - name: Cursor
     key: cursor
     fields:
@@ -453,9 +428,9 @@ sections:
         max: 1
         doc_url: "https://alacritty.org/config-alacritty.html#cursor"
 
-  # ── Mouse ──────────────────────────────────────────────────────────
-  - name: Mouse
-    key: mouse
+  # ── Terminal ──────────────────────────────────────────────────────────
+  - name: Terminal
+    key: terminal
     fields:
       - key: mouse.hide_when_typing
         label: Hide When Typing
@@ -463,11 +438,6 @@ sections:
         default: "false"
         description: temporarily hide mouse cursor while typing
         doc_url: "https://alacritty.org/config-alacritty.html#mouse"
-
-  # ── Terminal ───────────────────────────────────────────────────────
-  - name: Terminal
-    key: terminal
-    fields:
       - key: terminal.shell.program
         label: Shell Program
         type: string
@@ -483,7 +453,7 @@ sections:
         options: [Disabled, OnlyCopy, OnlyPaste, CopyPaste]
         doc_url: "https://alacritty.org/config-alacritty.html#terminal"
 
-  # ── General ────────────────────────────────────────────────────────
+  # ── General ───────────────────────────────────────────────────────────
   - name: General
     key: general
     fields:
