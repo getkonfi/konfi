@@ -41,3 +41,7 @@ main → setup → ui → theme → pkg
 - `setup/detection.go` imports concrete konfable packages — one-directional
 - `theme/` never imports `konfables/`
 - konfables import `theme` (for Theme in editors) and `pkg` (for ConfigFile, Schema)
+
+## aim
+ - main aim is to bring ease of use by having a single tui for various apps
+ - QoL and ease of use is important
