@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"time"
 
 	"github.com/emin/konfigurator/konfables"
@@ -18,7 +19,7 @@ const (
 	paneContent
 )
 
-const sidebarWidth = 30
+const sidebarWidth = 24
 
 type root struct {
 	app      *setup.App
@@ -118,10 +119,10 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// when content is in edit mode, only ctrl+c stays at root level —
 	// everything else passes through so esc/blink/keys reach the editor.
-	if r.content.editing {
+	if r.content.Editing() {
 		if km, ok := msg.(tea.KeyMsg); ok && km.String() == "ctrl+c" {
 			if r.content.config != nil {
-				r.content.config.StopWatching()
+				r.content.stopWatching()
 			}
 			return r, tea.Quit
 		}
@@ -141,7 +142,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if km, ok := msg.(tea.KeyMsg); ok {
 			if km.String() == "ctrl+c" {
 				if r.content.config != nil {
-					r.content.config.StopWatching()
+					r.content.stopWatching()
 				}
 				return r, tea.Quit
 			}
@@ -178,7 +179,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+c":
 				if r.content.config != nil {
-					r.content.config.StopWatching()
+					r.content.stopWatching()
 				}
 				return r, tea.Quit
 			case "esc":
@@ -199,13 +200,13 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			if r.content.config != nil {
-				r.content.config.StopWatching()
+				r.content.stopWatching()
 			}
 			return r, tea.Quit
 
 		case "ctrl+s":
 			if r.content.config != nil && r.content.config.Dirty() {
-				if err := r.content.config.Save(); err != nil {
+				if err := r.content.config.Save(context.Background()); err != nil {
 					r.status.status = "save failed: " + err.Error()
 				} else {
 					r.content.fileState = "saved"
@@ -330,7 +331,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, tea.Batch(cmds...)
 
-	case insightTickMsg, splitFlapTickMsg:
+	case insightTickMsg, splitFlapTickMsg, logoAnimTickMsg:
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
 		return r, cmd
@@ -379,7 +380,7 @@ func (r *root) View() string {
 	view := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
 
 	if r.showHelp {
-		return renderHelpCard(r.width, r.height, r.focus, r.content.editing, r.app.Theme)
+		return renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
 	}
 
 	return view
@@ -434,10 +435,11 @@ func (r *root) cyclePane(dir int) {
 }
 
 func (r *root) updateHints() {
-	if r.content.editing {
+	if r.content.Editing() {
 		r.content.hints = []keyHint{
 			{"⏎", "confirm"},
 			{"esc", "cancel"},
+			{"tab", "switch mode"},
 		}
 		r.status.hints = r.content.hints
 		return
@@ -475,6 +477,7 @@ func (r *root) updateHints() {
 		hints := []keyHint{
 			{"↑↓", "navigate"},
 			{"⏎", "edit"},
+			{"JK", "scroll detail"},
 			{"[]", "section"},
 			{"/", "search"},
 			{"f", "filter"},

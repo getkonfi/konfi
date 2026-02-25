@@ -194,7 +194,93 @@ func (s sidebar) selectCurrent(confirmed bool) (sidebar, tea.Cmd) {
 	}
 }
 
+// collapsed returns true when the sidebar is in icon-rail mode.
+func (s sidebar) collapsed() bool {
+	return s.width <= 6
+}
+
 func (s sidebar) View() string {
+	if s.collapsed() {
+		return s.viewCollapsed()
+	}
+	return s.viewExpanded()
+}
+
+func (s sidebar) viewCollapsed() string {
+	var b strings.Builder
+	innerH := s.height // no vertical border or padding
+	if innerH < 1 {
+		innerH = 1
+	}
+
+	line := 0
+	for fi, origIdx := range s.filtered {
+		if s.items[origIdx].system {
+			continue
+		}
+		if line > 0 {
+			b.WriteByte('\n')
+		}
+		item := s.items[origIdx]
+		isCursor := fi == s.cursor
+		icon := item.icon
+		if icon == "" {
+			icon = "•"
+		}
+
+		var styled string
+		switch {
+		case isCursor:
+			styled = s.theme.Primary.Render(icon)
+		case !item.installed:
+			styled = s.theme.Muted.Render(icon)
+		default:
+			styled = s.theme.Subtext.Render(icon)
+		}
+		b.WriteString(styled)
+		line++
+	}
+
+	// system items at the bottom
+	var sysIcons []string
+	for fi, origIdx := range s.filtered {
+		if !s.items[origIdx].system {
+			continue
+		}
+		item := s.items[origIdx]
+		icon := item.icon
+		if icon == "" {
+			icon = "•"
+		}
+		isCursor := fi == s.cursor
+		if isCursor {
+			sysIcons = append(sysIcons, s.theme.Primary.Render(icon))
+		} else {
+			sysIcons = append(sysIcons, s.theme.Muted.Render(icon))
+		}
+	}
+
+	topStr := b.String()
+	topLines := strings.Count(topStr, "\n") + 1
+	if len(sysIcons) > 0 {
+		botStr := strings.Join(sysIcons, "\n")
+		botLines := len(sysIcons)
+		gap := innerH - topLines - botLines
+		if gap < 1 {
+			gap = 1
+		}
+		topStr = topStr + strings.Repeat("\n", gap) + botStr
+	}
+
+	style := lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(s.width).
+		Height(s.height).
+		Align(lipgloss.Center, lipgloss.Top)
+	return style.Render(topStr)
+}
+
+func (s sidebar) viewExpanded() string {
 	var top, bot strings.Builder
 	innerW := s.width - 2 - 2 // border + padding
 	if innerW < 6 {
@@ -233,7 +319,7 @@ func (s sidebar) View() string {
 	// pin system items to bottom with gap
 	topStr := top.String()
 	topLines := strings.Count(topStr, "\n") + 1
-	innerH := s.height - 2 - 2 // border + padding
+	innerH := s.height // right-only border and horizontal-only padding add no height
 	if innerH < 1 {
 		innerH = 1
 	}
@@ -260,9 +346,17 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		iconGlyph = "•"
 	}
 
-	iconStyle := s.theme.Subtext
-	nameStyle := s.theme.Subtext
+	// when sidebar is unfocused, dim all items
+	if !s.focused {
+		iconStyle := s.theme.Muted.Faint(true)
+		nameStyle := s.theme.Muted.Faint(true)
+		body := iconStyle.Render(iconGlyph) + " " + nameStyle.Render(item.name)
+		return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
+	}
+
+	var iconStyle, nameStyle lipgloss.Style
 	if item.installed {
+		iconStyle = s.theme.Subtext
 		nameStyle = s.theme.Text
 	} else {
 		iconStyle = s.theme.Muted
@@ -280,11 +374,15 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
 }
 
-// renderPanel wraps content in the sidebar bordered style.
+// renderPanel wraps content in the sidebar style with right-edge border.
 func (s sidebar) renderPanel(content string) string {
-	style := s.theme.Sidebar.
-		Width(s.width - 2). // subtract border
-		Height(s.height - 2).
+	style := lipgloss.NewStyle().
+		BorderStyle(lipgloss.Border{Right: "│"}).
+		BorderRight(true).
+		BorderForeground(s.theme.Palette.Border).
+		Padding(0, 1).
+		Width(s.width - 1). // subtract border char
+		Height(s.height).
 		Align(lipgloss.Left, lipgloss.Top)
 
 	if s.focused {

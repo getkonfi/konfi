@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -13,15 +14,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
-
-// glamourCache holds the glamour renderer, rebuilt on width or theme change.
-type glamourCache struct {
-	renderer *glamour.TermRenderer
-	width    int
-}
 
 // field type icons (nerd font glyphs)
 var fieldTypeIcon = map[string]string{
@@ -71,22 +65,8 @@ type content struct {
 	// version filtering
 	versions map[string]string
 
-	// inline editing
-	editing     bool
-	editor      FieldEditor
-	editField   int    // index into c.fields
-	editOrigVal string // for cancel restoration
-
-	// preview pane state
-	previewLine  int
-	previewFound bool
-	previewKey   string
-
-	// app-level docs fallback
-	docsURL string
-
-	// glamour markdown renderer cache (pointer survives value-receiver copies)
-	glamCache *glamourCache
+	// detail sub-model (preview/detail pane, editor state, glamour cache, docs URL)
+	detail detail
 
 	// file state indicator ("", "unsaved", "saved", "reloaded", "new")
 	fileState string
@@ -100,6 +80,10 @@ type content struct {
 	insightWarningCount int
 	insightGen          int
 	splitFlap           *splitFlapState
+
+	// logo animation
+	logoAnim    *pkg.AnimState
+	logoAnimGen int
 }
 
 func newContent(th *theme.Theme) content {
@@ -114,20 +98,23 @@ func newContent(th *theme.Theme) content {
 		collapsed: make(map[int]bool),
 		search:    ti,
 		theme:     th,
-		glamCache: &glamourCache{},
+		detail: newDetail(th),
 	}
 }
 
 func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 	// when editing, forward all messages to the active editor
-	if c.editing && c.editor != nil {
-		cmd, done, canceled := c.editor.Update(msg)
+	if c.detail.editing && c.detail.editor != nil {
+		cmd, done, canceled := c.detail.editor.Update(msg)
 		if done {
 			if canceled {
-				c.editing = false
-				c.editor = nil
+				c.detail.editing = false
+				c.detail.editor = nil
 			} else {
-				c.commitEdit(c.editor.Value())
+				settingCmd := c.commitEdit(c.detail.editor.Value())
+				if settingCmd != nil {
+					cmd = tea.Batch(cmd, settingCmd)
+				}
 			}
 		}
 		return c, cmd
@@ -142,7 +129,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.search.SetValue("")
 				c.search.Blur()
 				c.refilter()
-				c.updatePreviewLine()
+				c.syncDetail()
 				return c, nil
 			case "enter":
 				// lock filter and exit search mode
@@ -153,19 +140,19 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
 				}
-				c.updatePreviewLine()
+				c.syncDetail()
 				return c, nil
 			case "k", "up":
 				if c.cursor > 0 {
 					c.cursor--
 				}
-				c.updatePreviewLine()
+				c.syncDetail()
 				return c, nil
 			default:
 				var cmd tea.Cmd
 				c.search, cmd = c.search.Update(msg)
 				c.refilter()
-				c.updatePreviewLine()
+				c.syncDetail()
 				return c, cmd
 			}
 		}
@@ -197,7 +184,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.cursor = 0
 				c.scrollY = 0
 				c.refilter()
-				c.updatePreviewLine()
+				c.syncDetail()
 			}
 		case "]":
 			if c.schema != nil && len(c.schema.Sections) > 1 {
@@ -208,13 +195,13 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.cursor = 0
 				c.scrollY = 0
 				c.refilter()
-				c.updatePreviewLine()
+				c.syncDetail()
 			}
 		case "f":
 			if c.schema != nil {
 				c.configuredOnly = !c.configuredOnly
 				c.refilter()
-				c.updatePreviewLine()
+				c.syncDetail()
 			}
 		case "/":
 			if c.schema != nil {
@@ -227,7 +214,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
 				}
-				c.updatePreviewLine()
+				c.syncDetail()
 			} else {
 				c.scrollY++
 			}
@@ -236,21 +223,27 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor > 0 {
 					c.cursor--
 				}
-				c.updatePreviewLine()
+				c.syncDetail()
 			} else if c.scrollY > 0 {
 				c.scrollY--
+			}
+		case "J", "shift+down":
+			c.detail.scrollY++
+		case "K", "shift+up":
+			if c.detail.scrollY > 0 {
+				c.detail.scrollY--
 			}
 		case "home":
 			if hasRows {
 				c.cursor = 0
-				c.updatePreviewLine()
+				c.syncDetail()
 			} else {
 				c.scrollY = 0
 			}
 		case "end":
 			if hasRows {
 				c.cursor = len(c.visible) - 1
-				c.updatePreviewLine()
+				c.syncDetail()
 			}
 		case "pgdown":
 			page := c.pageSize()
@@ -259,7 +252,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor >= len(c.visible) {
 					c.cursor = len(c.visible) - 1
 				}
-				c.updatePreviewLine()
+				c.syncDetail()
 			} else {
 				c.scrollY += page
 			}
@@ -270,7 +263,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor < 0 {
 					c.cursor = 0
 				}
-				c.updatePreviewLine()
+				c.syncDetail()
 			} else {
 				c.scrollY -= page
 				if c.scrollY < 0 {
@@ -293,13 +286,14 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 
 	case ThemeChangedMsg:
 		c.theme = msg.Theme
-		if c.glamCache != nil {
-			c.glamCache.renderer = nil
+		c.detail.theme = msg.Theme
+		if c.detail.glamCache != nil {
+			c.detail.glamCache.renderer = nil
 		}
 
 	case ExternalChangeMsg:
 		if c.config != nil && c.config.Path == msg.Path {
-			if err := c.config.Reload(); err == nil {
+			if err := c.config.Reload(context.Background()); err == nil {
 				c.refreshValues()
 			}
 		}
@@ -322,6 +316,16 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			return c, nil
 		}
 		return c, splitFlapCmd(c.splitFlap.gen)
+
+	case logoAnimTickMsg:
+		if c.logoAnim == nil || msg.gen != c.logoAnimGen {
+			return c, nil
+		}
+		if c.logoAnim.Tick() {
+			c.logoAnim = nil
+			return c, nil
+		}
+		return c, logoAnimCmd(c.logoAnimGen)
 	}
 
 	return c, nil
@@ -334,11 +338,11 @@ func (c *content) openEditor() tea.Cmd {
 		return nil
 	}
 
-	c.editField = c.visible[c.cursor].fieldIdx
-	c.editOrigVal = c.values[f.Key]
+	c.detail.editField = c.visible[c.cursor].fieldIdx
+	c.detail.editOrigVal = c.values[f.Key]
 
 	// for list fields, pass the actual multi-values (newline-joined)
-	initVal := c.editOrigVal
+	initVal := c.detail.editOrigVal
 	if f.Type == "list" {
 		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
 			if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
@@ -350,8 +354,8 @@ func (c *content) openEditor() tea.Cmd {
 	}
 
 	e := editorForField(*f)
-	c.editor = e
-	c.editing = true
+	c.detail.editor = e
+	c.detail.editing = true
 	return e.Init(*f, initVal, c.theme)
 }
 
@@ -363,12 +367,12 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 		return nil
 	}
 
-	c.editField = c.visible[c.cursor].fieldIdx
-	c.editOrigVal = c.values[f.Key]
+	c.detail.editField = c.visible[c.cursor].fieldIdx
+	c.detail.editOrigVal = c.values[f.Key]
 
 	e := editorForField(*f)
-	c.editor = e
-	c.editing = true
+	c.detail.editor = e
+	c.detail.editing = true
 
 	initCmd := e.Init(*f, "", c.theme)
 	seedCmd := func() tea.Msg {
@@ -377,21 +381,22 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 	return tea.Sequence(initCmd, seedCmd)
 }
 
-// commitEdit writes the edited value back to the config.
-func (c *content) commitEdit(value string) {
-	c.editing = false
-	c.editor = nil
+// commitEdit writes the edited value back to the config and returns
+// a cmd to propagate konfigurator setting changes (theme, log_level).
+func (c *content) commitEdit(value string) tea.Cmd {
+	c.detail.editing = false
+	c.detail.editor = nil
 
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
-		return
+		return nil
 	}
 
 	// skip write if value is unchanged
-	if value == c.editOrigVal {
-		return
+	if value == c.detail.editOrigVal {
+		return nil
 	}
 
-	f := c.fields[c.editField]
+	f := c.fields[c.detail.editField]
 	data := c.config.Content()
 
 	// list fields use MultiValueParser
@@ -403,33 +408,34 @@ func (c *content) commitEdit(value string) {
 			}
 			newData, err := mvp.SetValues(data, f.Key, vals)
 			if err != nil {
-				return
+				return nil
 			}
 			c.config.SetContent(newData)
 			c.refreshValues()
-			c.emitSettingChanged(f.Key, value)
-			return
+			return c.settingChangedCmd(f.Key, value)
 		}
 	}
 
 	serialized := formatValue(value, f.Type, c.konfable.Info().Format)
 	newData, err := c.konfable.Parser().SetValue(data, f.Key, serialized)
 	if err != nil {
-		return
+		return nil
 	}
 	c.config.SetContent(newData)
 	c.refreshValues()
 
-	// hot-reload konfigurator settings
-	c.emitSettingChanged(f.Key, value)
+	return c.settingChangedCmd(f.Key, value)
 }
 
-// emitSettingChanged sends a KonfSettingChangedMsg if editing konfigurator.
-func (c *content) emitSettingChanged(key, value string) {
-	if c.konfable == nil || c.konfable.Name() != "konfigurator" || c.program == nil {
-		return
+// settingChangedCmd returns a cmd that emits a KonfSettingChangedMsg,
+// or nil if not editing the konfigurator app.
+func (c *content) settingChangedCmd(key, value string) tea.Cmd {
+	if c.konfable == nil || c.konfable.Name() != "konfigurator" {
+		return nil
 	}
-	c.program.Send(KonfSettingChangedMsg{Key: key, Value: value})
+	return func() tea.Msg {
+		return KonfSettingChangedMsg{Key: key, Value: value}
+	}
 }
 
 // toggleBool flips a boolean field value immediately.
@@ -457,11 +463,19 @@ func (c *content) toggleBool(f pkg.Field) {
 	c.refreshValues()
 }
 
+// stopWatching type-asserts the konfable for Watchable and calls Unwatch.
+func (c *content) stopWatching() {
+	if c.konfable == nil {
+		return
+	}
+	if w, ok := c.konfable.(pkg.Watchable); ok {
+		w.Unwatch()
+	}
+}
+
 // showNotInstalled sets the active konfable for display without loading config or schema.
 func (c *content) showNotInstalled(k konfables.Konfable) {
-	if c.config != nil {
-		c.config.StopWatching()
-	}
+	c.stopWatching()
 	c.konfable = k
 	c.title = k.Name()
 	c.config = nil
@@ -478,15 +492,14 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.values = make(map[string]string)
 	c.scrollY = 0
 	c.cursor = 0
-	c.editing = false
-	c.editor = nil
-	c.previewLine = -1
-	c.previewFound = false
-	c.previewKey = ""
-	c.docsURL = ""
+	c.detail.editing = false
+	c.detail.editor = nil
+	c.detail.reset()
 	c.insightLines = nil
 	c.insightIdx = 0
 	c.insightGen++
+	c.logoAnimGen++
+	c.logoAnim = nil
 }
 
 // loadApp sets the active konfable, loads its config and schema, and reads values.
@@ -501,9 +514,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	}
 
 	// stop watching previous config
-	if c.config != nil {
-		c.config.StopWatching()
-	}
+	c.stopWatching()
 
 	c.konfable = k
 	c.title = k.Name()
@@ -521,32 +532,28 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.values = make(map[string]string)
 	c.config = nil
 	c.schema = nil
-	c.editing = false
-	c.editor = nil
-	c.previewLine = -1
-	c.previewFound = false
-	c.previewKey = ""
-	c.docsURL = ""
-	if c.glamCache != nil {
-		c.glamCache.renderer = nil
-	}
+	c.detail.editing = false
+	c.detail.editor = nil
+	c.detail.reset()
 
 	info := k.Info()
 
-	// load config file (virtual konfables create defaults if missing)
-	cf, err := pkg.LoadConfigFile(info.ConfigPath)
-	if err != nil && info.Binary == "" {
-		cf, err = pkg.LoadOrCreateConfigFile(info.ConfigPath, []byte("theme: catppuccin\nlog_level: info\n"))
-		if err == nil {
-			c.fileState = "new"
-		}
-	}
+	// detect whether this is a fresh file (before Load potentially creates it)
+	isNewFile := k.ConfigPath() != "" && !pkg.FileExists(k.ConfigPath())
+
+	// load config through the konfable's persister
+	cf, err := pkg.NewConfigFile(context.Background(), k)
 	if err != nil {
 		return func() tea.Msg {
 			return StatusMsg{Text: fmt.Sprintf("no config: %s", info.ConfigPath)}
 		}
 	}
 	c.config = cf
+	c.config.Path = k.ConfigPath()
+
+	if isNewFile {
+		c.fileState = "new"
+	}
 
 	// load schema (filter by detected version if known)
 	schemaData, err := k.Schema()
@@ -557,7 +564,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 				s = s.FilterByVersion(v)
 			}
 			c.schema = s
-			c.docsURL = s.DocsURL
+			c.detail.docsURL = s.DocsURL
 			c.buildFieldList()
 		}
 	}
@@ -566,13 +573,15 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.buildInsights()
 	c.insightGen++
 
-	// start file watching
+	// start watching if the konfable supports it
 	if c.config != nil && c.program != nil {
-		p := c.program
-		cfPath := c.config.Path
-		_ = c.config.StartWatching(func() {
-			p.Send(ExternalChangeMsg{Path: cfPath})
-		})
+		if w, ok := k.(pkg.Watchable); ok {
+			p := c.program
+			cfPath := c.config.Path
+			_ = w.Watch(func() {
+				p.Send(ExternalChangeMsg{Path: cfPath})
+			})
+		}
 	}
 
 	var cmds []tea.Cmd
@@ -583,6 +592,17 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 		cmds = append(cmds, splitFlapCmd(c.insightGen))
 	}
 	cmds = append(cmds, c.insightTickCmd())
+
+	// start logo animation if one is registered for this app
+	c.logoAnimGen++
+	if cfg, ok := konfables.LogoAnims[k.Name()]; ok {
+		if logo, lok := konfables.Logos[k.Name()]; lok {
+			c.logoAnim = pkg.NewAnimState(logo, cfg)
+			cmds = append(cmds, logoAnimCmd(c.logoAnimGen))
+		}
+	} else {
+		c.logoAnim = nil
+	}
 
 	return tea.Batch(cmds...)
 }
@@ -670,7 +690,7 @@ func (c content) currentDocURL() string {
 	if f.DocURL != "" {
 		return f.DocURL
 	}
-	return c.docsURL
+	return c.detail.docsURL
 }
 
 // openDocs launches the system browser for the given URL.
@@ -716,45 +736,43 @@ func (c *content) refreshValues() {
 		}
 	}
 
-	c.previewKey = "" // force re-scan
-	c.updatePreviewLine()
+	c.detail.forceRescan()
+	c.syncDetail()
 	c.buildInsights()
 }
 
-func (c *content) updatePreviewLine() {
-	f := c.currentField()
-	if f == nil || c.config == nil || c.konfable == nil || c.konfable.Parser() == nil {
-		c.previewLine = -1
-		c.previewFound = false
-		c.previewKey = ""
-		return
-	}
-	if f.Key == c.previewKey {
-		return
-	}
-	c.previewKey = f.Key
-	c.previewLine, c.previewFound = c.konfable.Parser().FindLine(c.config.Content(), f.Key)
+// syncDetail pushes content state into the detail sub-model.
+func (c *content) syncDetail() {
+	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
 }
 
-// splitHeights computes the field list and preview pane heights for a given inner height.
-// returns previewH=0 when preview should be hidden.
-func (c content) splitHeights(innerH int) (fieldH, previewH int) {
+// Editing returns whether the detail panel is in edit mode.
+func (c content) Editing() bool {
+	return c.detail.editing
+}
+
+// splitWidths computes the field list and detail pane widths for a horizontal split.
+// detail gets a fixed ~35%. returns detailW=0 when hidden.
+func (c content) splitWidths(innerW int) (fieldW, detailW int) {
 	if c.schema == nil || c.config == nil || len(c.fields) == 0 {
-		return innerH, 0
+		return innerW, 0
 	}
-	previewH = innerH * 2 / 5
-	if previewH < 3 {
-		previewH = 3
+	if innerW < 50 {
+		return innerW, 0
 	}
-	fieldH = innerH - previewH - 1
-	if fieldH < 5 {
-		fieldH = 5
-		previewH = innerH - fieldH - 1
+	detailW = innerW * 35 / 100
+	if detailW < 20 {
+		detailW = 20
 	}
-	if previewH < 1 {
-		return innerH, 0
+	fieldW = innerW - detailW
+	if fieldW < 30 {
+		fieldW = 30
+		detailW = innerW - fieldW
 	}
-	return fieldH, previewH
+	if detailW < 20 {
+		return innerW, 0
+	}
+	return fieldW, detailW
 }
 
 func (c content) fieldListHeight() int {
@@ -762,8 +780,7 @@ func (c content) fieldListHeight() int {
 	if innerH < 3 {
 		innerH = 3
 	}
-	fh, _ := c.splitHeights(innerH)
-	return fh
+	return innerH
 }
 
 func (c content) pageSize() int {
@@ -794,27 +811,19 @@ func (c content) cursorLine() int {
 		return 0
 	}
 	line := c.headerHeight()
-	for i, r := range c.visible {
+	for i := range c.visible {
 		if i == c.cursor {
 			return line
 		}
-		line++
-		if c.editing && c.editor != nil && r.fieldIdx == c.editField {
-			line += c.editor.Height()
-		}
+		line++ // field row
 	}
 	return 0
 }
 
 func (c content) View() string {
-	style := c.theme.Content
-	if c.focused {
-		style = style.BorderForeground(c.theme.Palette.BorderFocus)
-	}
-
-	// inner dimensions (border=2, padding is in the style)
-	innerW := c.width - 2 - 4 // 2 border + 4 padding (2 each side)
-	innerH := c.height - 2 - 2 // 2 border + 2 padding (1 each side)
+	// no border — structural division from sidebar edge and detail's left border
+	innerW := c.width - 2 // 2 padding (1 each side)
+	innerH := c.height
 	if innerW < 10 {
 		innerW = 10
 	}
@@ -822,25 +831,27 @@ func (c content) View() string {
 		innerH = 3
 	}
 
-	fieldListH, previewH := c.splitHeights(innerH)
-	showPreview := previewH > 0
+	fieldListW, detailW := c.splitWidths(innerW)
 
 	// auto-scroll to keep cursor visible (schema mode)
 	if c.schema != nil && len(c.visible) > 0 {
 		cl := c.cursorLine()
-		visibleEnd := cl
-		if c.editing && c.editor != nil {
-			visibleEnd = cl + c.editor.Height()
-		}
 		if cl < c.scrollY {
 			c.scrollY = cl
 		}
-		if visibleEnd >= c.scrollY+fieldListH {
-			c.scrollY = visibleEnd - fieldListH + 1
+		// account for expanded editor height below cursor
+		cursorBottom := cl
+		if c.detail.editing && c.detail.editor != nil {
+			if _, ok := c.detail.editor.(InlineEditor); !ok {
+				cursorBottom += c.detail.editor.Height() + 1 // +1 for trailing newline
+			}
+		}
+		if cursorBottom >= c.scrollY+innerH {
+			c.scrollY = cursorBottom - innerH + 1
 		}
 	}
 
-	body := c.renderBody(innerW)
+	body := c.renderBody(fieldListW)
 
 	// apply scrolling
 	lines := strings.Split(body, "\n")
@@ -852,71 +863,64 @@ func (c content) View() string {
 	}
 
 	// trim to fit
-	if len(lines) > fieldListH {
-		lines = lines[:fieldListH]
+	if len(lines) > innerH {
+		lines = lines[:innerH]
 	}
 
 	fieldView := strings.Join(lines, "\n")
 
-	if !showPreview {
-		style = style.
-			Width(c.width - 2).
-			Height(c.height - 2).
-			Align(lipgloss.Left, lipgloss.Top)
-		return style.Render(fieldView)
+	if detailW == 0 {
+		return lipgloss.NewStyle().
+			Padding(0, 1).
+			Width(c.width).
+			MaxWidth(c.width).
+			Height(c.height).
+			MaxHeight(c.height).
+			Align(lipgloss.Left, lipgloss.Top).
+			Render(fieldView)
 	}
 
 	// pad field list to exact height
 	fieldLines := strings.Count(fieldView, "\n") + 1
-	for fieldLines < fieldListH {
+	for fieldLines < innerH {
 		fieldView += "\n"
 		fieldLines++
 	}
 
-	sep := c.renderSeparator(innerW)
-	preview := c.renderPreview(innerW, previewH)
-	combined := fieldView + "\n" + sep + "\n" + preview
+	// sync detail and render in right column
+	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
 
-	style = style.
-		Width(c.width - 2).
-		Height(c.height - 2).
-		Align(lipgloss.Left, lipgloss.Top)
-
-	return style.Render(combined)
-}
-
-// renderSeparator draws the line between field list and preview with scroll info.
-func (c content) renderSeparator(width int) string {
-	if len(c.visible) == 0 {
-		info := "0/0"
-		lineW := width - len(info) - 2
-		if lineW < 4 {
-			lineW = 4
-		}
-		left := lineW / 2
-		right := lineW - left
-		return c.theme.Muted.Render(strings.Repeat("─", left) + " " + info + " " + strings.Repeat("─", right))
+	// detail content width: detailW minus border (1) and padding (2)
+	detailContentW := detailW - 3
+	if detailContentW < 10 {
+		detailContentW = 10
 	}
+	detailView := c.detail.View(detailContentW, innerH)
 
-	var parts []string
+	detailStyled := c.theme.Detail.
+		Width(detailW - 1). // content+padding; left border adds 1 more
+		MaxWidth(detailW).
+		Height(innerH).
+		MaxHeight(innerH).
+		Render(detailView)
 
-	// position indicator
-	parts = append(parts, fmt.Sprintf("%d/%d", c.cursor+1, len(c.visible)))
+	fieldCol := lipgloss.NewStyle().
+		Width(fieldListW).
+		MaxWidth(fieldListW).
+		Height(innerH).
+		MaxHeight(innerH).
+		Render(fieldView)
 
-	// configured filter badge
-	if c.configuredOnly {
-		parts = append(parts, "configured")
-	}
+	combined := lipgloss.JoinHorizontal(lipgloss.Top, fieldCol, detailStyled)
 
-	info := strings.Join(parts, " · ")
-	infoW := lipgloss.Width(info)
-	lineW := width - infoW - 2 // 2 spaces padding
-	if lineW < 4 {
-		lineW = 4
-	}
-	left := lineW / 2
-	right := lineW - left
-	return c.theme.Muted.Render(strings.Repeat("─", left) + " " + info + " " + strings.Repeat("─", right))
+	return lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(c.width).
+		MaxWidth(c.width).
+		Height(c.height).
+		MaxHeight(c.height).
+		Align(lipgloss.Left, lipgloss.Top).
+		Render(combined)
 }
 
 // labelColumnWidth computes the max label width for the active section.
@@ -986,6 +990,9 @@ func (c content) headerLeftLines() []string {
 	path := ""
 	if c.config != nil {
 		path = c.config.Path
+		if path == "" && c.konfable != nil {
+			path = c.konfable.Info().Name
+		}
 	}
 	if c.fileState != "" {
 		path += " [" + c.fileState + "]"
@@ -1012,9 +1019,12 @@ func (c content) renderHeader(width int) string {
 		return strings.Join(lines, "\n") + "\n"
 	}
 
-	// build right column: logo only (name is in the left column now)
+	// build right column: logo (animated if running, static otherwise)
 	var rightLines []string
-	if logo, ok := konfables.Logos[c.konfable.Name()]; ok {
+	if c.logoAnim != nil && !c.logoAnim.Done {
+		art := c.logoAnim.CurrentFrame().Render()
+		rightLines = strings.Split(art, "\n")
+	} else if logo, ok := konfables.Logos[c.konfable.Name()]; ok {
 		art := logo.Render()
 		rightLines = strings.Split(art, "\n")
 	}
@@ -1030,7 +1040,10 @@ func (c content) renderHeader(width int) string {
 	if leftW < 20 {
 		// narrow fallback: centered logo
 		var lines []string
-		if logo, ok := konfables.Logos[c.konfable.Name()]; ok {
+		if c.logoAnim != nil && !c.logoAnim.Done {
+			art := c.logoAnim.CurrentFrame().Render()
+			lines = append(lines, strings.Split(centerBlock(art, width), "\n")...)
+		} else if logo, ok := konfables.Logos[c.konfable.Name()]; ok {
 			art := logo.Render()
 			lines = append(lines, strings.Split(centerBlock(art, width), "\n")...)
 		}
@@ -1112,6 +1125,13 @@ func (c content) renderHeader(width int) string {
 	return strings.Join(outLines, "\n") + "\n"
 }
 
+// logoAnimCmd schedules the next logo animation frame at 60ms.
+func logoAnimCmd(gen int) tea.Cmd {
+	return tea.Tick(60*time.Millisecond, func(time.Time) tea.Msg {
+		return logoAnimTickMsg{gen: gen}
+	})
+}
+
 // insightTickCmd starts the next insight cycle timer.
 func (c content) insightTickCmd() tea.Cmd {
 	gen := c.insightGen
@@ -1143,14 +1163,20 @@ func (c content) renderTabs(_ int) string {
 
 	var parts []string
 	for i := start; i < end; i++ {
+		name := c.schema.Sections[i].Name
 		if i == c.activeSection {
-			parts = append(parts, c.theme.Primary.Bold(true).Render(c.schema.Sections[i].Name))
+			// active tab: primary bold with surface background + thick bottom border
+			tab := c.theme.Primary.Bold(true).
+				Background(c.theme.Palette.Surface).
+				Padding(0, 1).
+				Render(name)
+			parts = append(parts, tab)
 		} else {
-			parts = append(parts, c.theme.Muted.Render(c.schema.Sections[i].Name))
+			parts = append(parts, c.theme.Muted.Faint(true).Padding(0, 1).Render(name))
 		}
 	}
 
-	sep := c.theme.Muted.Render(" │ ")
+	sep := c.theme.Muted.Render("│")
 	line := strings.Join(parts, sep)
 
 	if start > 0 {
@@ -1199,9 +1225,15 @@ func (c content) renderBody(width int) string {
 
 	labelW := c.labelColumnWidth()
 
+	// detect inline editing state once before the loop
+	editingInline := c.detail.editing && c.detail.editor != nil
+
 	for i, r := range c.visible {
 		f := &c.fields[r.fieldIdx]
 		isCursor := c.focused && i == c.cursor
+
+		// is this row the one being edited?
+		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
 
 		// type icon (widget hint takes precedence)
 		icon := fieldTypeIcon[f.Widget]
@@ -1234,33 +1266,25 @@ func (c content) renderBody(width int) string {
 			renderedVal = c.renderFieldValue(*f, val, false)
 		}
 
+		// inline editor: replace value portion with InlineView
+		if isEditRow {
+			if ie, ok := c.detail.editor.(InlineEditor); ok {
+				renderedVal = ie.InlineView(width / 2)
+			}
+		}
+
 		// inline min/max bounds for number fields (skipped for slider widgets and inline-editing)
-		showBounds := f.Type == "number" && f.Widget != "slider" && (f.Min != nil || f.Max != nil)
+		showBounds := f.Type == "number" && f.Widget != "slider" && (f.Min != nil || f.Max != nil) && !isEditRow
 
 		// build prefix and label
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
 		var prefix, label string
 		if isCursor {
-			prefix = c.theme.Primary.Render("▸ " + icon + " ")
+			prefix = c.theme.Primary.Render("▸ "+icon) + " "
 			label = c.theme.Text.Bold(true).Render(paddedLabel)
 		} else {
 			prefix = "  " + c.theme.Muted.Render(icon) + " "
 			label = c.theme.FieldLabel.Render(paddedLabel)
-		}
-
-		// inline editor replaces value on the same row
-		isInlineEdit := false
-		if c.editing && c.editor != nil && r.fieldIdx == c.editField {
-			if ie, ok := c.editor.(InlineEditor); ok {
-				isInlineEdit = true
-				usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + 2
-				inlineW := width - usedW
-				if inlineW < 10 {
-					inlineW = 10
-				}
-				renderedVal = ie.InlineView(inlineW)
-				showBounds = false
-			}
 		}
 
 		if showBounds {
@@ -1279,165 +1303,47 @@ func (c content) renderBody(width int) string {
 		}
 
 		line := prefix + label + " " + dot + " " + renderedVal
+
+		// truncate value with ellipsis if line exceeds available width (skip for inline editors)
+		if lipgloss.Width(line) > width && !isEditRow {
+			// re-render with truncated value
+			usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + lipgloss.Width(" "+dot+" ")
+			maxValW := width - usedW - 1
+			if maxValW > 0 {
+				valPlain := val
+				if !hasVal {
+					valPlain = f.Default
+				}
+				if len(valPlain) > maxValW {
+					valPlain = valPlain[:maxValW-1] + "…"
+				}
+				if !hasVal {
+					renderedVal = c.renderFieldValue(*f, valPlain, true)
+				} else {
+					renderedVal = c.renderFieldValue(*f, valPlain, false)
+				}
+				line = prefix + label + " " + dot + " " + renderedVal
+			}
+		}
+
+		if isCursor {
+			// pad to full width and apply background-based selection
+			padW := width - lipgloss.Width(line)
+			if padW > 0 {
+				line += strings.Repeat(" ", padW)
+			}
+			line = c.theme.RowActive.Render(line)
+		}
 		b.WriteString(line)
 		b.WriteByte('\n')
 
-		// below-row editor (enum, color — non-inline only)
-		if c.editing && c.editor != nil && r.fieldIdx == c.editField && !isInlineEdit {
-			b.WriteString(c.editor.View(width))
-			b.WriteByte('\n')
-		}
-	}
-
-	return b.String()
-}
-
-// glamourRender renders markdown using glamour, rebuilding the renderer on width/theme change.
-// falls back to plain lipgloss on error.
-func (c content) glamourRender(md string, width int) string {
-	if c.glamCache == nil {
-		return c.theme.Muted.Render(md)
-	}
-	if c.glamCache.renderer == nil || c.glamCache.width != width {
-		r, err := glamour.NewTermRenderer(
-			c.theme.GlamourStyle(),
-			glamour.WithWordWrap(width),
-		)
-		if err != nil {
-			return c.theme.Muted.Render(md)
-		}
-		c.glamCache.renderer = r
-		c.glamCache.width = width
-	}
-	out, err := c.glamCache.renderer.Render(md)
-	if err != nil {
-		return c.theme.Muted.Render(md)
-	}
-	return strings.TrimRight(out, "\n")
-}
-
-func (c content) renderPreview(width, height int) string {
-	if c.config == nil {
-		return c.theme.Muted.Render("no preview")
-	}
-
-	f := c.currentField()
-
-	var b strings.Builder
-
-	if c.focused && f != nil {
-		// field description (rendered as markdown via glamour)
-		if f.Description != "" {
-			rendered := c.glamourRender(f.Description, width)
-			renderedLines := strings.Count(rendered, "\n") + 1
-			b.WriteString(rendered)
-			b.WriteByte('\n')
-			height -= renderedLines
-		}
-
-		// example value
-		if f.Example != "" && height > 1 {
-			label := c.theme.Subtext.Render("example: ")
-			val := c.theme.Muted.Italic(true).Render(f.Example)
-			b.WriteString(label + val)
-			b.WriteByte('\n')
-			height--
-		}
-
-		// hint
-		if f.Hint != "" && height > 1 {
-			label := c.theme.Subtext.Render("hint: ")
-			val := c.theme.Muted.Italic(true).Render(f.Hint)
-			b.WriteString(label + val)
-			b.WriteByte('\n')
-			height--
-		}
-
-		// doc link (field-specific or app-level fallback)
-		docLink := f.DocURL
-		docLabel := "doc: "
-		if docLink == "" && c.docsURL != "" {
-			docLink = c.docsURL
-			docLabel = "docs: "
-		}
-		if docLink != "" && height > 1 {
-			label := c.theme.Subtext.Render(docLabel)
-			link := c.theme.Secondary.Underline(true).Render(docLink)
-			b.WriteString(label + link)
-			b.WriteByte('\n')
-			height--
-		}
-	}
-
-	// file path + line number
-	pathLine := c.config.Path
-	if c.focused && c.previewFound {
-		pathLine += fmt.Sprintf(":%d", c.previewLine+1)
-	}
-	b.WriteString(c.theme.Subtext.Render(pathLine))
-	b.WriteByte('\n')
-	height--
-
-	if height < 1 {
-		return b.String()
-	}
-
-	if !c.focused {
-		// show app-level docs link when unfocused
-		if c.docsURL != "" && height > 1 {
-			label := c.theme.Subtext.Render("docs: ")
-			link := c.theme.Secondary.Underline(true).Render(c.docsURL)
-			b.WriteString(label + link)
-			b.WriteByte('\n')
-		}
-		return b.String()
-	}
-
-	// cursor on section header or no field — show file snippet without highlight
-	if f == nil {
-		return b.String()
-	}
-
-	data := c.config.Content()
-	rawLines := strings.Split(string(data), "\n")
-
-	if !c.previewFound {
-		val := f.Default
-		if v, ok := c.values[f.Key]; ok {
-			val = v
-		}
-		b.WriteString(c.theme.Success.Render(fmt.Sprintf("+ %s = %s  (will be added)", f.Key, val)))
-		return b.String()
-	}
-
-	// center snippet window on previewLine
-	startLine := c.previewLine - height/2
-	if startLine < 0 {
-		startLine = 0
-	}
-	endLine := startLine + height
-	if endLine > len(rawLines) {
-		endLine = len(rawLines)
-		startLine = endLine - height
-		if startLine < 0 {
-			startLine = 0
-		}
-	}
-
-	for i := startLine; i < endLine; i++ {
-		line := rawLines[i]
-		maxW := width - 2
-		if lipgloss.Width(line) > maxW {
-			line = line[:maxW]
-		}
-
-		if i == c.previewLine {
-			b.WriteString(c.theme.PreviewHL.Render("▶ " + line))
-		} else {
-			b.WriteString(c.theme.Muted.Render("  " + line))
-		}
-		if i < endLine-1 {
-			b.WriteByte('\n')
+		// expanded editor: render below cursor row for non-inline editors
+		if isEditRow {
+			if _, ok := c.detail.editor.(InlineEditor); !ok {
+				editorView := c.detail.editor.View(width)
+				b.WriteString(editorView)
+				b.WriteByte('\n')
+			}
 		}
 	}
 

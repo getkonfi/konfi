@@ -38,6 +38,11 @@ type Theme struct {
 	Sidebar   lipgloss.Style
 	Content   lipgloss.Style
 
+	// detail panel
+	Detail         lipgloss.Style
+	FaintSeparator lipgloss.Style
+	TabUnderline   lipgloss.Style
+
 	// icon rail + dashboard styles
 	Badge        lipgloss.Style
 	FieldLabel   lipgloss.Style
@@ -108,6 +113,20 @@ func (t *Theme) recompute() {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(p.Border).
 		Padding(0, 1)
+
+	t.Detail = lipgloss.NewStyle().
+		BorderStyle(lipgloss.Border{Left: "│"}).
+		BorderLeft(true).
+		BorderForeground(p.Border).
+		Padding(0, 1)
+
+	t.FaintSeparator = lipgloss.NewStyle().
+		Foreground(p.Muted)
+
+	t.TabUnderline = lipgloss.NewStyle().
+		BorderStyle(lipgloss.ThickBorder()).
+		BorderBottom(true).
+		BorderForeground(p.BorderFocus)
 
 	t.Badge = lipgloss.NewStyle().
 		Background(p.Surface).

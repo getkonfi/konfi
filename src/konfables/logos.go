@@ -103,6 +103,36 @@ var konfiguratorLogo = pkg.PixelArt{
 	},
 }
 
+// LogoAnims maps app names to their logo animation configs.
+var LogoAnims = map[string]pkg.AnimConfig{
+	"ghostty": {
+		Kind: pkg.AnimBlink, Frames: 8, TickMs: 60,
+		BlinkPixels: []pkg.Pixel{
+			{Row: 4, Col: 4}, {Row: 4, Col: 5}, {Row: 5, Col: 4}, {Row: 5, Col: 5},
+			{Row: 4, Col: 10}, {Row: 4, Col: 11}, {Row: 5, Col: 10}, {Row: 5, Col: 11},
+		},
+		// open, open, open, closed, closed, open, open, open
+		BlinkSeq: []bool{true, true, true, false, false, true, true, true},
+	},
+	"starship": {
+		Kind: pkg.AnimFlame, Frames: 20, TickMs: 60,
+		FlameZone:   [4]int{9, 11, 5, 10},
+		FlameColors: []uint8{rd, or, yl, dk},
+		// ramp up → plateau → die down
+		FlameRamp: []int{
+			1, 2, 3, 4, 5, 6, 6, 6, 6, 6,
+			5, 5, 4, 4, 3, 3, 2, 1, 0, 0,
+		},
+	},
+	"alacritty": {
+		Kind: pkg.AnimFade, Frames: 12, TickMs: 60,
+	},
+	"hyprland": {
+		Kind: pkg.AnimWave, Frames: 33, TickMs: 60,
+		WaveBright: []uint8{255, 195, 153, 111},
+	},
+}
+
 // hyprland — abstract flowing wave/swirl
 var hyprlandLogo = pkg.PixelArt{
 	Width: 16, Height: 12,

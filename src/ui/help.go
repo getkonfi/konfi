@@ -43,10 +43,10 @@ var helpSidebar = helpGroup{
 }
 
 var helpContent = helpGroup{
-	Title: "Content",
+	Title: "Field List",
 	Bindings: []helpBinding{
 		{"j/k ↑↓", "navigate fields"},
-		{"⏎", "edit field"},
+		{"⏎", "edit in detail panel"},
 		{"[ ]", "prev/next section"},
 		{"/", "search fields"},
 		{"f", "toggle configured"},
@@ -56,11 +56,12 @@ var helpContent = helpGroup{
 }
 
 var helpEditor = helpGroup{
-	Title: "Editor",
+	Title: "Editor (Detail Panel)",
 	Bindings: []helpBinding{
-		{"⏎", "confirm"},
-		{"esc", "cancel"},
-		{"↑↓", "select (enum)"},
+		{"⏎", "confirm edit"},
+		{"esc", "cancel edit"},
+		{"↑↓", "select (enum/color)"},
+		{"tab", "switch mode (color)"},
 	},
 }
 
