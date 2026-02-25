@@ -1,6 +1,8 @@
 app: alacritty
 format: toml
 schema_version: 1.0.0
+min_app_version: "0.13.0"
+max_app_version: "1.0.0"
 docs_url: "https://alacritty.org/config-alacritty.html"
 hints:
   - "TOML config — sections are [tables], nested via dots"
@@ -105,7 +107,7 @@ sections:
         type: color
         default: "#181818"
         description: default background color
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-primary"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
         palette:
           - "#181818"
           - "#1d2021"
@@ -122,7 +124,7 @@ sections:
         type: color
         default: "#d8d8d8"
         description: default foreground text color
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-primary"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
         palette:
           - "#d8d8d8"
           - "#ebdbb2"
@@ -139,7 +141,7 @@ sections:
         type: color
         default: "#828482"
         description: dimmed text color (auto-calculated if unset)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-primary"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.draw_bold_text_with_bright_colors
         label: Bold as Bright
         type: bool
@@ -159,7 +161,7 @@ sections:
         description: text color under the block cursor
         options: [CellForeground, CellBackground]
         hint: or set a hex color string like "#ffffff"
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-cursor"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.cursor.cursor
         label: Cursor Color
         type: enum
@@ -167,7 +169,7 @@ sections:
         description: color of the cursor itself
         options: [CellForeground, CellBackground]
         hint: or set a hex color string like "#ffffff"
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-cursor"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.selection.text
         label: Selection Text
         type: enum
@@ -175,7 +177,7 @@ sections:
         description: text color in selected regions
         options: [CellForeground, CellBackground]
         hint: or set a hex color string like "#ffffff"
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-selection"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.selection.background
         label: Selection BG
         type: enum
@@ -183,103 +185,103 @@ sections:
         description: background color of selected regions
         options: [CellForeground, CellBackground]
         hint: or set a hex color string like "#ffffff"
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-selection"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.black
         label: Black
         type: color
         default: "#181818"
         description: normal black (ANSI 0)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.red
         label: Red
         type: color
         default: "#ac4242"
         description: normal red (ANSI 1)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.green
         label: Green
         type: color
         default: "#90a959"
         description: normal green (ANSI 2)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.yellow
         label: Yellow
         type: color
         default: "#f4bf75"
         description: normal yellow (ANSI 3)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.blue
         label: Blue
         type: color
         default: "#6a9fb5"
         description: normal blue (ANSI 4)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.magenta
         label: Magenta
         type: color
         default: "#aa759f"
         description: normal magenta (ANSI 5)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.cyan
         label: Cyan
         type: color
         default: "#75b5aa"
         description: normal cyan (ANSI 6)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.white
         label: White
         type: color
         default: "#d8d8d8"
         description: normal white (ANSI 7)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-normal"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.black
         label: Bright Black
         type: color
         default: "#6b6b6b"
         description: bright black (ANSI 8)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.red
         label: Bright Red
         type: color
         default: "#c55555"
         description: bright red (ANSI 9)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.green
         label: Bright Green
         type: color
         default: "#aac474"
         description: bright green (ANSI 10)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.yellow
         label: Bright Yellow
         type: color
         default: "#feca88"
         description: bright yellow (ANSI 11)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.blue
         label: Bright Blue
         type: color
         default: "#82b8c8"
         description: bright blue (ANSI 12)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.magenta
         label: Bright Magenta
         type: color
         default: "#c28cb8"
         description: bright magenta (ANSI 13)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.cyan
         label: Bright Cyan
         type: color
         default: "#93d3c3"
         description: bright cyan (ANSI 14)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.bright.white
         label: Bright White
         type: color
         default: "#f8f8f8"
         description: bright white (ANSI 15)
-        doc_url: "https://alacritty.org/config-alacritty.html#colors-bright"
+        doc_url: "https://alacritty.org/config-alacritty.html#colors"
 
   # ── Window ────────────────────────────────────────────────────────────
   - name: Window

@@ -369,31 +369,31 @@ sections:
         type: string
         default: "is [$symbol$version]($style) "
         description: format string for the package module
-        doc_url: "https://starship.rs/config/#package"
+        doc_url: "https://starship.rs/config/#package-version"
       - key: package.symbol
         label: Symbol
         type: string
         default: "📦 "
         description: symbol shown before the package version
-        doc_url: "https://starship.rs/config/#package"
+        doc_url: "https://starship.rs/config/#package-version"
       - key: package.style
         label: Style
         type: string
         default: "bold 208"
         description: style for the package module
-        doc_url: "https://starship.rs/config/#package"
+        doc_url: "https://starship.rs/config/#package-version"
       - key: package.display_private
         label: Display Private
         type: bool
         default: "false"
         description: show version for private packages
-        doc_url: "https://starship.rs/config/#package"
+        doc_url: "https://starship.rs/config/#package-version"
       - key: package.disabled
         label: Disabled
         type: bool
         default: "false"
         description: disable the package module
-        doc_url: "https://starship.rs/config/#package"
+        doc_url: "https://starship.rs/config/#package-version"
       - key: battery.format
         label: Format
         type: string
