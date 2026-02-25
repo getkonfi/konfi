@@ -165,6 +165,45 @@ sections:
 	}
 }
 
+func TestLoadSchema_AltOptionsRoundTrip(t *testing.T) {
+	raw := `
+app: test
+format: toml
+sections:
+  - name: General
+    key: ""
+    fields:
+      - key: symbol
+        label: Symbol
+        type: string
+        default: "[❯](bold green)"
+        description: a stylestring field
+        options:
+          - "❯"
+          - "➜"
+        alt_options:
+          - "bold green"
+          - "bold red"
+`
+	s, err := LoadSchema([]byte(raw))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	f := s.Sections[0].Fields[0]
+	if len(f.Options) != 2 {
+		t.Errorf("options: got %d, want 2", len(f.Options))
+	}
+	if len(f.AltOptions) != 2 {
+		t.Errorf("alt_options: got %d, want 2", len(f.AltOptions))
+	}
+	if f.AltOptions[0] != "bold green" {
+		t.Errorf("alt_options[0]: got %q, want %q", f.AltOptions[0], "bold green")
+	}
+	if f.AltOptions[1] != "bold red" {
+		t.Errorf("alt_options[1]: got %q, want %q", f.AltOptions[1], "bold red")
+	}
+}
+
 func TestLoadSchema_EnrichedFieldsOmitEmpty(t *testing.T) {
 	// fields without enriched metadata should marshal without those keys
 	f := Field{
@@ -178,7 +217,7 @@ func TestLoadSchema_EnrichedFieldsOmitEmpty(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 	s := string(data)
-	for _, key := range []string{"example:", "hint:", "doc_url:", "since:", "until:"} {
+	for _, key := range []string{"example:", "hint:", "doc_url:", "since:", "until:", "alt_options:"} {
 		if contains(s, key) {
 			t.Errorf("empty field should omit %q, got:\n%s", key, s)
 		}

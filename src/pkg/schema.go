@@ -36,6 +36,7 @@ type Field struct {
 	Default     string   `yaml:"default"`
 	Description string   `yaml:"description"`
 	Options     []string `yaml:"options,omitempty"`
+	AltOptions  []string `yaml:"alt_options,omitempty"`
 	Min         *float64 `yaml:"min,omitempty"`
 	Max         *float64 `yaml:"max,omitempty"`
 	Palette     []string `yaml:"palette,omitempty"`
