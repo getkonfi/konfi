@@ -267,6 +267,15 @@ func (d detail) renderTypeVisual(f *pkg.Field, width int) string {
 		val = v
 	}
 
+	if f.Widget == "stylestring" {
+		if d.editing {
+			if se, ok := d.editor.(*stylestringEditor); ok {
+				val = se.PreviewValue()
+			}
+		}
+		return d.renderStylestringPreview(val)
+	}
+
 	switch f.Type {
 	case "color":
 		if val == "" {
@@ -341,6 +350,17 @@ func (d detail) renderEnumPills(f *pkg.Field, val string) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+// renderStylestringPreview renders a stylestring value as symbol + style pills.
+func (d detail) renderStylestringPreview(val string) string {
+	sym, sty := parseStyleString(val)
+	if sty == "" {
+		return d.theme.Text.Bold(true).Render(val)
+	}
+	symPill := d.theme.Badge.Render(sym)
+	styPill := d.theme.Accent.Render(sty)
+	return symPill + " " + styPill
 }
 
 // renderFileSnippet renders the config file snippet centered on the field's line.

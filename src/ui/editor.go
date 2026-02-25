@@ -33,6 +33,11 @@ func editorForField(f pkg.Field) FieldEditor {
 		return &sliderEditor{}
 	case "path":
 		return &pathEditor{}
+	case "stylestring":
+		if len(f.Options) > 0 && len(f.AltOptions) > 0 {
+			return &stylestringEditor{}
+		}
+		return &stringEditor{}
 	}
 	switch f.Type {
 	case "number":

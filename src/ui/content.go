@@ -28,9 +28,10 @@ var fieldTypeIcon = map[string]string{
 	"multi":  "\uf046",  //
 
 	// widget-specific icons (checked before type)
-	"font":   "\uf031",       //
-	"slider": "\U000F1A8A", // nf-md-tune_vertical
-	"path":   "\uf115",       // nf-fa-folder_open
+	"font":        "\uf031",       //
+	"slider":      "\U000F1A8A", // nf-md-tune_vertical
+	"path":        "\uf115",       // nf-fa-folder_open
+	"stylestring": "\uf893",       // nf-md-format_color_text
 }
 
 // row represents a navigable item in the field list — either a section header or a field.
@@ -1290,6 +1291,8 @@ func (c content) renderBody(width int) string {
 					c.theme.Muted.Render(" → ") +
 					swatch(newHex) +
 					" " + c.theme.FieldValue.Render(newHex)
+			case *stylestringEditor:
+				renderedVal = c.theme.Accent.Render(e.PreviewValue())
 			}
 		}
 
@@ -1372,6 +1375,22 @@ func (c content) renderBody(width int) string {
 
 // renderFieldValue renders a field value with type-specific formatting.
 func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) string {
+	// stylestring rendering (widget takes priority)
+	if f.Widget == "stylestring" {
+		sym, sty := parseStyleString(val)
+		if sty != "" {
+			style := c.theme.FieldDefault
+			if !isDefault {
+				style = c.theme.FieldValue
+			}
+			return c.theme.Primary.Render("[") +
+				style.Render(sym) +
+				c.theme.Primary.Render("](") +
+				c.theme.Accent.Render(sty) +
+				c.theme.Primary.Render(")")
+		}
+	}
+
 	if isDefault {
 		switch f.Type {
 		case "bool":

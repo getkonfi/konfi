@@ -63,42 +63,60 @@ sections:
       - key: character.success_symbol
         label: Success Symbol
         type: string
+        widget: stylestring
         default: "[❯](bold green)"
         description: symbol shown after a successful command
         example: 'success_symbol = "[➜](bold green)"'
         hint: supports starship style strings like [text](style)
         doc_url: "https://starship.rs/config/#character"
         since: "0.1.0"
+        options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
+        alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.error_symbol
         label: Error Symbol
         type: string
+        widget: stylestring
         default: "[❯](bold red)"
         description: symbol shown after a failed command
         doc_url: "https://starship.rs/config/#character"
+        options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
+        alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.vimcmd_symbol
         label: Vim Cmd Symbol
         type: string
+        widget: stylestring
         default: "[❮](bold green)"
         description: symbol shown in vim normal mode
         doc_url: "https://starship.rs/config/#character"
+        options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
+        alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.vimcmd_replace_one_symbol
         label: Vim Replace One
         type: string
+        widget: stylestring
         default: "[❮](bold purple)"
         description: symbol shown in vim replace-one mode
         doc_url: "https://starship.rs/config/#character"
+        options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
+        alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.vimcmd_replace_symbol
         label: Vim Replace
         type: string
+        widget: stylestring
         default: "[❮](bold purple)"
         description: symbol shown in vim replace mode
         doc_url: "https://starship.rs/config/#character"
+        options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
+        alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.vimcmd_visual_symbol
         label: Vim Visual
         type: string
+        widget: stylestring
         default: "[❮](bold yellow)"
         description: symbol shown in vim visual mode
         doc_url: "https://starship.rs/config/#character"
+        options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
+        alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.disabled
         label: Disabled
         type: bool
