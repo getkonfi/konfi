@@ -1,0 +1,155 @@
+app: gnome
+format: gnome
+docs_url: https://help.gnome.org/admin/system-admin-guide/stable/appearance.html
+hints:
+  - settings are applied live via gsettings
+  - changes take effect immediately without restart
+
+sections:
+  - name: Appearance
+    fields:
+      - key: org.gnome.desktop.interface/color-scheme
+        label: Color Scheme
+        type: enum
+        options:
+          - default
+          - prefer-dark
+          - prefer-light
+        default: default
+        description: Preferred color scheme for applications that support it.
+
+      - key: org.gnome.desktop.interface/gtk-theme
+        label: GTK Theme
+        type: string
+        default: Adwaita
+        description: Name of the GTK theme to use for window decorations and widgets.
+        example: Adwaita-dark
+
+      - key: org.gnome.desktop.interface/icon-theme
+        label: Icon Theme
+        type: string
+        default: Adwaita
+        description: Name of the icon theme to use in file managers and applications.
+        example: Papirus
+
+      - key: org.gnome.desktop.interface/cursor-theme
+        label: Cursor Theme
+        type: string
+        default: Adwaita
+        description: Name of the cursor theme.
+        example: Bibata-Modern-Classic
+
+      - key: org.gnome.desktop.interface/cursor-size
+        label: Cursor Size
+        type: number
+        default: "24"
+        min: 16
+        max: 96
+        description: Size of the cursor in pixels.
+
+      - key: org.gnome.desktop.interface/enable-animations
+        label: Enable Animations
+        type: bool
+        default: "true"
+        description: Whether to enable UI animations throughout the desktop.
+
+  - name: Fonts
+    fields:
+      - key: org.gnome.desktop.interface/font-name
+        label: Interface Font
+        type: string
+        widget: font
+        default: Cantarell 11
+        description: Default font for the desktop interface and most applications.
+        example: Inter 11
+
+      - key: org.gnome.desktop.interface/document-font-name
+        label: Document Font
+        type: string
+        widget: font
+        default: Cantarell 11
+        description: Font used for reading documents.
+        example: Noto Serif 12
+
+      - key: org.gnome.desktop.interface/monospace-font-name
+        label: Monospace Font
+        type: string
+        widget: font
+        default: Source Code Pro 10
+        description: Font used in terminals and code editors.
+        example: JetBrains Mono 11
+
+      - key: org.gnome.desktop.interface/text-scaling-factor
+        label: Text Scaling Factor
+        type: number
+        default: "1.0"
+        min: 0.5
+        max: 3.0
+        description: Global text scaling multiplier applied on top of font sizes.
+        hint: "1.0 is normal, 1.25 is 125%"
+
+  - name: Clock
+    fields:
+      - key: org.gnome.desktop.interface/clock-format
+        label: Clock Format
+        type: enum
+        options:
+          - 12h
+          - 24h
+        default: 24h
+        description: Whether to use 12-hour or 24-hour format in the top bar clock.
+
+      - key: org.gnome.desktop.interface/clock-show-seconds
+        label: Show Seconds
+        type: bool
+        default: "false"
+        description: Whether to show seconds in the top bar clock.
+
+      - key: org.gnome.desktop.interface/clock-show-weekday
+        label: Show Weekday
+        type: bool
+        default: "false"
+        description: Whether to show the day of the week in the top bar clock.
+
+      - key: org.gnome.desktop.interface/show-battery-percentage
+        label: Show Battery Percentage
+        type: bool
+        default: "false"
+        description: Whether to show battery percentage in the top bar.
+
+  - name: Background
+    fields:
+      - key: org.gnome.desktop.background/picture-uri
+        label: Wallpaper
+        type: string
+        widget: path
+        default: ""
+        description: URI to the desktop wallpaper image.
+        example: file:///usr/share/backgrounds/gnome/blobs-l.svg
+        hint: use file:// prefix for local paths
+
+      - key: org.gnome.desktop.background/picture-options
+        label: Wallpaper Mode
+        type: enum
+        options:
+          - none
+          - wallpaper
+          - centered
+          - scaled
+          - stretched
+          - zoom
+          - spanned
+        default: zoom
+        description: How the wallpaper image is rendered on the desktop.
+
+      - key: org.gnome.desktop.background/primary-color
+        label: Primary Color
+        type: color
+        default: "#023c88"
+        description: Primary desktop background color, used when wallpaper is not set or as gradient start.
+
+      - key: org.gnome.desktop.background/secondary-color
+        label: Secondary Color
+        type: color
+        default: "#5789ca"
+        description: Secondary desktop background color, used as gradient end.

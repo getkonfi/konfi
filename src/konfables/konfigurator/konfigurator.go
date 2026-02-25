@@ -4,21 +4,25 @@ import (
 	_ "embed"
 
 	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/setup/cst"
+	"github.com/emin/konfigurator/pkg"
 )
 
 //go:embed schema.yaml
 var schemaData []byte
 
-type Konfigurator struct{}
+type Konfigurator struct {
+	*pkg.FilePersister
+}
 
-func New() *Konfigurator { return &Konfigurator{} }
+func New(p *pkg.FilePersister) *Konfigurator {
+	return &Konfigurator{FilePersister: p}
+}
 
 func (k *Konfigurator) Info() konfables.AppInfo {
 	return konfables.AppInfo{
 		Name:       "konfigurator",
 		Binary:     "",
-		ConfigPath: cst.ConfigFilePath(),
+		ConfigPath: k.Path,
 		Format:     "yaml",
 		Icon:       "⚙",
 		NerdIcon:   "\uf013", // nerd font gear
@@ -26,6 +30,6 @@ func (k *Konfigurator) Info() konfables.AppInfo {
 }
 
 func (k *Konfigurator) Name() string            { return "konfigurator" }
-func (k *Konfigurator) ConfigPath() string       { return cst.ConfigFilePath() }
+func (k *Konfigurator) ConfigPath() string       { return k.Path }
 func (k *Konfigurator) Parser() konfables.Parser { return &parser{} }
 func (k *Konfigurator) Schema() ([]byte, error)  { return schemaData, nil }

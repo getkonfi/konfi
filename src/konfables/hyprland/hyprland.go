@@ -13,15 +13,19 @@ import (
 //go:embed schema.yaml
 var schemaData []byte
 
-type Hyprland struct{}
+type Hyprland struct {
+	*pkg.FilePersister
+}
 
-func New() *Hyprland { return &Hyprland{} }
+func New(p *pkg.FilePersister) *Hyprland {
+	return &Hyprland{FilePersister: p}
+}
 
 func (h *Hyprland) Info() konfables.AppInfo {
 	return konfables.AppInfo{
 		Name:       "hyprland",
 		Binary:     "Hyprland",
-		ConfigPath: pkg.XDGConfigPath("hypr", "hyprland.conf"),
+		ConfigPath: h.Path,
 		Format:     "hyprland",
 		Icon:       "🪟",
 		NerdIcon:   "\uf219", //  window
@@ -29,7 +33,7 @@ func (h *Hyprland) Info() konfables.AppInfo {
 }
 
 func (h *Hyprland) Name() string             { return "hyprland" }
-func (h *Hyprland) ConfigPath() string       { return pkg.XDGConfigPath("hypr", "hyprland.conf") }
+func (h *Hyprland) ConfigPath() string       { return h.Path }
 func (h *Hyprland) Parser() konfables.Parser { return newParser() }
 func (h *Hyprland) Schema() ([]byte, error)  { return schemaData, nil }
 
@@ -39,18 +43,15 @@ func (h *Hyprland) Version(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// look for "Tag: v0.45.0" line
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if after, ok := strings.CutPrefix(line, "Tag:"); ok {
 			tag := strings.TrimSpace(after)
-			// tag may contain extra info after comma: "v0.45.0, ..."
 			if idx := strings.Index(tag, ","); idx >= 0 {
 				tag = tag[:idx]
 			}
 			return strings.TrimSpace(tag), nil
 		}
 	}
-	// fallback: first line
 	return strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0]), nil
 }

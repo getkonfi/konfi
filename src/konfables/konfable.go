@@ -1,6 +1,10 @@
 package konfables
 
-import "context"
+import (
+	"context"
+
+	"github.com/emin/konfigurator/pkg"
+)
 
 // AppInfo describes a konfable application.
 type AppInfo struct {
@@ -22,13 +26,13 @@ type Parser interface {
 }
 
 // Konfable represents a configurable application.
-// implicitly satisfies setup.Konfable (Name + ConfigPath).
 type Konfable interface {
 	Info() AppInfo
 	Parser() Parser
 	Schema() ([]byte, error)
 	Name() string
 	ConfigPath() string
+	pkg.Persister // embeds Load + Save
 }
 
 // MultiValueParser is an optional interface for parsers that support

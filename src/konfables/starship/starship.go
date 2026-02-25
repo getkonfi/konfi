@@ -9,20 +9,25 @@ import (
 	"strings"
 
 	"github.com/emin/konfigurator/konfables"
+	"github.com/emin/konfigurator/pkg"
 )
 
 //go:embed schema.yaml
 var schemaData []byte
 
-type Starship struct{}
+type Starship struct {
+	*pkg.FilePersister
+}
 
-func New() *Starship { return &Starship{} }
+func New(p *pkg.FilePersister) *Starship {
+	return &Starship{FilePersister: p}
+}
 
 func (s *Starship) Info() konfables.AppInfo {
 	return konfables.AppInfo{
 		Name:       "starship",
 		Binary:     "starship",
-		ConfigPath: configPath(),
+		ConfigPath: s.Path,
 		Format:     "toml",
 		Icon:       "🚀",
 		NerdIcon:   "\uf197", //  rocket
@@ -30,7 +35,7 @@ func (s *Starship) Info() konfables.AppInfo {
 }
 
 func (s *Starship) Name() string             { return "starship" }
-func (s *Starship) ConfigPath() string       { return configPath() }
+func (s *Starship) ConfigPath() string       { return s.Path }
 func (s *Starship) Parser() konfables.Parser { return &parser{} }
 func (s *Starship) Schema() ([]byte, error)  { return schemaData, nil }
 
@@ -40,7 +45,6 @@ func (s *Starship) Version(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// output: "starship 1.21.1\n..." — extract version token
 	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
 	if _, ver, ok := strings.Cut(line, " "); ok {
 		return strings.TrimSpace(ver), nil
@@ -48,8 +52,8 @@ func (s *Starship) Version(ctx context.Context) (string, error) {
 	return line, nil
 }
 
-// starship.toml lives at ~/.config/starship.toml (not in a subdirectory)
-func configPath() string {
+// DefaultConfigPath returns the standard starship.toml location.
+func DefaultConfigPath() string {
 	base := os.Getenv("XDG_CONFIG_HOME")
 	if base == "" {
 		home, _ := os.UserHomeDir()

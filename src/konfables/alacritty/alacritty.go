@@ -13,15 +13,19 @@ import (
 //go:embed schema.yaml
 var schemaData []byte
 
-type Alacritty struct{}
+type Alacritty struct {
+	*pkg.FilePersister
+}
 
-func New() *Alacritty { return &Alacritty{} }
+func New(p *pkg.FilePersister) *Alacritty {
+	return &Alacritty{FilePersister: p}
+}
 
 func (a *Alacritty) Info() konfables.AppInfo {
 	return konfables.AppInfo{
 		Name:       "alacritty",
 		Binary:     "alacritty",
-		ConfigPath: pkg.XDGConfigPath("alacritty", "alacritty.toml"),
+		ConfigPath: a.Path,
 		Format:     "toml",
 		Icon:       "🖥",
 		NerdIcon:   "\ue795", //  terminal
@@ -29,7 +33,7 @@ func (a *Alacritty) Info() konfables.AppInfo {
 }
 
 func (a *Alacritty) Name() string             { return "alacritty" }
-func (a *Alacritty) ConfigPath() string       { return pkg.XDGConfigPath("alacritty", "alacritty.toml") }
+func (a *Alacritty) ConfigPath() string       { return a.Path }
 func (a *Alacritty) Parser() konfables.Parser { return &parser{} }
 func (a *Alacritty) Schema() ([]byte, error)  { return schemaData, nil }
 
@@ -39,7 +43,6 @@ func (a *Alacritty) Version(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// output: "alacritty 0.15.1 (abcdef12)" — extract version token
 	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
 	fields := strings.Fields(line)
 	if len(fields) >= 2 {

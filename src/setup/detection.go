@@ -7,9 +7,12 @@ import (
 
 	"github.com/emin/konfigurator/konfables/alacritty"
 	"github.com/emin/konfigurator/konfables/ghostty"
+	"github.com/emin/konfigurator/konfables/gnome"
 	"github.com/emin/konfigurator/konfables/hyprland"
 	"github.com/emin/konfigurator/konfables/konfigurator"
 	"github.com/emin/konfigurator/konfables/starship"
+	"github.com/emin/konfigurator/pkg"
+	"github.com/emin/konfigurator/setup/cst"
 )
 
 // versioned matches konfables.Versioned — defined locally to avoid import cycle.
@@ -21,14 +24,37 @@ type konfableEntry struct {
 	binary string
 	create func() Konfable
 	system bool // virtual konfable, skip PATH detection
+	probe  func() bool // optional detection beyond PATH check
 }
 
 var allKonfables = []konfableEntry{
-	{"ghostty", func() Konfable { return ghostty.New() }, false},
-	{"starship", func() Konfable { return starship.New() }, false},
-	{"alacritty", func() Konfable { return alacritty.New() }, false},
-	{"Hyprland", func() Konfable { return hyprland.New() }, false},
-	{"", func() Konfable { return konfigurator.New() }, true},
+	{"ghostty", func() Konfable {
+		return ghostty.New(pkg.NewFilePersister(pkg.XDGConfigPath("ghostty", "config")))
+	}, false, nil},
+	{"starship", func() Konfable {
+		return starship.New(pkg.NewFilePersister(starship.DefaultConfigPath()))
+	}, false, nil},
+	{"alacritty", func() Konfable {
+		return alacritty.New(pkg.NewFilePersister(pkg.XDGConfigPath("alacritty", "alacritty.toml")))
+	}, false, nil},
+	{"Hyprland", func() Konfable {
+		return hyprland.New(pkg.NewFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf")))
+	}, false, nil},
+	{"", func() Konfable {
+		return konfigurator.New(pkg.NewFilePersister(
+			cst.ConfigFilePath(),
+			pkg.WithDefaultContent([]byte("theme: catppuccin\nlog_level: info\n")),
+		))
+	}, true, nil},
+	{"gsettings", func() Konfable {
+		return gnome.New(&gnome.GsettingsPersister{})
+	}, false, probeGsettings},
+}
+
+// probeGsettings checks whether the gnome desktop interface schema is available.
+func probeGsettings() bool {
+	out, err := exec.Command("gsettings", "list-keys", "org.gnome.desktop.interface").Output()
+	return err == nil && len(out) > 0
 }
 
 // KonfableInfo pairs a konfable with its registration metadata.
@@ -39,18 +65,25 @@ type KonfableInfo struct {
 
 // AllKonfablesWithInfo returns every registered konfable with metadata.
 func AllKonfablesWithInfo() []KonfableInfo {
-	out := make([]KonfableInfo, len(allKonfables))
-	for i, k := range allKonfables {
-		out[i] = KonfableInfo{Konfable: k.create(), System: k.system}
+	out := make([]KonfableInfo, 0, len(allKonfables))
+	for _, k := range allKonfables {
+		// skip entries that require a probe and fail it
+		if k.probe != nil && !k.probe() {
+			continue
+		}
+		out = append(out, KonfableInfo{Konfable: k.create(), System: k.system})
 	}
 	return out
 }
 
 // AllKonfables returns every registered konfable without probing PATH.
 func AllKonfables() []Konfable {
-	all := make([]Konfable, len(allKonfables))
-	for i, k := range allKonfables {
-		all[i] = k.create()
+	all := make([]Konfable, 0, len(allKonfables))
+	for _, k := range allKonfables {
+		if k.probe != nil && !k.probe() {
+			continue
+		}
+		all = append(all, k.create())
 	}
 	return all
 }
@@ -59,6 +92,11 @@ func AllKonfables() []Konfable {
 // system entries bypass PATH detection and are always included.
 func InitDetection(_ context.Context, app *App) error {
 	for _, k := range allKonfables {
+		// skip entries that require a probe and fail it
+		if k.probe != nil && !k.probe() {
+			continue
+		}
+
 		if k.system {
 			app.Detected = append(app.Detected, k.create())
 			continue
