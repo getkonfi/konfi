@@ -446,6 +446,122 @@ func TestDiagnose_DuplicateKeys(t *testing.T) {
 	}
 }
 
+// --- CompatibleWith tests ---
+
+func TestCompatibleWith_InRange(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	reason, ok := s.CompatibleWith("1.5.0")
+	if !ok {
+		t.Errorf("v1.5.0 should be compatible, got: %s", reason)
+	}
+}
+
+func TestCompatibleWith_AtBounds(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	// min boundary is inclusive
+	if reason, ok := s.CompatibleWith("1.0.0"); !ok {
+		t.Errorf("v1.0.0 (min boundary) should be compatible, got: %s", reason)
+	}
+	// max boundary is inclusive
+	if reason, ok := s.CompatibleWith("2.0.0"); !ok {
+		t.Errorf("v2.0.0 (max boundary) should be compatible, got: %s", reason)
+	}
+}
+
+func TestCompatibleWith_BelowMin(t *testing.T) {
+	s := &Schema{App: "ghostty", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	reason, ok := s.CompatibleWith("0.9.0")
+	if ok {
+		t.Error("v0.9.0 should be incompatible (below min)")
+	}
+	if reason == "" {
+		t.Error("expected a reason string")
+	}
+}
+
+func TestCompatibleWith_AboveMax(t *testing.T) {
+	s := &Schema{App: "ghostty", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	reason, ok := s.CompatibleWith("2.1.0")
+	if ok {
+		t.Error("v2.1.0 should be incompatible (above max)")
+	}
+	if reason == "" {
+		t.Error("expected a reason string")
+	}
+}
+
+func TestCompatibleWith_NoBounds(t *testing.T) {
+	s := &Schema{App: "test"}
+	if reason, ok := s.CompatibleWith("99.0.0"); !ok {
+		t.Errorf("no bounds should always be compatible, got: %s", reason)
+	}
+}
+
+func TestCompatibleWith_OnlyMin(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "2.0.0"}
+	if _, ok := s.CompatibleWith("1.0.0"); ok {
+		t.Error("v1.0.0 should be incompatible (below min, no max)")
+	}
+	if reason, ok := s.CompatibleWith("3.0.0"); !ok {
+		t.Errorf("v3.0.0 should be compatible (above min, no max), got: %s", reason)
+	}
+}
+
+func TestCompatibleWith_OnlyMax(t *testing.T) {
+	s := &Schema{App: "test", MaxAppVersion: "2.0.0"}
+	if reason, ok := s.CompatibleWith("1.0.0"); !ok {
+		t.Errorf("v1.0.0 should be compatible (no min, below max), got: %s", reason)
+	}
+	if _, ok := s.CompatibleWith("3.0.0"); ok {
+		t.Error("v3.0.0 should be incompatible (no min, above max)")
+	}
+}
+
+func TestCompatibleWith_EmptyVersion(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	if reason, ok := s.CompatibleWith(""); !ok {
+		t.Errorf("empty version should be compatible (unknown), got: %s", reason)
+	}
+}
+
+func TestCompatibleWith_InvalidSemver(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "not-valid", MaxAppVersion: "also-bad"}
+	if reason, ok := s.CompatibleWith("1.0.0"); !ok {
+		t.Errorf("invalid bounds should be ignored, got: %s", reason)
+	}
+}
+
+func TestCompatibleWith_YAMLRoundTrip(t *testing.T) {
+	raw := `
+app: test
+format: toml
+min_app_version: "1.0.0"
+max_app_version: "2.24.0"
+sections:
+  - name: General
+    fields:
+      - key: foo
+        label: Foo
+        type: string
+`
+	s, err := LoadSchema([]byte(raw))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if s.MinAppVersion != "1.0.0" {
+		t.Errorf("min_app_version: got %q, want %q", s.MinAppVersion, "1.0.0")
+	}
+	if s.MaxAppVersion != "2.24.0" {
+		t.Errorf("max_app_version: got %q, want %q", s.MaxAppVersion, "2.24.0")
+	}
+	if _, ok := s.CompatibleWith("1.5.0"); !ok {
+		t.Error("v1.5.0 should be in range")
+	}
+	if _, ok := s.CompatibleWith("3.0.0"); ok {
+		t.Error("v3.0.0 should be out of range")
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && searchString(s, substr)
 }

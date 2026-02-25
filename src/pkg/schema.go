@@ -13,6 +13,8 @@ type Schema struct {
 	App           string    `yaml:"app"`
 	Format        string    `yaml:"format"`
 	SchemaVersion string    `yaml:"schema_version,omitempty"`
+	MinAppVersion string    `yaml:"min_app_version,omitempty"`
+	MaxAppVersion string    `yaml:"max_app_version,omitempty"`
 	DocsURL       string    `yaml:"docs_url,omitempty"`
 	Hints         []string  `yaml:"hints,omitempty"`
 	Sections      []Section `yaml:"sections"`
@@ -52,6 +54,8 @@ func (s *Schema) FilterByVersion(v string) *Schema {
 		App:           s.App,
 		Format:        s.Format,
 		SchemaVersion: s.SchemaVersion,
+		MinAppVersion: s.MinAppVersion,
+		MaxAppVersion: s.MaxAppVersion,
 		DocsURL:       s.DocsURL,
 		Hints:         slices.Clone(s.Hints),
 	}
@@ -82,6 +86,27 @@ func (s *Schema) FilterByVersion(v string) *Schema {
 		})
 	}
 	return out
+}
+
+// CompatibleWith checks if appVersion falls within [MinAppVersion, MaxAppVersion].
+// returns ("", true) when compatible or when bounds are unset.
+// returns (reason, false) when the version is outside the declared range.
+func (s *Schema) CompatibleWith(appVersion string) (string, bool) {
+	nv := NormalizeSemver(appVersion)
+	if nv == "" {
+		return "", true
+	}
+	if min := NormalizeSemver(s.MinAppVersion); min != "" {
+		if semver.Compare(nv, min) < 0 {
+			return fmt.Sprintf("schema requires %s %s+, detected %s", s.App, s.MinAppVersion, appVersion), false
+		}
+	}
+	if max := NormalizeSemver(s.MaxAppVersion); max != "" {
+		if semver.Compare(nv, max) > 0 {
+			return fmt.Sprintf("schema covers %s up to %s, detected %s", s.App, s.MaxAppVersion, appVersion), false
+		}
+	}
+	return "", true
 }
 
 // fieldVisibleAt checks if a field is visible at the given normalized semver.
