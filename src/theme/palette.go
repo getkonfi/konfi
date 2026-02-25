@@ -45,6 +45,30 @@ func PaletteByName(name string) *Palette {
 	return &Palettes[0]
 }
 
+// PaletteHex is a named color extracted from a palette.
+type PaletteHex struct {
+	Name string
+	Hex  string
+}
+
+// Hexes returns the palette's accent and semantic colors as hex strings.
+// uses dark-mode TrueColor values.
+func (p Palette) Hexes() []PaletteHex {
+	return []PaletteHex{
+		{"base", p.Base.Dark.TrueColor},
+		{"surface", p.Surface.Dark.TrueColor},
+		{"overlay", p.Overlay.Dark.TrueColor},
+		{"text", p.Text.Dark.TrueColor},
+		{"muted", p.Muted.Dark.TrueColor},
+		{"primary", p.Primary.Dark.TrueColor},
+		{"secondary", p.Secondary.Dark.TrueColor},
+		{"accent", p.Accent.Dark.TrueColor},
+		{"success", p.Success.Dark.TrueColor},
+		{"warning", p.Warning.Dark.TrueColor},
+		{"error", p.Error.Dark.TrueColor},
+	}
+}
+
 // PaletteNames returns all available palette names.
 func PaletteNames() []string {
 	names := make([]string, len(Palettes))
