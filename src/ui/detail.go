@@ -151,9 +151,9 @@ func (d detail) viewBrowse(width, height int) string {
 		b.WriteString(d.theme.Subtext.Render(pathDisplay))
 		b.WriteByte('\n')
 		if d.docsURL != "" {
-			label := d.theme.Subtext.Render("docs: ")
-			link := d.theme.Secondary.Underline(true).Render(d.docsURL)
-			b.WriteString(label + link)
+			key := d.theme.Badge.Render(" o ")
+			label := d.theme.Subtext.Render(" open docs")
+			b.WriteString(key + label)
 		}
 		return b.String()
 	}
@@ -183,8 +183,8 @@ func (d detail) viewBrowse(width, height int) string {
 
 	// description
 	if f.Description != "" {
-		b.WriteString(d.theme.Muted.Bold(true).Render("description"))
-		b.WriteByte('\n')
+		//b.WriteString(d.theme.Muted.Bold(true).Render("description"))
+		//b.WriteByte('\n')
 		rendered := d.glamourRender(f.Description, width)
 		b.WriteString(rendered)
 		b.WriteByte('\n')
@@ -207,38 +207,30 @@ func (d detail) viewBrowse(width, height int) string {
 	}
 
 	// doc link
-	docLink := f.DocURL
-	docLabel := "doc "
-	if docLink == "" && d.docsURL != "" {
-		docLink = d.docsURL
-		docLabel = "docs "
-	}
-	if docLink != "" {
-		labelW := lipgloss.Width(docLabel)
-		maxLinkW := width - labelW
-		if maxLinkW > 0 && len(docLink) > maxLinkW {
-			docLink = docLink[:maxLinkW-1] + "…"
-		}
-		label := d.theme.Subtext.Render(docLabel)
-		link := d.theme.Secondary.Underline(true).Render(docLink)
-		b.WriteString(label + link)
+	hasDoc := f.DocURL != "" || d.docsURL != ""
+	if hasDoc {
+		key := d.theme.Badge.Render(" o ")
+		label := d.theme.Subtext.Render(" open doc")
+		b.WriteString(key + label)
 		b.WriteByte('\n')
 	}
 
-	// live config line
-	val := f.Default
-	if v, ok := d.values[f.Key]; ok {
-		val = v
+	// live config line (skip for color — already shown in type visual)
+	if f.Type != "color" {
+		val := f.Default
+		if v, ok := d.values[f.Key]; ok {
+			val = v
+		}
+		keyStr := f.Key
+		sep := " = "
+		usedW := len(keyStr) + len(sep)
+		if len(val)+usedW > width && width > usedW+1 {
+			val = val[:width-usedW-1] + "…"
+		}
+		b.WriteByte('\n')
+		b.WriteString(d.theme.PreviewHL.Render(keyStr) + d.theme.Text.Render(sep) + d.theme.Accent.Render(val))
+		b.WriteByte('\n')
 	}
-	keyStr := f.Key
-	sep := " = "
-	usedW := len(keyStr) + len(sep)
-	if len(val)+usedW > width && width > usedW+1 {
-		val = val[:width-usedW-1] + "…"
-	}
-	b.WriteByte('\n')
-	b.WriteString(d.theme.PreviewHL.Render(keyStr) + d.theme.Text.Render(sep) + d.theme.Accent.Render(val))
-	b.WriteByte('\n')
 
 	// file snippet (generous — 12 lines context)
 	b.WriteByte('\n')
@@ -281,8 +273,13 @@ func (d detail) renderTypeVisual(f *pkg.Field, width int) string {
 			return ""
 		}
 		hex := normalizeHex(val)
-		sw := lipgloss.NewStyle().Background(lipgloss.Color(hex)).Render("████")
-		return sw + " " + d.theme.FieldValue.Render(val)
+		if d.editing {
+			if ce, ok := d.editor.(*colorEditor); ok {
+				hex = normalizeHex(ce.PreviewValue())
+			}
+		}
+		colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
+		return swatch(hex) + swatch(hex) + " " + colorStyle.Render(f.Key+" = "+strings.TrimPrefix(hex, "#"))
 
 	case "number":
 		if f.Min == nil && f.Max == nil {
@@ -401,4 +398,3 @@ func (d detail) renderFileSnippet(width, height int) string {
 	}
 	return b.String()
 }
-

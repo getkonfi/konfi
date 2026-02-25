@@ -19,7 +19,7 @@ const (
 	paneContent
 )
 
-const sidebarWidth = 24
+const sidebarWidth = 20
 
 type root struct {
 	app      *setup.App
@@ -449,13 +449,13 @@ func (r *root) updateHints() {
 	case paneSidebar:
 		if r.sidebar.searching {
 			r.content.hints = []keyHint{
-				{"↑↓", "navigate"},
+				{"←↑↓", "navigate"},
 				{"⏎", "select"},
 				{"esc", "clear"},
 			}
 		} else {
 			r.content.hints = []keyHint{
-				{"↑↓", "navigate"},
+				{"←↑↓", "navigate"},
 				{"⏎", "open"},
 				{"/", "search"},
 				{"→", "content"},
@@ -467,7 +467,7 @@ func (r *root) updateHints() {
 	case paneContent:
 		if r.content.searching {
 			r.content.hints = []keyHint{
-				{"↑↓", "navigate"},
+				{"←↑↓", "navigate"},
 				{"⏎", "lock"},
 				{"esc", "clear"},
 			}
@@ -475,7 +475,7 @@ func (r *root) updateHints() {
 			return
 		}
 		hints := []keyHint{
-			{"↑↓", "navigate"},
+			{"←↑↓", "navigate"},
 			{"⏎", "edit"},
 			{"JK", "scroll detail"},
 			{"[]", "section"},

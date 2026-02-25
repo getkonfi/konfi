@@ -497,6 +497,7 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.detail.reset()
 	c.insightLines = nil
 	c.insightIdx = 0
+	c.insightWarningCount = 0
 	c.insightGen++
 	c.logoAnimGen++
 	c.logoAnim = nil
@@ -776,11 +777,12 @@ func (c content) splitWidths(innerW int) (fieldW, detailW int) {
 }
 
 func (c content) fieldListHeight() int {
-	innerH := c.height - 2 - 2
-	if innerH < 3 {
-		innerH = 3
+	bodyH := c.height - logoBlockH
+	h := bodyH - c.fieldAreaOverhead()
+	if h < 3 {
+		h = 3
 	}
-	return innerH
+	return h
 }
 
 func (c content) pageSize() int {
@@ -791,10 +793,13 @@ func (c content) pageSize() int {
 	return p
 }
 
-// headerHeight returns the number of rendered lines the header occupies.
-// includes the search bar when active.
-func (c content) headerHeight() int {
-	h := 6
+// logoBlockH is the fixed height of the header/logo block (lines).
+const logoBlockH = 6
+
+// fieldAreaOverhead returns the number of lines before the first field row
+// in the field area (tabs + search bar). used by cursorLine for scroll.
+func (c content) fieldAreaOverhead() int {
+	h := 0
 	if c.schema != nil && len(c.schema.Sections) > 1 {
 		h++ // tab bar line
 	}
@@ -804,13 +809,13 @@ func (c content) headerHeight() int {
 	return h
 }
 
-// cursorLine returns the rendered line number for the current cursor position.
-// walks visible rows to account for section headers, blank lines, and editors.
+// cursorLine returns the rendered line number for the current cursor position
+// within the field area (relative to the scrollable body, not the full view).
 func (c content) cursorLine() int {
 	if c.schema == nil || len(c.visible) == 0 {
 		return 0
 	}
-	line := c.headerHeight()
+	line := c.fieldAreaOverhead()
 	for i := range c.visible {
 		if i == c.cursor {
 			return line
@@ -823,37 +828,66 @@ func (c content) cursorLine() int {
 func (c content) View() string {
 	// no border — structural division from sidebar edge and detail's left border
 	innerW := c.width - 2 // 2 padding (1 each side)
-	innerH := c.height
 	if innerW < 10 {
 		innerW = 10
 	}
-	if innerH < 3 {
-		innerH = 3
+
+	outerStyle := lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(c.width).
+		MaxWidth(c.width).
+		Height(c.height).
+		MaxHeight(c.height).
+		Align(lipgloss.Left, lipgloss.Top)
+
+	// header spans full content width
+	headerStr := c.renderHeader(innerW)
+
+	// body area below header
+	bodyH := c.height - logoBlockH
+	if bodyH < 3 {
+		bodyH = 3
+	}
+
+	// handle no-schema states (no detail panel)
+	if c.schema == nil {
+		var bodyStr string
+		switch {
+		case c.config != nil:
+			bodyStr = c.theme.Text.Render(string(c.config.Content()))
+		case c.konfable != nil:
+			msg := c.theme.Muted.Render(c.konfable.Name() + " is not installed")
+			hint := c.theme.Muted.Italic(true).Render("install it to configure")
+			bodyStr = centerLine(msg, innerW) + "\n" + centerLine(hint, innerW)
+		default:
+			bodyStr = c.theme.Muted.Render("select an app to view its configuration")
+		}
+		return outerStyle.Render(headerStr + bodyStr)
 	}
 
 	fieldListW, detailW := c.splitWidths(innerW)
 
-	// auto-scroll to keep cursor visible (schema mode)
-	if c.schema != nil && len(c.visible) > 0 {
+	// auto-scroll (cursor position is relative to field area)
+	if len(c.visible) > 0 {
 		cl := c.cursorLine()
 		if cl < c.scrollY {
 			c.scrollY = cl
 		}
-		// account for expanded editor height below cursor
 		cursorBottom := cl
 		if c.detail.editing && c.detail.editor != nil {
 			if _, ok := c.detail.editor.(InlineEditor); !ok {
-				cursorBottom += c.detail.editor.Height() + 1 // +1 for trailing newline
+				cursorBottom += c.detail.editor.Height() + 1
 			}
 		}
-		if cursorBottom >= c.scrollY+innerH {
-			c.scrollY = cursorBottom - innerH + 1
+		if cursorBottom >= c.scrollY+bodyH {
+			c.scrollY = cursorBottom - bodyH + 1
 		}
 	}
 
+	// render field area (tabs + search + fields — header is separate)
 	body := c.renderBody(fieldListW)
 
-	// apply scrolling
+	// apply scrolling to field area
 	lines := strings.Split(body, "\n")
 	if c.scrollY >= len(lines) {
 		c.scrollY = max(0, len(lines)-1)
@@ -861,28 +895,19 @@ func (c content) View() string {
 	if c.scrollY > 0 && c.scrollY < len(lines) {
 		lines = lines[c.scrollY:]
 	}
-
-	// trim to fit
-	if len(lines) > innerH {
-		lines = lines[:innerH]
+	if len(lines) > bodyH {
+		lines = lines[:bodyH]
 	}
 
 	fieldView := strings.Join(lines, "\n")
 
 	if detailW == 0 {
-		return lipgloss.NewStyle().
-			Padding(0, 1).
-			Width(c.width).
-			MaxWidth(c.width).
-			Height(c.height).
-			MaxHeight(c.height).
-			Align(lipgloss.Left, lipgloss.Top).
-			Render(fieldView)
+		return outerStyle.Render(headerStr + fieldView)
 	}
 
-	// pad field list to exact height
+	// pad field list to bodyH
 	fieldLines := strings.Count(fieldView, "\n") + 1
-	for fieldLines < innerH {
+	for fieldLines < bodyH {
 		fieldView += "\n"
 		fieldLines++
 	}
@@ -890,37 +915,29 @@ func (c content) View() string {
 	// sync detail and render in right column
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
 
-	// detail content width: detailW minus border (1) and padding (2)
 	detailContentW := detailW - 3
 	if detailContentW < 10 {
 		detailContentW = 10
 	}
-	detailView := c.detail.View(detailContentW, innerH)
+	detailView := c.detail.View(detailContentW, bodyH)
 
 	detailStyled := c.theme.Detail.
-		Width(detailW - 1). // content+padding; left border adds 1 more
+		Width(detailW - 1).
 		MaxWidth(detailW).
-		Height(innerH).
-		MaxHeight(innerH).
+		Height(bodyH).
+		MaxHeight(bodyH).
 		Render(detailView)
 
 	fieldCol := lipgloss.NewStyle().
 		Width(fieldListW).
 		MaxWidth(fieldListW).
-		Height(innerH).
-		MaxHeight(innerH).
+		Height(bodyH).
+		MaxHeight(bodyH).
 		Render(fieldView)
 
-	combined := lipgloss.JoinHorizontal(lipgloss.Top, fieldCol, detailStyled)
+	bodyRow := lipgloss.JoinHorizontal(lipgloss.Top, fieldCol, detailStyled)
 
-	return lipgloss.NewStyle().
-		Padding(0, 1).
-		Width(c.width).
-		MaxWidth(c.width).
-		Height(c.height).
-		MaxHeight(c.height).
-		Align(lipgloss.Left, lipgloss.Top).
-		Render(combined)
+	return outerStyle.Render(headerStr + bodyRow)
 }
 
 // labelColumnWidth computes the max label width for the active section.
@@ -945,6 +962,16 @@ func (c *content) buildInsights() {
 		return
 	}
 
+	// schema compatibility warning
+	if c.konfable != nil {
+		if v, ok := c.versions[c.konfable.Name()]; ok {
+			if reason, ok := c.schema.CompatibleWith(v); !ok {
+				c.insightLines = append(c.insightLines, reason)
+				c.insightWarningCount++
+			}
+		}
+	}
+
 	// linter warnings from Diagnose
 	if c.config != nil && c.konfable != nil && c.konfable.Parser() != nil {
 		keys := c.konfable.Parser().ListKeys(c.config.Content())
@@ -956,7 +983,7 @@ func (c *content) buildInsights() {
 		for _, d := range diags {
 			c.insightLines = append(c.insightLines, d.Message)
 		}
-		c.insightWarningCount = len(diags)
+		c.insightWarningCount += len(diags)
 	}
 
 	totalFields := 0
@@ -1007,8 +1034,9 @@ func (c content) headerLeftLines() []string {
 }
 
 // renderHeader produces the two-column header or narrow fallback.
+// always renders exactly logoBlockH lines + trailing newline.
 func (c content) renderHeader(width int) string {
-	hh := c.headerHeight()
+	hh := logoBlockH
 
 	if c.konfable == nil {
 		// no app selected — empty header padded to height
@@ -1089,7 +1117,7 @@ func (c content) renderHeader(width int) string {
 			}
 		}
 		// line 2 (insight): use warning style for linter diagnostics
-		if i == 2 && c.insightWarningCount > 0 {
+		if i == 2 && c.insightWarningCount > 0 && len(c.insightLines) > 0 {
 			idx := c.insightIdx % len(c.insightLines)
 			if idx < c.insightWarningCount {
 				s = c.theme.Warning
@@ -1189,25 +1217,10 @@ func (c content) renderTabs(_ int) string {
 	return line
 }
 
+// renderBody produces the scrollable field area: tabs + search + field rows.
+// header and no-schema states are handled in View.
 func (c content) renderBody(width int) string {
-	if c.schema == nil {
-		if c.config != nil {
-			return c.theme.Text.Render(string(c.config.Content()))
-		}
-		if c.konfable != nil {
-			// not-installed state — show logo header, then hint
-			header := c.renderHeader(width)
-			msg := c.theme.Muted.Render(c.konfable.Name() + " is not installed")
-			hint := c.theme.Muted.Italic(true).Render("install it to configure")
-			return header + "\n" + centerLine(msg, width) + "\n" + centerLine(hint, width)
-		}
-		return c.theme.Muted.Render("select an app to view its configuration")
-	}
-
 	var b strings.Builder
-
-	// header: two-column (or narrow fallback)
-	b.WriteString(c.renderHeader(width))
 
 	// section tabs
 	if tabs := c.renderTabs(width); tabs != "" {
@@ -1266,10 +1279,17 @@ func (c content) renderBody(width int) string {
 			renderedVal = c.renderFieldValue(*f, val, false)
 		}
 
-		// inline editor: replace value portion with InlineView
+		// inline editor: replace value portion with InlineView or live preview
 		if isEditRow {
-			if ie, ok := c.detail.editor.(InlineEditor); ok {
-				renderedVal = ie.InlineView(width / 2)
+			switch e := c.detail.editor.(type) {
+			case InlineEditor:
+				renderedVal = e.InlineView(width / 2)
+			case *colorEditor:
+				newHex := normalizeHex(e.PreviewValue())
+				renderedVal = swatch(e.oldHex) +
+					c.theme.Muted.Render(" → ") +
+					swatch(newHex) +
+					" " + c.theme.FieldValue.Render(newHex)
 			}
 		}
 
@@ -1360,10 +1380,11 @@ func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) strin
 			}
 			return c.theme.FieldDefault.Render("○ false")
 		case "color":
-			swatch := lipgloss.NewStyle().
-				Background(lipgloss.Color(normalizeHex(val))).
-				Render("██")
-			return swatch + " " + c.theme.FieldDefault.Render(val)
+			hex := normalizeHex(val)
+			if hex == "" {
+				return c.theme.FieldDefault.Render("not set")
+			}
+			return swatch(hex) + " " + c.theme.FieldDefault.Render(val)
 		default:
 			return c.theme.FieldDefault.Render(val)
 		}
@@ -1376,10 +1397,11 @@ func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) strin
 		}
 		return c.theme.Muted.Render("○") + " " + c.theme.FieldValue.Render("false")
 	case "color":
-		swatch := lipgloss.NewStyle().
-			Background(lipgloss.Color(normalizeHex(val))).
-			Render("██")
-		return swatch + " " + c.theme.FieldValue.Render(val)
+		hex := normalizeHex(val)
+		if hex == "" {
+			return c.theme.Muted.Render("not set")
+		}
+		return swatch(hex) + " " + c.theme.FieldValue.Render(val)
 	default:
 		return c.theme.FieldValue.Render(val)
 	}
