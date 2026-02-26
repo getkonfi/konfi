@@ -213,6 +213,10 @@ func (s *AnimState) applyFlame(frame *PixelArt) {
 		if p.Life > 1 && s.rand()%3 == 0 {
 			p.Row--
 		}
+		// kill particles that escaped above the flame zone
+		if p.Row < zone[0] {
+			continue
+		}
 		// color fades through the palette over lifetime
 		ci := p.Life * len(colors) / p.MaxLife
 		if ci >= len(colors) {
