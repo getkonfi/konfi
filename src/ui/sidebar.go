@@ -28,6 +28,7 @@ type sidebar struct {
 	width     int
 	height    int
 	theme     *theme.Theme
+	dirtyApps map[string]bool // apps with unsaved changes
 }
 
 func newSidebar(items []sidebarItem, th *theme.Theme) sidebar {
@@ -208,7 +209,7 @@ func (s sidebar) View() string {
 
 func (s sidebar) viewCollapsed() string {
 	var b strings.Builder
-	innerH := s.height // no vertical border or padding
+	innerH := s.height
 	if innerH < 1 {
 		innerH = 1
 	}
@@ -223,48 +224,47 @@ func (s sidebar) viewCollapsed() string {
 		}
 		item := s.items[origIdx]
 		isCursor := fi == s.cursor
-		icon := item.icon
-		if icon == "" {
-			icon = "•"
+
+		// first letter as label
+		glyph := string([]rune(item.name)[0])
+		if s.dirtyApps[item.name] {
+			glyph += "*"
 		}
 
 		var styled string
 		switch {
 		case isCursor:
-			styled = s.theme.Primary.Render(icon)
+			styled = s.theme.Primary.Underline(true).Render(glyph)
 		case !item.installed:
-			styled = s.theme.Muted.Render(icon)
+			styled = s.theme.Muted.Render(glyph)
 		default:
-			styled = s.theme.Subtext.Render(icon)
+			styled = s.theme.Subtext.Render(glyph)
 		}
 		b.WriteString(styled)
 		line++
 	}
 
 	// system items at the bottom
-	var sysIcons []string
+	var sysLabels []string
 	for fi, origIdx := range s.filtered {
 		if !s.items[origIdx].system {
 			continue
 		}
 		item := s.items[origIdx]
-		icon := item.icon
-		if icon == "" {
-			icon = "•"
-		}
+		glyph := string([]rune(item.name)[0])
 		isCursor := fi == s.cursor
 		if isCursor {
-			sysIcons = append(sysIcons, s.theme.Primary.Render(icon))
+			sysLabels = append(sysLabels, s.theme.Primary.Underline(true).Render(glyph))
 		} else {
-			sysIcons = append(sysIcons, s.theme.Muted.Render(icon))
+			sysLabels = append(sysLabels, s.theme.Muted.Render(glyph))
 		}
 	}
 
 	topStr := b.String()
 	topLines := strings.Count(topStr, "\n") + 1
-	if len(sysIcons) > 0 {
-		botStr := strings.Join(sysIcons, "\n")
-		botLines := len(sysIcons)
+	if len(sysLabels) > 0 {
+		botStr := strings.Join(sysLabels, "\n")
+		botLines := len(sysLabels)
 		gap := innerH - topLines - botLines
 		if gap < 1 {
 			gap = 1
@@ -341,37 +341,36 @@ func (s sidebar) viewExpanded() string {
 }
 
 func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
-	iconGlyph := item.icon
-	if iconGlyph == "" {
-		iconGlyph = "•"
+	name := item.name
+	if s.dirtyApps[item.name] {
+		name += " *"
 	}
 
 	// when sidebar is unfocused, dim all items
 	if !s.focused {
-		iconStyle := s.theme.Muted.Faint(true)
 		nameStyle := s.theme.Muted.Faint(true)
-		body := iconStyle.Render(iconGlyph) + " " + nameStyle.Render(item.name)
+		body := nameStyle.Render(name)
 		return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
 	}
 
-	var iconStyle, nameStyle lipgloss.Style
+	var nameStyle lipgloss.Style
 	if item.installed {
-		iconStyle = s.theme.Subtext
 		nameStyle = s.theme.Text
 	} else {
-		iconStyle = s.theme.Muted
 		nameStyle = s.theme.Muted
 	}
 
+	prefix := "  "
 	if isCursor {
-		iconStyle = s.theme.Primary
+		prefix = s.theme.Primary.Render("> ")
 		if item.installed {
-			nameStyle = s.theme.Primary
+			nameStyle = s.theme.Primary.Underline(true)
+		} else {
+			nameStyle = s.theme.Muted.Underline(true)
 		}
 	}
 
-	body := iconStyle.Render(iconGlyph) + " " + nameStyle.Render(item.name)
-	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
+	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(prefix + nameStyle.Render(name))
 }
 
 // renderPanel wraps content in the sidebar style with right-edge border.
