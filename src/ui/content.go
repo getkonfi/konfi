@@ -69,6 +69,9 @@ type content struct {
 	// detail sub-model (preview/detail pane, editor state, glamour cache, docs URL)
 	detail detail
 
+	// original values at load time — for per-field change tracking
+	origValues map[string]string
+
 	// file state indicator ("", "unsaved", "saved", "reloaded", "new")
 	fileState string
 
@@ -271,6 +274,22 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 					c.scrollY = 0
 				}
 			}
+		case "backspace", "delete":
+			if f := c.currentField(); f != nil && c.konfable != nil && c.config != nil {
+				curVal, hasCur := c.values[f.Key]
+				origVal, hasOrig := c.origValues[f.Key]
+				if hasCur && curVal != origVal {
+					// changed — revert to original
+					if hasOrig {
+						c.revertField(*f, origVal)
+					} else {
+						c.deleteField(*f)
+					}
+				} else if hasCur {
+					// unchanged — delete from config
+					c.deleteField(*f)
+				}
+			}
 		case "o":
 			if url := c.currentDocURL(); url != "" {
 				return c, c.openDocs(url)
@@ -296,6 +315,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		if c.config != nil && c.config.Path == msg.Path {
 			if err := c.config.Reload(context.Background()); err == nil {
 				c.refreshValues()
+				c.snapshotOrigValues()
 			}
 		}
 
@@ -464,6 +484,37 @@ func (c *content) toggleBool(f pkg.Field) {
 	c.refreshValues()
 }
 
+// deleteField removes a field's key from the config file.
+func (c *content) deleteField(f pkg.Field) {
+	p := c.konfable.Parser()
+	if p == nil {
+		return
+	}
+	data := c.config.Content()
+	newData, err := p.DeleteKey(data, f.Key)
+	if err != nil {
+		return
+	}
+	c.config.SetContent(newData)
+	c.refreshValues()
+}
+
+// revertField restores a field to its original value.
+func (c *content) revertField(f pkg.Field, origVal string) {
+	p := c.konfable.Parser()
+	if p == nil {
+		return
+	}
+	data := c.config.Content()
+	serialized := formatValue(origVal, f.Type, c.konfable.Info().Format)
+	newData, err := p.SetValue(data, f.Key, serialized)
+	if err != nil {
+		return
+	}
+	c.config.SetContent(newData)
+	c.refreshValues()
+}
+
 // stopWatching type-asserts the konfable for Watchable and calls Unwatch.
 func (c *content) stopWatching() {
 	if c.konfable == nil {
@@ -491,6 +542,7 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.search.SetValue("")
 	c.search.Blur()
 	c.values = make(map[string]string)
+	c.origValues = make(map[string]string)
 	c.scrollY = 0
 	c.cursor = 0
 	c.detail.editing = false
@@ -572,6 +624,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	}
 
 	c.refreshValues()
+	c.snapshotOrigValues()
 	c.buildInsights()
 	c.insightGen++
 
@@ -743,6 +796,80 @@ func (c *content) refreshValues() {
 	c.buildInsights()
 }
 
+// pendingChange describes a single field change relative to the on-disk snapshot.
+type pendingChange struct {
+	Section string
+	Label   string
+	Key     string
+	OldVal  string
+	NewVal  string
+	IsNew   bool // key wasn't in origValues
+	Deleted bool // key was removed
+}
+
+// pendingChanges computes per-field diffs between origValues and current values.
+func (c *content) pendingChanges() []pendingChange {
+	if c.schema == nil || c.origValues == nil {
+		return nil
+	}
+	var changes []pendingChange
+	seen := make(map[string]bool)
+
+	for i := range c.fields {
+		f := &c.fields[i]
+		seen[f.Key] = true
+		origVal, hadOrig := c.origValues[f.Key]
+		curVal, hasCur := c.values[f.Key]
+
+		if hadOrig == hasCur && origVal == curVal {
+			continue
+		}
+
+		sec := ""
+		if c.fieldSection != nil && i < len(c.fieldSection) {
+			si := c.fieldSection[i]
+			if si < len(c.schema.Sections) {
+				sec = c.schema.Sections[si].Name
+			}
+		}
+
+		changes = append(changes, pendingChange{
+			Section: sec,
+			Label:   f.Label,
+			Key:     f.Key,
+			OldVal:  origVal,
+			NewVal:  curVal,
+			IsNew:   !hadOrig && hasCur,
+			Deleted: hadOrig && !hasCur,
+		})
+	}
+
+	// check for keys in origValues that are no longer in values (deleted outside field list)
+	for key, origVal := range c.origValues {
+		if seen[key] {
+			continue
+		}
+		if _, hasCur := c.values[key]; !hasCur {
+			changes = append(changes, pendingChange{
+				Key:     key,
+				Label:   key,
+				OldVal:  origVal,
+				Deleted: true,
+			})
+		}
+	}
+
+	return changes
+}
+
+// snapshotOrigValues copies the current values as the baseline for change tracking.
+func (c *content) snapshotOrigValues() {
+	c.origValues = make(map[string]string, len(c.values))
+	for k, v := range c.values {
+		c.origValues[k] = v
+	}
+}
+
 // syncDetail pushes content state into the detail sub-model.
 func (c *content) syncDetail() {
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
@@ -778,7 +905,7 @@ func (c content) splitWidths(innerW int) (fieldW, detailW int) {
 }
 
 func (c content) fieldListHeight() int {
-	bodyH := c.height - logoBlockH
+	bodyH := c.height - logoBlockH - footerH
 	h := bodyH - c.fieldAreaOverhead()
 	if h < 3 {
 		h = 3
@@ -796,6 +923,10 @@ func (c content) pageSize() int {
 
 // logoBlockH is the fixed height of the header/logo block (lines).
 const logoBlockH = 6
+
+// wideLayoutMinW is the content panel width threshold for switching
+// to the wide layout where the detail pane spans the full height.
+const wideLayoutMinW = 100
 
 // fieldAreaOverhead returns the number of lines before the first field row
 // in the field area (tabs + search bar). used by cursorLine for scroll.
@@ -826,6 +957,90 @@ func (c content) cursorLine() int {
 	return 0
 }
 
+// footerH is the fixed height of the bottom preview bar.
+const footerH = 1
+
+// renderFooter builds the 1-line preview bar showing key = value for the focused field.
+func (c content) renderFooter(width int) string {
+	f := c.currentField()
+	if f == nil {
+		return c.theme.Muted.Render(strings.Repeat("─", width))
+	}
+
+	key := f.Key
+	val := f.Default
+	if v, ok := c.values[f.Key]; ok {
+		val = v
+	}
+
+	// live editor preview override
+	if c.detail.editing && c.detail.editor != nil {
+		switch e := c.detail.editor.(type) {
+		case *stylestringEditor:
+			val = e.PreviewValue()
+		case *colorEditor:
+			val = e.PreviewValue()
+		default:
+			val = c.detail.editor.Value()
+		}
+	}
+
+	// type-aware value rendering
+	sep := c.theme.Muted.Render("─ ")
+	keyStr := c.theme.PreviewHL.Render(key)
+	eq := c.theme.Muted.Render(" = ")
+	var valStr string
+
+	switch {
+	case f.Widget == "stylestring":
+		sym, sty := parseStyleString(val)
+		if sty != "" {
+			valStr = c.theme.Primary.Render("[") +
+				c.theme.Accent.Render(sym) +
+				c.theme.Primary.Render("](") +
+				c.theme.Muted.Render(sty) +
+				c.theme.Primary.Render(")")
+		} else {
+			valStr = c.theme.Accent.Render(val)
+		}
+	case f.Type == "color":
+		hex := normalizeHex(val)
+		if c.detail.editing {
+			if ce, ok := c.detail.editor.(*colorEditor); ok {
+				hex = normalizeHex(ce.PreviewValue())
+			}
+		}
+		if hex != "" {
+			valStr = swatch(hex) + " " + c.theme.Accent.Render(strings.TrimPrefix(hex, "#"))
+		} else {
+			valStr = c.theme.Muted.Render("not set")
+		}
+	case f.Type == "bool":
+		if val == "true" {
+			valStr = c.theme.Success.Render("●") + " " + c.theme.Accent.Render("true")
+		} else {
+			valStr = c.theme.Muted.Render("○") + " " + c.theme.Accent.Render("false")
+		}
+	default:
+		valStr = c.theme.Accent.Render(val)
+	}
+
+	line := sep + keyStr + eq + valStr
+
+	// truncate to width
+	if lipgloss.Width(line) > width {
+		// rough truncation: re-render with shortened val
+		maxVal := width - lipgloss.Width(sep+keyStr+eq) - 1
+		if maxVal > 0 && len(val) > maxVal {
+			val = val[:maxVal] + "…"
+			valStr = c.theme.Accent.Render(val)
+			line = sep + keyStr + eq + valStr
+		}
+	}
+
+	return line
+}
+
 func (c content) View() string {
 	// no border — structural division from sidebar edge and detail's left border
 	innerW := c.width - 2 // 2 padding (1 each side)
@@ -841,17 +1056,15 @@ func (c content) View() string {
 		MaxHeight(c.height).
 		Align(lipgloss.Left, lipgloss.Top)
 
-	// header spans full content width
-	headerStr := c.renderHeader(innerW)
-
-	// body area below header
-	bodyH := c.height - logoBlockH
+	// body area below header, minus footer
+	bodyH := c.height - logoBlockH - footerH
 	if bodyH < 3 {
 		bodyH = 3
 	}
 
-	// handle no-schema states (no detail panel)
+	// handle no-schema states (no detail panel, header at full width)
 	if c.schema == nil {
+		headerStr := c.renderHeader(innerW)
 		var bodyStr string
 		switch {
 		case c.config != nil:
@@ -867,6 +1080,14 @@ func (c content) View() string {
 	}
 
 	fieldListW, detailW := c.splitWidths(innerW)
+	wide := c.width > wideLayoutMinW && detailW > 0
+
+	// header width: left column only in wide mode, full width in narrow
+	headerW := innerW
+	if wide {
+		headerW = fieldListW
+	}
+	headerStr := c.renderHeader(headerW)
 
 	// auto-scroll (cursor position is relative to field area)
 	if len(c.visible) > 0 {
@@ -903,23 +1124,54 @@ func (c content) View() string {
 	fieldView := strings.Join(lines, "\n")
 
 	if detailW == 0 {
-		return outerStyle.Render(headerStr + fieldView)
+		footerStr := c.renderFooter(innerW)
+		return outerStyle.Render(headerStr + fieldView + "\n" + footerStr)
 	}
 
-	// pad field list to bodyH
-	fieldLines := strings.Count(fieldView, "\n") + 1
-	for fieldLines < bodyH {
-		fieldView += "\n"
-		fieldLines++
-	}
-
-	// sync detail and render in right column
+	// sync detail
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
 
 	detailContentW := detailW - 3
 	if detailContentW < 10 {
 		detailContentW = 10
 	}
+
+	if wide {
+		// wide layout: detail spans full height, header lives in left column
+		footerStr := c.renderFooter(fieldListW)
+		leftContent := headerStr + fieldView + "\n" + footerStr
+		leftLines := strings.Count(leftContent, "\n") + 1
+		for leftLines < c.height {
+			leftContent += "\n"
+			leftLines++
+		}
+
+		detailView := c.detail.View(detailContentW, c.height)
+
+		detailStyled := c.theme.Detail.
+			Width(detailW - 1).
+			MaxWidth(detailW).
+			Height(c.height).
+			MaxHeight(c.height).
+			Render(detailView)
+
+		leftCol := lipgloss.NewStyle().
+			Width(fieldListW).
+			MaxWidth(fieldListW).
+			Height(c.height).
+			MaxHeight(c.height).
+			Render(leftContent)
+
+		return outerStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, leftCol, detailStyled))
+	}
+
+	// narrow layout: header spans full width, detail shares bodyH with fields
+	fieldLines := strings.Count(fieldView, "\n") + 1
+	for fieldLines < bodyH {
+		fieldView += "\n"
+		fieldLines++
+	}
+
 	detailView := c.detail.View(detailContentW, bodyH)
 
 	detailStyled := c.theme.Detail.
@@ -937,8 +1189,9 @@ func (c content) View() string {
 		Render(fieldView)
 
 	bodyRow := lipgloss.JoinHorizontal(lipgloss.Top, fieldCol, detailStyled)
+	footerStr := c.renderFooter(fieldListW)
 
-	return outerStyle.Render(headerStr + bodyRow)
+	return outerStyle.Render(headerStr + bodyRow + "\n" + footerStr)
 }
 
 // labelColumnWidth computes the max label width for the active section.

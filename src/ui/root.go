@@ -210,6 +210,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					r.status.status = "save failed: " + err.Error()
 				} else {
 					r.content.fileState = "saved"
+					r.content.snapshotOrigValues()
 					r.status.status = "saved"
 					return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
 						return fileStateClearMsg{}
@@ -372,11 +373,41 @@ func (r *root) View() string {
 
 	r.layout()
 
+	// compute pending changes for changebar + sidebar dirty indicator
+	changes := r.content.pendingChanges()
+	cbH := changebarHeight(changes)
+
+	if r.sidebar.dirtyApps == nil {
+		r.sidebar.dirtyApps = make(map[string]bool)
+	}
+	if r.content.konfable != nil {
+		name := r.content.konfable.Name()
+		r.sidebar.dirtyApps[name] = len(changes) > 0
+	}
+
+	// adjust body height for changebar
+	if cbH > 0 {
+		r.sidebar.height -= cbH
+		r.content.height -= cbH
+	}
+
 	sidebarView := r.sidebar.View()
 	contentView := r.content.View()
 	statusView := r.status.View()
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
+
+	if cbH > 0 {
+		cbView := renderChangebar(changes, r.width, r.app.Theme)
+		cbStyle := r.app.Theme.Statusbar.Width(r.width)
+		view := lipgloss.JoinVertical(lipgloss.Left, body, cbStyle.Render(cbView), statusView)
+
+		if r.showHelp {
+			return renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
+		}
+		return view
+	}
+
 	view := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
 
 	if r.showHelp {
@@ -477,6 +508,7 @@ func (r *root) updateHints() {
 		hints := []keyHint{
 			{"←↑↓", "navigate"},
 			{"⏎", "edit"},
+			{"⌫", "revert/del"},
 			{"JK", "scroll detail"},
 			{"[]", "section"},
 			{"/", "search"},
