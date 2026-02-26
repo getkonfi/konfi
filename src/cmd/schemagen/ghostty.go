@@ -9,10 +9,12 @@ import (
 type ghosttyGenerator struct{}
 
 func (g *ghosttyGenerator) Generate(_ context.Context) (*pkg.Schema, error) {
-	return &pkg.Schema{
+	s := &pkg.Schema{
 		App:           "ghostty",
 		Format:        "ghostty",
 		SchemaVersion: "1.1.0",
+		MinAppVersion: "1.0.0",
+		MaxAppVersion: "1.1.0",
 		DocsURL:       "https://ghostty.org/docs/config",
 		Hints: []string{
 			"gpu-accelerated terminal with zero-config defaults",
@@ -36,7 +38,17 @@ func (g *ghosttyGenerator) Generate(_ context.Context) (*pkg.Schema, error) {
 			ghosttyClipboard(),
 			ghosttyAdvanced(),
 		},
-	}, nil
+	}
+	// fill doc_url for any field that doesn't already have one
+	const base = "https://ghostty.org/docs/config/reference#"
+	for si := range s.Sections {
+		for fi := range s.Sections[si].Fields {
+			if s.Sections[si].Fields[fi].DocURL == "" {
+				s.Sections[si].Fields[fi].DocURL = base + s.Sections[si].Fields[fi].Key
+			}
+		}
+	}
+	return s, nil
 }
 
 func ghosttyFontFamily() pkg.Section {
@@ -47,6 +59,7 @@ func ghosttyFontFamily() pkg.Section {
 				Key:         "font-family",
 				Label:       "Font Family",
 				Type:        "string",
+				Widget:      "font",
 				Description: "primary font family",
 				Example:     `font-family = JetBrains Mono`,
 				Hint:        "must be a font installed on the system",
@@ -57,6 +70,7 @@ func ghosttyFontFamily() pkg.Section {
 				Key:         "font-family-bold",
 				Label:       "Bold Font",
 				Type:        "string",
+				Widget:      "font",
 				Description: "font family for bold text",
 				Since:       "1.0.0",
 			},
@@ -64,6 +78,7 @@ func ghosttyFontFamily() pkg.Section {
 				Key:         "font-family-italic",
 				Label:       "Italic Font",
 				Type:        "string",
+				Widget:      "font",
 				Description: "font family for italic text",
 				Since:       "1.0.0",
 			},
@@ -71,6 +86,7 @@ func ghosttyFontFamily() pkg.Section {
 				Key:         "font-family-bold-italic",
 				Label:       "Bold Italic Font",
 				Type:        "string",
+				Widget:      "font",
 				Description: "font family for bold italic text",
 				Since:       "1.0.0",
 			},
@@ -237,6 +253,7 @@ func ghosttyColorAppearance() pkg.Section {
 				Key:         "background-opacity",
 				Label:       "BG Opacity",
 				Type:        "number",
+				Widget:      "slider",
 				Default:     "1.0",
 				Description: "background opacity (0.0–1.0)",
 				Min:         floatPtr(0),
@@ -280,6 +297,7 @@ func ghosttyCursor() pkg.Section {
 				Key:         "cursor-opacity",
 				Label:       "Cursor Opacity",
 				Type:        "number",
+				Widget:      "slider",
 				Default:     "1.0",
 				Description: "cursor opacity (0.0–1.0)",
 				Min:         floatPtr(0),
@@ -310,14 +328,17 @@ func ghosttyWindowChrome() pkg.Section {
 			{
 				Key:         "window-decoration",
 				Label:       "Window Decoration",
-				Type:        "bool",
-				Default:     "true",
-				Description: "show window decorations (title bar, etc.)",
+				Type:        "enum",
+				Default:     "auto",
+				Description: "window decoration mode",
+				Options:     []string{"none", "auto", "client", "server"},
+				Hint:        "auto uses OS/desktop default; client/server controls CSD vs SSD on Wayland",
 			},
 			{
 				Key:         "window-title-font-family",
 				Label:       "Title Font",
 				Type:        "string",
+				Widget:      "font",
 				Description: "font family for window title bar (macOS)",
 			},
 			{
@@ -501,7 +522,7 @@ func ghosttyInput() pkg.Section {
 				Type:        "enum",
 				Default:     "false",
 				Description: "shift+click capture behavior",
-				Options:     []string{"false", "true", "always"},
+				Options:     []string{"false", "true", "always", "never"},
 			},
 		},
 	}
@@ -515,6 +536,7 @@ func ghosttyShell() pkg.Section {
 				Key:         "command",
 				Label:       "Shell Command",
 				Type:        "string",
+				Widget:      "path",
 				Description: "command to run instead of default shell",
 				Hint:        "leave empty for login shell",
 			},

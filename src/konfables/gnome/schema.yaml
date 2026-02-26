@@ -16,14 +16,14 @@ sections:
           - prefer-dark
           - prefer-light
         default: default
-        description: Preferred color scheme for applications that support it.
+        description: preferred color scheme
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
       - key: org.gnome.desktop.interface/gtk-theme
         label: GTK Theme
         type: string
         default: Adwaita
-        description: Name of the GTK theme to use for window decorations and widgets.
+        description: GTK theme name
         example: Adwaita-dark
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
@@ -31,7 +31,7 @@ sections:
         label: Icon Theme
         type: string
         default: Adwaita
-        description: Name of the icon theme to use in file managers and applications.
+        description: icon theme name
         example: Papirus
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
@@ -39,7 +39,7 @@ sections:
         label: Cursor Theme
         type: string
         default: Adwaita
-        description: Name of the cursor theme.
+        description: cursor theme name
         example: Bibata-Modern-Classic
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
@@ -49,14 +49,14 @@ sections:
         default: "24"
         min: 16
         max: 96
-        description: Size of the cursor in pixels.
+        description: cursor size (px)
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
       - key: org.gnome.desktop.interface/enable-animations
         label: Enable Animations
         type: bool
         default: "true"
-        description: Whether to enable UI animations throughout the desktop.
+        description: enable desktop animations
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
   - name: Fonts
@@ -66,7 +66,7 @@ sections:
         type: string
         widget: font
         default: Cantarell 11
-        description: Default font for the desktop interface and most applications.
+        description: default interface font
         example: Inter 11
         doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
 
@@ -75,7 +75,7 @@ sections:
         type: string
         widget: font
         default: Cantarell 11
-        description: Font used for reading documents.
+        description: document font
         example: Noto Serif 12
         doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
 
@@ -84,18 +84,19 @@ sections:
         type: string
         widget: font
         default: Source Code Pro 10
-        description: Font used in terminals and code editors.
+        description: monospace font
         example: JetBrains Mono 11
         doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
 
       - key: org.gnome.desktop.interface/text-scaling-factor
         label: Text Scaling Factor
         type: number
+        widget: slider
         default: "1.0"
         min: 0.5
         max: 3.0
-        description: Global text scaling multiplier applied on top of font sizes.
-        hint: "1.0 is normal, 1.25 is 125%"
+        description: text scaling multiplier
+        hint: "1.0 = normal, 1.25 = 125%"
         doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
 
   - name: Clock
@@ -107,28 +108,28 @@ sections:
           - 12h
           - 24h
         default: 24h
-        description: Whether to use 12-hour or 24-hour format in the top bar clock.
+        description: clock format in top bar
         doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
 
       - key: org.gnome.desktop.interface/clock-show-seconds
         label: Show Seconds
         type: bool
         default: "false"
-        description: Whether to show seconds in the top bar clock.
+        description: show seconds in clock
         doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
 
       - key: org.gnome.desktop.interface/clock-show-weekday
         label: Show Weekday
         type: bool
         default: "false"
-        description: Whether to show the day of the week in the top bar clock.
+        description: show weekday in clock
         doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
 
       - key: org.gnome.desktop.interface/show-battery-percentage
         label: Show Battery Percentage
         type: bool
         default: "false"
-        description: Whether to show battery percentage in the top bar.
+        description: show battery % in top bar
         doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
 
   - name: Background
@@ -138,7 +139,7 @@ sections:
         type: string
         widget: path
         default: ""
-        description: URI to the desktop wallpaper image.
+        description: wallpaper image URI
         example: file:///usr/share/backgrounds/gnome/blobs-l.svg
         hint: use file:// prefix for local paths
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
@@ -155,19 +156,19 @@ sections:
           - zoom
           - spanned
         default: zoom
-        description: How the wallpaper image is rendered on the desktop.
+        description: wallpaper display mode
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
       - key: org.gnome.desktop.background/primary-color
         label: Primary Color
         type: color
         default: "#023c88"
-        description: Primary desktop background color, used when wallpaper is not set or as gradient start.
+        description: primary background / gradient start color
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
 
       - key: org.gnome.desktop.background/secondary-color
         label: Secondary Color
         type: color
         default: "#5789ca"
-        description: Secondary desktop background color, used as gradient end.
+        description: secondary background / gradient end color
         doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
