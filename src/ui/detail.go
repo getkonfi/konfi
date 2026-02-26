@@ -183,8 +183,6 @@ func (d detail) viewBrowse(width, height int) string {
 
 	// description
 	if f.Description != "" {
-		//b.WriteString(d.theme.Muted.Bold(true).Render("description"))
-		//b.WriteByte('\n')
 		rendered := d.glamourRender(f.Description, width)
 		b.WriteString(rendered)
 		b.WriteByte('\n')
@@ -192,24 +190,22 @@ func (d detail) viewBrowse(width, height int) string {
 
 	// example
 	if f.Example != "" {
-		label := d.theme.Subtext.Render("example ")
 		val := d.theme.Accent.Render(f.Example)
-		b.WriteString(label + val)
+		b.WriteString(val)
 		b.WriteByte('\n')
 	}
 
 	// hint
 	if f.Hint != "" {
-		label := d.theme.Subtext.Render("hint ")
 		val := d.theme.Muted.Italic(true).Render(f.Hint)
-		b.WriteString(label + val)
+		b.WriteString(val)
 		b.WriteByte('\n')
 	}
 
 	// doc link
 	hasDoc := f.DocURL != "" || d.docsURL != ""
 	if hasDoc {
-		key := d.theme.Badge.Render(" o ")
+		key := d.theme.Badge.Render("o")
 		label := d.theme.Subtext.Render(" open doc")
 		b.WriteString(key + label)
 		b.WriteByte('\n')
