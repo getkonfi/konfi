@@ -283,3 +283,103 @@ func TestRoundTrip(t *testing.T) {
 		t.Errorf("got %q, want %q", val, "14")
 	}
 }
+
+func TestRoundTripGolden(t *testing.T) {
+	p := &parser{}
+
+	// realistic config with comments, empty lines, various value types
+	src := []byte(`# ghostty terminal config
+font-family = JetBrains Mono
+font-size = 14
+background = 282828
+foreground = ebdbb2
+
+# window settings
+window-decoration = false
+window-padding-x = 8
+
+# keybinds
+keybind = ctrl+c=copy
+keybind = ctrl+v=paste
+shell-integration = zsh
+`)
+
+	// step 1: modify an existing value
+	out, err := p.SetValue(src, "font-size", "16")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := p.FindValue(out, "font-size")
+	if !ok || v != "16" {
+		t.Fatalf("SetValue font-size: got %q ok=%v", v, ok)
+	}
+
+	// step 2: add a new key
+	out, err = p.SetValue(out, "cursor-style", "beam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "cursor-style")
+	if !ok || v != "beam" {
+		t.Fatalf("SetValue cursor-style: got %q ok=%v", v, ok)
+	}
+
+	// step 3: verify comments survived (line with "# ghostty" must be present)
+	if !bytes.Contains(out, []byte("# ghostty terminal config")) {
+		t.Error("comment line lost during round-trip")
+	}
+	if !bytes.Contains(out, []byte("# window settings")) {
+		t.Error("second comment line lost during round-trip")
+	}
+
+	// step 4: verify all original keys preserved
+	for _, key := range []string{"font-family", "background", "foreground", "window-decoration", "window-padding-x", "shell-integration"} {
+		if _, ok := p.FindValue(out, key); !ok {
+			t.Errorf("key %q lost during round-trip", key)
+		}
+	}
+
+	// step 5: verify empty lines preserved (structure)
+	if bytes.Count(out, []byte("\n\n")) < 2 {
+		t.Error("empty lines collapsed during round-trip")
+	}
+
+	// step 6: ListKeys includes both old and new
+	keys := p.ListKeys(out)
+	keySet := make(map[string]bool)
+	for _, k := range keys {
+		keySet[k] = true
+	}
+	if !keySet["cursor-style"] {
+		t.Error("ListKeys missing newly added cursor-style")
+	}
+	if !keySet["font-size"] {
+		t.Error("ListKeys missing modified font-size")
+	}
+}
+
+func FuzzParser(f *testing.F) {
+	// seed corpus with realistic ghostty config snippets
+	f.Add([]byte("font-size = 14\n"), "font-size")
+	f.Add([]byte("font-family = JetBrains Mono\nfont-size = 14\n"), "font-family")
+	f.Add([]byte("# comment\nbackground = 282828\n\nforeground = ebdbb2\n"), "background")
+	f.Add([]byte("keybind = ctrl+c=copy\nkeybind = ctrl+v=paste\n"), "keybind")
+	f.Add([]byte(""), "missing")
+	f.Add([]byte("no-equals-here\n"), "no-equals-here")
+	f.Add([]byte("key = \n"), "key")
+
+	p := &parser{}
+	f.Fuzz(func(t *testing.T, data []byte, key string) {
+		// none of these should panic
+		p.FindValue(data, key)
+		p.FindLine(data, key)
+		p.ListKeys(data)
+		// SetValue with arbitrary key/value
+		if out, err := p.SetValue(data, key, "fuzzval"); err == nil {
+			// if set succeeded, find should return the value
+			p.FindValue(out, key)
+			p.ListKeys(out)
+		}
+		p.DeleteKey(data, key)
+	})
+}

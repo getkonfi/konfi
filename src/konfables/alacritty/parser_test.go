@@ -145,3 +145,113 @@ func TestDeleteKeyMissing(t *testing.T) {
 		t.Error("DeleteKey(missing) should return data unchanged")
 	}
 }
+
+func TestRoundTrip(t *testing.T) {
+	p := &parser{}
+
+	src := []byte(`# alacritty configuration
+
+[font]
+size = 12.0
+
+[font.normal]
+family = "JetBrains Mono"
+
+[colors.primary]
+background = "#282828"
+foreground = "#ebdbb2"
+
+[window]
+opacity = 1.0
+decorations = "full"
+
+[window.padding]
+x = 8
+y = 8
+`)
+
+	// step 1: modify a deeply nested value
+	// note: TOML helpers strip surrounding quotes on read
+	out, err := p.SetValue(src, "colors.primary.background", "\"#1e1e2e\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := p.FindValue(out, "colors.primary.background")
+	if !ok || v != "#1e1e2e" {
+		t.Fatalf("SetValue colors.primary.background: got %q ok=%v", v, ok)
+	}
+
+	// step 2: modify a shallow value
+	out, err = p.SetValue(out, "font.size", "14.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "font.size")
+	if !ok || v != "14.0" {
+		t.Fatalf("SetValue font.size: got %q ok=%v", v, ok)
+	}
+
+	// step 3: add a new key in existing section
+	out, err = p.SetValue(out, "window.title", "\"Terminal\"")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "window.title")
+	if !ok || v != "Terminal" {
+		t.Fatalf("SetValue window.title: got %q ok=%v", v, ok)
+	}
+
+	// step 4: verify comments survived
+	if !bytes.Contains(out, []byte("# alacritty configuration")) {
+		t.Error("comment line lost during round-trip")
+	}
+
+	// step 5: verify untouched keys preserved
+	for _, key := range []string{"font.normal.family", "colors.primary.foreground", "window.opacity", "window.padding.x", "window.padding.y"} {
+		if _, ok := p.FindValue(out, key); !ok {
+			t.Errorf("key %q lost during round-trip", key)
+		}
+	}
+
+	// step 6: verify section headers preserved
+	for _, hdr := range []string{"[font]", "[font.normal]", "[colors.primary]", "[window]", "[window.padding]"} {
+		if !bytes.Contains(out, []byte(hdr)) {
+			t.Errorf("section header %s lost", hdr)
+		}
+	}
+
+	// step 7: ListKeys covers everything
+	keys := p.ListKeys(out)
+	keySet := make(map[string]bool)
+	for _, k := range keys {
+		keySet[k] = true
+	}
+	if !keySet["window.title"] {
+		t.Error("ListKeys missing newly added window.title")
+	}
+	if !keySet["colors.primary.background"] {
+		t.Error("ListKeys missing modified colors.primary.background")
+	}
+}
+
+func FuzzParser(f *testing.F) {
+	f.Add([]byte("[font]\nsize = 12.0\n"), "font.size")
+	f.Add([]byte("[font.normal]\nfamily = \"JetBrains Mono\"\n"), "font.normal.family")
+	f.Add([]byte("[colors.primary]\nbackground = \"#282828\"\n"), "colors.primary.background")
+	f.Add([]byte("# comment\n\n[window]\nopacity = 1.0\n"), "window.opacity")
+	f.Add([]byte(""), "missing")
+	f.Add([]byte("[section]\n"), "section.key")
+	f.Add([]byte("bare_key = true\n"), "bare_key")
+
+	p := &parser{}
+	f.Fuzz(func(t *testing.T, data []byte, key string) {
+		p.FindValue(data, key)
+		p.FindLine(data, key)
+		p.ListKeys(data)
+		if out, err := p.SetValue(data, key, "fuzzval"); err == nil {
+			p.FindValue(out, key)
+			p.ListKeys(out)
+		}
+		p.DeleteKey(data, key)
+	})
+}

@@ -387,3 +387,124 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf("round-trip: got %q, want %q", v, "20")
 	}
 }
+
+func TestRoundTripGolden(t *testing.T) {
+	p := newParser()
+
+	src := []byte(`# hyprland config
+
+$mainMod = SUPER
+
+monitor = , preferred, auto, 1
+
+general {
+    border_size = 2
+    gaps_in = 5
+    gaps_out = 10
+}
+
+decoration {
+    rounding = 10
+    blur {
+        enabled = true
+        size = 3
+    }
+}
+
+input {
+    sensitivity = 0.0
+    kb_layout = us
+}
+`)
+
+	// step 1: modify a flat variable
+	out, err := p.SetValue(src, "$mainMod", "ALT")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := p.FindValue(out, "$mainMod")
+	if !ok || v != "ALT" {
+		t.Fatalf("SetValue $mainMod: got %q ok=%v", v, ok)
+	}
+
+	// step 2: modify a nested key
+	out, err = p.SetValue(out, "general.border_size", "3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "general.border_size")
+	if !ok || v != "3" {
+		t.Fatalf("SetValue general.border_size: got %q ok=%v", v, ok)
+	}
+
+	// step 3: modify a depth-2 key
+	out, err = p.SetValue(out, "decoration.blur.size", "5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "decoration.blur.size")
+	if !ok || v != "5" {
+		t.Fatalf("SetValue decoration.blur.size: got %q ok=%v", v, ok)
+	}
+
+	// step 4: add a new key in existing block
+	out, err = p.SetValue(out, "input.follow_mouse", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "input.follow_mouse")
+	if !ok || v != "1" {
+		t.Fatalf("SetValue input.follow_mouse: got %q ok=%v", v, ok)
+	}
+
+	// step 5: verify comments survived
+	if !bytes.Contains(out, []byte("# hyprland config")) {
+		t.Error("comment line lost during round-trip")
+	}
+
+	// step 6: verify untouched keys preserved
+	for _, key := range []string{"monitor", "general.gaps_in", "general.gaps_out", "decoration.rounding", "decoration.blur.enabled", "input.sensitivity", "input.kb_layout"} {
+		if _, ok := p.FindValue(out, key); !ok {
+			t.Errorf("key %q lost during round-trip", key)
+		}
+	}
+
+	// step 7: verify block structure preserved
+	for _, block := range []string{"general {", "decoration {", "input {", "blur {"} {
+		if !bytes.Contains(out, []byte(block)) {
+			t.Errorf("block %q structure lost", block)
+		}
+	}
+
+	// step 8: ListKeys covers everything
+	keys := p.ListKeys(out)
+	keySet := make(map[string]bool)
+	for _, k := range keys {
+		keySet[k] = true
+	}
+	if !keySet["input.follow_mouse"] {
+		t.Error("ListKeys missing newly added input.follow_mouse")
+	}
+}
+
+func FuzzParser(f *testing.F) {
+	f.Add([]byte("$mainMod = SUPER\nmonitor = , preferred, auto, 1\n"), "monitor")
+	f.Add([]byte("general {\n    border_size = 2\n}\n"), "general.border_size")
+	f.Add([]byte("decoration {\n    blur {\n        enabled = true\n    }\n}\n"), "decoration.blur.enabled")
+	f.Add([]byte("# comment\n\ninput {\n    sensitivity = 0.0\n}\n"), "input.sensitivity")
+	f.Add([]byte(""), "missing")
+	f.Add([]byte("key = value\n"), "key")
+	f.Add([]byte("block {\n}\n"), "block.inner")
+
+	p := newParser()
+	f.Fuzz(func(t *testing.T, data []byte, key string) {
+		p.FindValue(data, key)
+		p.FindLine(data, key)
+		p.ListKeys(data)
+		if out, err := p.SetValue(data, key, "fuzzval"); err == nil {
+			p.FindValue(out, key)
+			p.ListKeys(out)
+		}
+		p.DeleteKey(data, key)
+	})
+}

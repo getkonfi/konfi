@@ -187,3 +187,93 @@ func TestSetValueIdempotent(t *testing.T) {
 		t.Error("setting same value should be idempotent")
 	}
 }
+
+func TestRoundTripGolden(t *testing.T) {
+	p := &parser{}
+
+	src := []byte(`org.gnome.desktop.interface/color-scheme = prefer-dark
+org.gnome.desktop.interface/gtk-theme = Adwaita
+org.gnome.desktop.interface/cursor-size = 24
+org.gnome.desktop.interface/enable-animations = true
+org.gnome.desktop.interface/font-name = Cantarell 11
+org.gnome.desktop.background/primary-color = #023c88
+org.gnome.desktop.background/picture-options = zoom
+`)
+
+	// step 1: modify an existing value
+	out, err := p.SetValue(src, "org.gnome.desktop.interface/color-scheme", "default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := p.FindValue(out, "org.gnome.desktop.interface/color-scheme")
+	if !ok || v != "default" {
+		t.Fatalf("SetValue color-scheme: got %q ok=%v", v, ok)
+	}
+
+	// step 2: modify a numeric value
+	out, err = p.SetValue(out, "org.gnome.desktop.interface/cursor-size", "48")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "org.gnome.desktop.interface/cursor-size")
+	if !ok || v != "48" {
+		t.Fatalf("SetValue cursor-size: got %q ok=%v", v, ok)
+	}
+
+	// step 3: add a new key
+	out, err = p.SetValue(out, "org.gnome.desktop.interface/icon-theme", "Papirus")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "org.gnome.desktop.interface/icon-theme")
+	if !ok || v != "Papirus" {
+		t.Fatalf("SetValue icon-theme: got %q ok=%v", v, ok)
+	}
+
+	// step 4: verify untouched keys preserved
+	for _, key := range []string{
+		"org.gnome.desktop.interface/gtk-theme",
+		"org.gnome.desktop.interface/enable-animations",
+		"org.gnome.desktop.interface/font-name",
+		"org.gnome.desktop.background/primary-color",
+		"org.gnome.desktop.background/picture-options",
+	} {
+		if _, ok := p.FindValue(out, key); !ok {
+			t.Errorf("key %q lost during round-trip", key)
+		}
+	}
+
+	// step 5: ListKeys covers everything
+	keys := p.ListKeys(out)
+	keySet := make(map[string]bool)
+	for _, k := range keys {
+		keySet[k] = true
+	}
+	if !keySet["org.gnome.desktop.interface/icon-theme"] {
+		t.Error("ListKeys missing newly added icon-theme")
+	}
+	if !keySet["org.gnome.desktop.interface/cursor-size"] {
+		t.Error("ListKeys missing modified cursor-size")
+	}
+}
+
+func FuzzParser(f *testing.F) {
+	f.Add([]byte("org.gnome.desktop.interface/color-scheme = prefer-dark\n"), "org.gnome.desktop.interface/color-scheme")
+	f.Add([]byte("org.gnome.desktop.interface/cursor-size = 24\norg.gnome.desktop.background/primary-color = #023c88\n"), "org.gnome.desktop.interface/cursor-size")
+	f.Add([]byte(""), "missing")
+	f.Add([]byte("schema/key = value with spaces\n"), "schema/key")
+	f.Add([]byte("a/b = c\nd/e = f\n"), "a/b")
+
+	p := &parser{}
+	f.Fuzz(func(t *testing.T, data []byte, key string) {
+		p.FindValue(data, key)
+		p.FindLine(data, key)
+		p.ListKeys(data)
+		if out, err := p.SetValue(data, key, "fuzzval"); err == nil {
+			p.FindValue(out, key)
+			p.ListKeys(out)
+		}
+		// DeleteKey returns error for missing keys in gnome, but should not panic
+		p.DeleteKey(data, key)
+	})
+}

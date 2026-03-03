@@ -181,3 +181,90 @@ func TestRoundTrip(t *testing.T) {
 		t.Errorf("got %q, want %q", val, "catppuccin")
 	}
 }
+
+func TestRoundTripGolden(t *testing.T) {
+	p := &parser{}
+
+	src := []byte(`# konfigurator settings
+theme: catppuccin
+log_level: info
+
+# editor preferences
+auto_save: true
+backup: enabled
+`)
+
+	// step 1: modify an existing value
+	out, err := p.SetValue(src, "theme", "tokyonight")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := p.FindValue(out, "theme")
+	if !ok || v != "tokyonight" {
+		t.Fatalf("SetValue theme: got %q ok=%v", v, ok)
+	}
+
+	// step 2: add a new key
+	out, err = p.SetValue(out, "sidebar_width", "30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok = p.FindValue(out, "sidebar_width")
+	if !ok || v != "30" {
+		t.Fatalf("SetValue sidebar_width: got %q ok=%v", v, ok)
+	}
+
+	// step 3: verify comments survived
+	if !bytes.Contains(out, []byte("# konfigurator settings")) {
+		t.Error("comment line lost during round-trip")
+	}
+	if !bytes.Contains(out, []byte("# editor preferences")) {
+		t.Error("second comment line lost during round-trip")
+	}
+
+	// step 4: verify untouched keys preserved
+	for _, key := range []string{"log_level", "auto_save", "backup"} {
+		if _, ok := p.FindValue(out, key); !ok {
+			t.Errorf("key %q lost during round-trip", key)
+		}
+	}
+
+	// step 5: verify empty lines preserved
+	if !bytes.Contains(out, []byte("\n\n")) {
+		t.Error("empty line lost during round-trip")
+	}
+
+	// step 6: ListKeys covers everything
+	keys := p.ListKeys(out)
+	keySet := make(map[string]bool)
+	for _, k := range keys {
+		keySet[k] = true
+	}
+	if !keySet["sidebar_width"] {
+		t.Error("ListKeys missing newly added sidebar_width")
+	}
+	if !keySet["theme"] {
+		t.Error("ListKeys missing modified theme")
+	}
+}
+
+func FuzzParser(f *testing.F) {
+	f.Add([]byte("theme: catppuccin\nlog_level: info\n"), "theme")
+	f.Add([]byte("# comment\nauto_save: true\n"), "auto_save")
+	f.Add([]byte(""), "missing")
+	f.Add([]byte("key: value with spaces\n"), "key")
+	f.Add([]byte("a: b\nc: d\ne: f\n"), "c")
+	f.Add([]byte("no-colon-here\n"), "no-colon-here")
+
+	p := &parser{}
+	f.Fuzz(func(t *testing.T, data []byte, key string) {
+		p.FindValue(data, key)
+		p.FindLine(data, key)
+		p.ListKeys(data)
+		if out, err := p.SetValue(data, key, "fuzzval"); err == nil {
+			p.FindValue(out, key)
+			p.ListKeys(out)
+		}
+		p.DeleteKey(data, key)
+	})
+}
