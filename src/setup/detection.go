@@ -3,7 +3,12 @@ package setup
 import (
 	"context"
 	"os/exec"
+	"runtime"
+	"sort"
+	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/emin/konfigurator/konfables/alacritty"
 	"github.com/emin/konfigurator/konfables/ghostty"
@@ -83,27 +88,74 @@ func AllKonfables() []Konfable {
 	return all
 }
 
+// detectedEntry holds a detected konfable alongside its original registration
+// index so results can be sorted back into registry order after parallel collection.
+type detectedEntry struct {
+	index int
+	inst  Konfable
+}
+
 // InitDetection probes PATH for known konfable binaries and populates app.Detected.
 // system entries bypass PATH detection and are always included.
-func InitDetection(_ context.Context, app *App) error {
-	for _, k := range allKonfables {
-		// skip entries that require a probe and fail it
-		if k.probe != nil && !k.probe() {
-			continue
-		}
+// detection runs in parallel, capped at NumCPU goroutines.
+func InitDetection(ctx context.Context, app *App) error {
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(runtime.NumCPU())
 
-		if k.system {
-			app.Detected = append(app.Detected, k.create())
-			continue
-		}
-		if _, err := exec.LookPath(k.binary); err == nil {
-			inst := k.create()
-			app.Detected = append(app.Detected, inst)
+	var mu sync.Mutex
+	var results []detectedEntry
 
-			if v, ok := inst.(versioned); ok {
-				probeVersion(app, inst.Name(), v)
+	for i, k := range allKonfables {
+		g.Go(func() error {
+			if ctx.Err() != nil {
+				return nil
 			}
-		}
+
+			if k.probe != nil && !k.probe() {
+				return nil
+			}
+
+			if k.system {
+				mu.Lock()
+				results = append(results, detectedEntry{index: i, inst: k.create()})
+				mu.Unlock()
+				return nil
+			}
+
+			if _, err := exec.LookPath(k.binary); err == nil {
+				inst := k.create()
+
+				if v, ok := inst.(versioned); ok {
+					vCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+					ver, err := v.Version(vCtx)
+					cancel()
+					if err == nil {
+						mu.Lock()
+						app.Versions[inst.Name()] = ver
+						mu.Unlock()
+					} else if app.Logger != nil {
+						app.Logger.Warn().Err(err).Str("app", inst.Name()).Msg("version probe failed")
+					}
+				}
+
+				mu.Lock()
+				results = append(results, detectedEntry{index: i, inst: inst})
+				mu.Unlock()
+			}
+
+			return nil
+		})
+	}
+
+	_ = g.Wait()
+
+	// restore registration order
+	sort.Slice(results, func(a, b int) bool {
+		return results[a].index < results[b].index
+	})
+	app.Detected = make([]Konfable, len(results))
+	for i, r := range results {
+		app.Detected[i] = r.inst
 	}
 
 	if app.Logger != nil {
@@ -120,16 +172,3 @@ func InitDetection(_ context.Context, app *App) error {
 	return nil
 }
 
-func probeVersion(app *App, name string, v versioned) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	ver, err := v.Version(ctx)
-	if err != nil {
-		if app.Logger != nil {
-			app.Logger.Warn().Err(err).Str("app", name).Msg("version probe failed")
-		}
-		return
-	}
-	app.Versions[name] = ver
-}
