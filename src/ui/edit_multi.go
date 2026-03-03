@@ -7,7 +7,7 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 type multiEditor struct {
@@ -38,7 +38,7 @@ func (e *multiEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 }
 
 func (e *multiEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return nil, false, false
 	}
@@ -51,7 +51,7 @@ func (e *multiEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		if e.cursor > 0 {
 			e.cursor--
 		}
-	case " ":
+	case "space":
 		e.selected[e.cursor] = !e.selected[e.cursor]
 	case "enter":
 		return nil, true, false

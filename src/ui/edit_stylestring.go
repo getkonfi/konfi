@@ -8,8 +8,8 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 var stylestringRe = regexp.MustCompile(`^\[(.+?)\]\((.+?)\)$`)
@@ -90,7 +90,7 @@ func (e *stylestringEditor) Init(field pkg.Field, currentValue string, th *theme
 }
 
 func (e *stylestringEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return nil, false, false
 	}

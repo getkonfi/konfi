@@ -4,7 +4,7 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 // FieldEditor is the interface for type-aware inline config editors.

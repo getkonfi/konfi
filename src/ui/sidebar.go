@@ -5,9 +5,9 @@ import (
 
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // sidebarItem holds the icon glyph, name, and install status for a panel entry.
@@ -65,7 +65,7 @@ func (s *sidebar) refilter() {
 
 func (s sidebar) Update(msg tea.Msg) (sidebar, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !s.focused {
 			return s, nil
 		}
@@ -84,7 +84,7 @@ func (s sidebar) Update(msg tea.Msg) (sidebar, tea.Cmd) {
 			return s.moveDown()
 		case "k", "up":
 			return s.moveUp()
-		case "enter", " ":
+		case "enter", "space":
 			return s.selectCurrent(true)
 		case "home":
 			return s.moveTo(0)
@@ -99,7 +99,7 @@ func (s sidebar) Update(msg tea.Msg) (sidebar, tea.Cmd) {
 	return s, nil
 }
 
-func (s sidebar) updateSearching(msg tea.KeyMsg) (sidebar, tea.Cmd) {
+func (s sidebar) updateSearching(msg tea.KeyPressMsg) (sidebar, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		s.searching = false

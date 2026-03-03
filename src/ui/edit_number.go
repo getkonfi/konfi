@@ -9,9 +9,9 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type numberEditor struct {
@@ -31,8 +31,10 @@ func (e *numberEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 
 	e.input = textinput.New()
 	e.input.Prompt = "┊ "
-	e.input.PromptStyle = th.Muted
-	e.input.TextStyle = th.Text
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	e.input.SetStyles(s)
 	e.input.Validate = numberValidateChar
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
@@ -53,7 +55,7 @@ func (e *numberEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 }
 
 func (e *numberEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	if km, ok := msg.(tea.KeyMsg); ok {
+	if km, ok := msg.(tea.KeyPressMsg); ok {
 		switch km.String() {
 		case "enter":
 			if err := e.validate(); err != "" {
@@ -82,7 +84,7 @@ func (e *numberEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 }
 
 func (e *numberEditor) View(width int) string {
-	e.input.Width = width - 4 - lipgloss.Width(e.hint)
+	e.input.SetWidth(width - 4 - lipgloss.Width(e.hint))
 	line := "    " + e.input.View() + e.hint
 	if e.errMsg != "" {
 		line += " " + e.errStyle.Render(e.errMsg)
@@ -99,7 +101,7 @@ func (e *numberEditor) InlineView(width int) string {
 	if w < 1 {
 		w = 1
 	}
-	e.input.Width = w
+	e.input.SetWidth(w)
 	return e.input.View() + suffix
 }
 

@@ -6,9 +6,9 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // paletteGroup marks where a named color group starts in the flat palette slice.
@@ -86,8 +86,10 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 
 	e.input = textinput.New()
 	e.input.Prompt = "┊ "
-	e.input.PromptStyle = th.Muted
-	e.input.TextStyle = th.Text
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	e.input.SetStyles(s)
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
 
@@ -107,7 +109,7 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 }
 
 func (e *colorEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		if !e.inPalette {
 			var cmd tea.Cmd
@@ -123,7 +125,7 @@ func (e *colorEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	return e.updateHexInput(km)
 }
 
-func (e *colorEditor) updatePalette(km tea.KeyMsg) (tea.Cmd, bool, bool) {
+func (e *colorEditor) updatePalette(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	cols := e.gridCols()
 	switch km.String() {
 	case "left", "h":
@@ -156,7 +158,7 @@ func (e *colorEditor) updatePalette(km tea.KeyMsg) (tea.Cmd, bool, bool) {
 	return nil, false, false
 }
 
-func (e *colorEditor) updateHexInput(km tea.KeyMsg) (tea.Cmd, bool, bool) {
+func (e *colorEditor) updateHexInput(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch km.String() {
 	case "enter":
 		e.val = e.input.Value()
@@ -199,7 +201,7 @@ func (e *colorEditor) View(width int) string {
 }
 
 func (e *colorEditor) viewHexOnly(width int) string {
-	e.input.Width = width - 4
+	e.input.SetWidth(width - 4)
 
 	inputLine := "    " + e.input.View()
 
@@ -281,7 +283,7 @@ func (e *colorEditor) viewWithPalette(width int) string {
 			" " + e.th.FieldValue.Render(newHex) +
 			e.th.Muted.Render("  tab:hex"))
 	} else {
-		e.input.Width = width - 4
+		e.input.SetWidth(width - 4)
 		b.WriteString("    " + e.input.View())
 		if len(e.palette) > 0 {
 			b.WriteString(e.th.Muted.Render("  tab:palette"))

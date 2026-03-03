@@ -7,7 +7,7 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 type enumEditor struct {
@@ -33,7 +33,7 @@ func (e *enumEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 }
 
 func (e *enumEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return nil, false, false
 	}

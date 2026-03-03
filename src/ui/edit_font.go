@@ -9,8 +9,8 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 // font cache shared across editor instances
@@ -72,9 +72,11 @@ func (e *fontEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 
 	e.filter = textinput.New()
 	e.filter.Prompt = "┊ "
-	e.filter.PromptStyle = th.Muted
-	e.filter.TextStyle = th.Text
 	e.filter.Placeholder = "filter fonts..."
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	e.filter.SetStyles(s)
 	if currentValue != "" {
 		e.filter.SetValue(currentValue)
 	}
@@ -94,7 +96,7 @@ func (e *fontEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		e.refilter()
 		return nil, false, false
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if e.loading {
 			if msg.String() == "esc" {
 				return nil, true, true
@@ -113,7 +115,7 @@ func (e *fontEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	return cmd, false, false
 }
 
-func (e *fontEditor) updatePicker(msg tea.KeyMsg) (tea.Cmd, bool, bool) {
+func (e *fontEditor) updatePicker(msg tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch msg.String() {
 	case "j", "down":
 		if e.cursor < len(e.filtered)-1 {
@@ -152,7 +154,7 @@ func (e *fontEditor) updatePicker(msg tea.KeyMsg) (tea.Cmd, bool, bool) {
 	return nil, false, false
 }
 
-func (e *fontEditor) updateFreetext(msg tea.KeyMsg) (tea.Cmd, bool, bool) {
+func (e *fontEditor) updateFreetext(msg tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch msg.String() {
 	case "enter":
 		e.val = e.filter.Value()
@@ -196,14 +198,14 @@ func (e *fontEditor) View(width int) string {
 		return "    " + e.th.Muted.Render("loading fonts...")
 	}
 	if e.freetext {
-		e.filter.Width = width - 4
+		e.filter.SetWidth(width - 4)
 		return "    " + e.filter.View() + "\n    " + e.th.Muted.Render("tab:picker  ⏎:commit  esc:cancel")
 	}
 
 	var b strings.Builder
 
 	// filter input
-	e.filter.Width = width - 4
+	e.filter.SetWidth(width - 4)
 	b.WriteString("    " + e.filter.View())
 	b.WriteByte('\n')
 

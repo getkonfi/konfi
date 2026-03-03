@@ -1,11 +1,12 @@
 package pkg
 
 import (
+	"image/color"
 	"math"
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // PixelArt holds a pixel grid that renders via the half-block technique.
@@ -50,7 +51,7 @@ func (p PixelArt) Render() string {
 	return b.String()
 }
 
-func color256(idx uint8) lipgloss.Color {
+func color256(idx uint8) color.Color {
 	return lipgloss.Color(strconv.Itoa(int(idx)))
 }
 

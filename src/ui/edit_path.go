@@ -8,8 +8,8 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 type pathEditor struct {
@@ -25,15 +25,17 @@ func (e *pathEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	e.th = th
 	e.input = textinput.New()
 	e.input.Prompt = "┊ "
-	e.input.PromptStyle = th.Muted
-	e.input.TextStyle = th.Text
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	e.input.SetStyles(s)
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
 	return e.input.Focus()
 }
 
 func (e *pathEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		var cmd tea.Cmd
 		e.input, cmd = e.input.Update(msg)
@@ -60,7 +62,7 @@ func (e *pathEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	return cmd, false, false
 }
 
-func (e *pathEditor) updateCompletion(km tea.KeyMsg) (tea.Cmd, bool, bool) {
+func (e *pathEditor) updateCompletion(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch km.String() {
 	case "j", "down":
 		if e.compCursor < len(e.completions)-1 {
@@ -163,7 +165,7 @@ func (e *pathEditor) applyCompletion(path string) {
 func (e *pathEditor) View(width int) string {
 	var b strings.Builder
 
-	e.input.Width = width - 4
+	e.input.SetWidth(width - 4)
 	b.WriteString("    " + e.input.View())
 
 	if e.showComp && len(e.completions) > 0 {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // maxChangebarLines caps the change bar height.

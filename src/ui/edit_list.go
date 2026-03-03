@@ -7,8 +7,8 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 type listEditor struct {
@@ -32,15 +32,17 @@ func (e *listEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 
 	e.input = textinput.New()
 	e.input.Prompt = "┊ "
-	e.input.PromptStyle = th.Muted
-	e.input.TextStyle = th.Text
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	e.input.SetStyles(s)
 	return nil
 }
 
 func (e *listEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	// sub-editing mode: forward to textinput
 	if e.editing {
-		if km, ok := msg.(tea.KeyMsg); ok {
+		if km, ok := msg.(tea.KeyPressMsg); ok {
 			switch km.String() {
 			case "enter":
 				val := strings.TrimSpace(e.input.Value())
@@ -69,7 +71,7 @@ func (e *listEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		return cmd, false, false
 	}
 
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return nil, false, false
 	}
@@ -127,7 +129,7 @@ func (e *listEditor) View(width int) string {
 	for i, item := range e.items {
 		switch {
 		case e.editing && i == e.editIdx:
-			e.input.Width = width - 8
+			e.input.SetWidth(width - 8)
 			b.WriteString("    " + e.th.Primary.Render("> ") + e.input.View())
 		case i == e.cursor:
 			fmt.Fprintf(&b, "    %s %s", e.th.Primary.Render(">"), e.th.Text.Bold(true).Render(item))
@@ -141,7 +143,7 @@ func (e *listEditor) View(width int) string {
 
 	// new item input at the end
 	if e.editing && e.editIdx >= len(e.items) {
-		e.input.Width = width - 8
+		e.input.SetWidth(width - 8)
 		b.WriteString("    " + e.th.Primary.Render("+ ") + e.input.View())
 	}
 

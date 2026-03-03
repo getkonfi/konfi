@@ -4,8 +4,8 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 type stringEditor struct {
@@ -16,15 +16,17 @@ type stringEditor struct {
 func (e *stringEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {
 	e.input = textinput.New()
 	e.input.Prompt = "┊ "
-	e.input.PromptStyle = th.Muted
-	e.input.TextStyle = th.Text
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	e.input.SetStyles(s)
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
 	return e.input.Focus()
 }
 
 func (e *stringEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	if km, ok := msg.(tea.KeyMsg); ok {
+	if km, ok := msg.(tea.KeyPressMsg); ok {
 		switch km.String() {
 		case "enter":
 			e.val = e.input.Value()
@@ -39,12 +41,12 @@ func (e *stringEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 }
 
 func (e *stringEditor) View(width int) string {
-	e.input.Width = width - 4
+	e.input.SetWidth(width - 4)
 	return "    " + e.input.View()
 }
 
 func (e *stringEditor) InlineView(width int) string {
-	e.input.Width = width
+	e.input.SetWidth(width)
 	return e.input.View()
 }
 

@@ -8,9 +8,9 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type sliderEditor struct {
@@ -38,13 +38,15 @@ func (e *sliderEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 
 	e.input = textinput.New()
 	e.input.Prompt = "┊ "
-	e.input.PromptStyle = th.Muted
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	e.input.SetStyles(s)
 	e.input.Validate = numberValidateChar
 	return nil
 }
 
 func (e *sliderEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
-	km, ok := msg.(tea.KeyMsg)
+	km, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		if e.typing {
 			var cmd tea.Cmd
@@ -74,11 +76,11 @@ func (e *sliderEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		return nil, true, true
 	default:
 		// digit or dot starts direct entry
-		if len(km.Runes) == 1 {
-			r := km.Runes[0]
+		if len(km.Text) == 1 {
+			r := rune(km.Text[0])
 			if (r >= '0' && r <= '9') || r == '.' || r == '-' {
 				e.typing = true
-				e.input.SetValue(string(r))
+				e.input.SetValue(km.Text)
 				e.input.CursorEnd()
 				return e.input.Focus(), false, false
 			}
@@ -87,7 +89,7 @@ func (e *sliderEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	return nil, false, false
 }
 
-func (e *sliderEditor) updateTyping(km tea.KeyMsg) (tea.Cmd, bool, bool) {
+func (e *sliderEditor) updateTyping(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch km.String() {
 	case "enter":
 		v, err := strconv.ParseFloat(e.input.Value(), 64)
@@ -115,7 +117,7 @@ func (e *sliderEditor) View(width int) string {
 
 func (e *sliderEditor) InlineView(width int) string {
 	if e.typing {
-		e.input.Width = width
+		e.input.SetWidth(width)
 		return e.input.View()
 	}
 
