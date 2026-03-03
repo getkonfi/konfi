@@ -8,15 +8,8 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
-
-// glamourCache holds the glamour renderer, rebuilt on width or theme change.
-type glamourCache struct {
-	renderer *glamour.TermRenderer
-	width    int
-}
 
 // detail is a sub-model owned by content that renders the preview/detail pane.
 type detail struct {
@@ -24,7 +17,6 @@ type detail struct {
 	previewFound bool
 	previewKey   string
 	docsURL      string
-	glamCache    *glamourCache
 	theme        *theme.Theme
 
 	// editor state (moved from content in M5)
@@ -47,7 +39,6 @@ type detail struct {
 func newDetail(th *theme.Theme) detail {
 	return detail{
 		previewLine: -1,
-		glamCache:   &glamourCache{},
 		theme:       th,
 	}
 }
@@ -78,9 +69,6 @@ func (d *detail) reset() {
 	d.konfable = nil
 	d.values = nil
 	d.focused = false
-	if d.glamCache != nil {
-		d.glamCache.renderer = nil
-	}
 }
 
 // forceRescan clears the cached key so the next sync re-scans the config.
@@ -104,27 +92,9 @@ func (d *detail) refreshPreviewLine() {
 	d.previewLine, d.previewFound = d.konfable.Parser().FindLine(d.config.Content(), f.Key)
 }
 
-// glamourRender renders markdown using glamour, rebuilding on width/theme change.
-func (d detail) glamourRender(md string, width int) string {
-	if d.glamCache == nil {
-		return d.theme.Muted.Render(md)
-	}
-	if d.glamCache.renderer == nil || d.glamCache.width != width {
-		r, err := glamour.NewTermRenderer(
-			d.theme.GlamourStyle(),
-			glamour.WithWordWrap(width),
-		)
-		if err != nil {
-			return d.theme.Muted.Render(md)
-		}
-		d.glamCache.renderer = r
-		d.glamCache.width = width
-	}
-	out, err := d.glamCache.renderer.Render(md)
-	if err != nil {
-		return d.theme.Muted.Render(md)
-	}
-	return strings.TrimRight(out, "\n")
+// renderMarkdown renders markdown using the goldmark-based renderer in markdown.go.
+func (d detail) renderMarkdown(md string, width int) string {
+	return RenderMarkdown(md, width, d.theme)
 }
 
 // View renders the detail pane content — always browse mode.
@@ -183,7 +153,7 @@ func (d detail) viewBrowse(width, height int) string {
 
 	// description
 	if f.Description != "" {
-		rendered := d.glamourRender(f.Description, width)
+		rendered := d.renderMarkdown(f.Description, width)
 		b.WriteString(rendered)
 		b.WriteByte('\n')
 	}
