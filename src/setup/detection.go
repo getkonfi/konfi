@@ -64,13 +64,11 @@ type KonfableInfo struct {
 }
 
 // AllKonfablesWithInfo returns every registered konfable with metadata.
+// all entries are included regardless of probe result — probes only gate
+// detection (installed status), not sidebar visibility.
 func AllKonfablesWithInfo() []KonfableInfo {
 	out := make([]KonfableInfo, 0, len(allKonfables))
 	for _, k := range allKonfables {
-		// skip entries that require a probe and fail it
-		if k.probe != nil && !k.probe() {
-			continue
-		}
 		out = append(out, KonfableInfo{Konfable: k.create(), System: k.system})
 	}
 	return out
@@ -80,9 +78,6 @@ func AllKonfablesWithInfo() []KonfableInfo {
 func AllKonfables() []Konfable {
 	all := make([]Konfable, 0, len(allKonfables))
 	for _, k := range allKonfables {
-		if k.probe != nil && !k.probe() {
-			continue
-		}
 		all = append(all, k.create())
 	}
 	return all
