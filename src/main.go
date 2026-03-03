@@ -8,7 +8,7 @@ import (
 	"github.com/emin/konfigurator/setup"
 	"github.com/emin/konfigurator/ui"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	}
 
 	root := ui.NewRoot(app)
-	p := tea.NewProgram(root, tea.WithAltScreen())
+	p := tea.NewProgram(root)
 
 	// allow watcher callbacks to inject messages into the event loop
 	if pr, ok := root.(ui.ProgramSetter); ok {
