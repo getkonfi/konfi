@@ -12,9 +12,9 @@ import (
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // field type icons (nerd font glyphs)
@@ -66,7 +66,7 @@ type content struct {
 	// version filtering
 	versions map[string]string
 
-	// detail sub-model (preview/detail pane, editor state, glamour cache, docs URL)
+	// detail sub-model (preview/detail pane, editor state, docs URL)
 	detail detail
 
 	// original values at load time — for per-field change tracking
@@ -88,6 +88,11 @@ type content struct {
 	// logo animation
 	logoAnim    *pkg.AnimState
 	logoAnimGen int
+
+	// breadcrumb, undo/redo, diff preview
+	breadcrumb breadcrumb
+	undoStack  *UndoStack
+	diffView   *diffView
 }
 
 func newContent(th *theme.Theme) content {
@@ -97,12 +102,15 @@ func newContent(th *theme.Theme) content {
 	ti.Prompt = ""
 
 	return content{
-		title:     "konfigurator",
-		values:    make(map[string]string),
-		collapsed: make(map[int]bool),
-		search:    ti,
-		theme:     th,
-		detail: newDetail(th),
+		title:      "konfigurator",
+		values:     make(map[string]string),
+		collapsed:  make(map[int]bool),
+		search:     ti,
+		theme:      th,
+		detail:     newDetail(th),
+		breadcrumb: newBreadcrumb(th),
+		undoStack:  NewUndoStack(50),
+		diffView:   newDiffView(th),
 	}
 }
 
@@ -126,7 +134,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 
 	// when searching, forward keys to search textinput
 	if c.searching {
-		if km, ok := msg.(tea.KeyMsg); ok {
+		if km, ok := msg.(tea.KeyPressMsg); ok {
 			switch km.String() {
 			case "esc":
 				c.searching = false
@@ -163,7 +171,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !c.focused {
 			return c, nil
 		}
@@ -296,9 +304,9 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			}
 		default:
 			// type-through: printable chars seed a new editor in replace mode
-			if f := c.currentField(); f != nil && len(msg.Runes) > 0 {
+			if f := c.currentField(); f != nil && msg.Text != "" {
 				if f.Type != "bool" && f.Type != "enum" && f.Type != "list" && f.Type != "multi" && f.Widget == "" {
-					cmd := c.openEditorWithSeed(msg.Runes[0])
+					cmd := c.openEditorWithSeed([]rune(msg.Text)[0])
 					return c, cmd
 				}
 			}
@@ -307,9 +315,8 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 	case ThemeChangedMsg:
 		c.theme = msg.Theme
 		c.detail.theme = msg.Theme
-		if c.detail.glamCache != nil {
-			c.detail.glamCache.renderer = nil
-		}
+		c.breadcrumb.theme = msg.Theme
+		c.diffView.theme = msg.Theme
 
 	case ExternalChangeMsg:
 		if c.config != nil && c.config.Path == msg.Path {
@@ -317,6 +324,16 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.refreshValues()
 				c.snapshotOrigValues()
 			}
+		}
+
+	case UndoMsg:
+		if op, ok := c.undoStack.Undo(); ok {
+			c.applyFieldByKey(op.FieldKey, op.OldValue)
+		}
+
+	case RedoMsg:
+		if op, ok := c.undoStack.Redo(); ok {
+			c.applyFieldByKey(op.FieldKey, op.NewValue)
 		}
 
 	case insightTickMsg:
@@ -397,7 +414,7 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 
 	initCmd := e.Init(*f, "", c.theme)
 	seedCmd := func() tea.Msg {
-		return tea.KeyMsg{Runes: []rune{seed}, Type: tea.KeyRunes}
+		return tea.KeyPressMsg{Code: seed, Text: string(seed)}
 	}
 	return tea.Sequence(initCmd, seedCmd)
 }
@@ -418,6 +435,7 @@ func (c *content) commitEdit(value string) tea.Cmd {
 	}
 
 	f := c.fields[c.detail.editField]
+	oldValue := c.detail.editOrigVal
 	data := c.config.Content()
 
 	// list fields use MultiValueParser
@@ -432,6 +450,7 @@ func (c *content) commitEdit(value string) tea.Cmd {
 				return nil
 			}
 			c.config.SetContent(newData)
+			c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
 			c.refreshValues()
 			return c.settingChangedCmd(f.Key, value)
 		}
@@ -443,6 +462,7 @@ func (c *content) commitEdit(value string) tea.Cmd {
 		return nil
 	}
 	c.config.SetContent(newData)
+	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
 	c.refreshValues()
 
 	return c.settingChangedCmd(f.Key, value)
@@ -481,6 +501,7 @@ func (c *content) toggleBool(f pkg.Field) {
 		return
 	}
 	c.config.SetContent(newData)
+	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: cur, NewValue: next})
 	c.refreshValues()
 }
 
@@ -490,12 +511,14 @@ func (c *content) deleteField(f pkg.Field) {
 	if p == nil {
 		return
 	}
+	oldVal := c.values[f.Key]
 	data := c.config.Content()
 	newData, err := p.DeleteKey(data, f.Key)
 	if err != nil {
 		return
 	}
 	c.config.SetContent(newData)
+	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldVal, NewValue: ""})
 	c.refreshValues()
 }
 
@@ -505,6 +528,7 @@ func (c *content) revertField(f pkg.Field, origVal string) {
 	if p == nil {
 		return
 	}
+	curVal := c.values[f.Key]
 	data := c.config.Content()
 	serialized := formatValue(origVal, f.Type, c.konfable.Info().Format)
 	newData, err := p.SetValue(data, f.Key, serialized)
@@ -512,6 +536,42 @@ func (c *content) revertField(f pkg.Field, origVal string) {
 		return
 	}
 	c.config.SetContent(newData)
+	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: origVal})
+	c.refreshValues()
+}
+
+// applyFieldByKey writes a value to a field identified by key, used by undo/redo.
+// empty value deletes the key from the config.
+func (c *content) applyFieldByKey(key, value string) {
+	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+		return
+	}
+	p := c.konfable.Parser()
+	data := c.config.Content()
+
+	if value == "" {
+		newData, err := p.DeleteKey(data, key)
+		if err != nil {
+			return
+		}
+		c.config.SetContent(newData)
+	} else {
+		// find the field to get its type for formatting
+		fmtStr := c.konfable.Info().Format
+		fieldType := "string"
+		for i := range c.fields {
+			if c.fields[i].Key == key {
+				fieldType = c.fields[i].Type
+				break
+			}
+		}
+		serialized := formatValue(value, fieldType, fmtStr)
+		newData, err := p.SetValue(data, key, serialized)
+		if err != nil {
+			return
+		}
+		c.config.SetContent(newData)
+	}
 	c.refreshValues()
 }
 
@@ -554,6 +614,9 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.insightGen++
 	c.logoAnimGen++
 	c.logoAnim = nil
+	c.undoStack.Clear()
+	c.breadcrumb.SetPath(k.Name(), "", "")
+	c.diffView.SetEntries(nil)
 }
 
 // loadApp sets the active konfable, loads its config and schema, and reads values.
@@ -589,6 +652,8 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.detail.editing = false
 	c.detail.editor = nil
 	c.detail.reset()
+	c.undoStack.Clear()
+	c.diffView.SetEntries(nil)
 
 	info := k.Info()
 
@@ -794,6 +859,7 @@ func (c *content) refreshValues() {
 	c.detail.forceRescan()
 	c.syncDetail()
 	c.buildInsights()
+	c.syncDiffView()
 }
 
 // pendingChange describes a single field change relative to the on-disk snapshot.
@@ -862,6 +928,12 @@ func (c *content) pendingChanges() []pendingChange {
 	return changes
 }
 
+// syncDiffView populates the diff preview from current pending changes.
+func (c *content) syncDiffView() {
+	c.diffView.SetEntries(c.pendingChanges())
+	c.diffView.SetSize(c.width-2, c.height-2)
+}
+
 // snapshotOrigValues copies the current values as the baseline for change tracking.
 func (c *content) snapshotOrigValues() {
 	c.origValues = make(map[string]string, len(c.values))
@@ -870,9 +942,24 @@ func (c *content) snapshotOrigValues() {
 	}
 }
 
-// syncDetail pushes content state into the detail sub-model.
+// syncDetail pushes content state into the detail sub-model and updates breadcrumb.
 func (c *content) syncDetail() {
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
+
+	// update breadcrumb path
+	app := ""
+	if c.konfable != nil {
+		app = c.konfable.Name()
+	}
+	section := ""
+	if c.schema != nil && c.activeSection < len(c.schema.Sections) {
+		section = c.schema.Sections[c.activeSection].Name
+	}
+	field := ""
+	if f := c.currentField(); f != nil {
+		field = f.Key
+	}
+	c.breadcrumb.SetPath(app, section, field)
 }
 
 // Editing returns whether the detail panel is in edit mode.
@@ -906,6 +993,10 @@ func (c content) splitWidths(innerW int) (fieldW, detailW int) {
 
 func (c content) fieldListHeight() int {
 	bodyH := c.height - logoBlockH - footerH
+	// breadcrumb takes 1 line when an app is loaded
+	if c.breadcrumb.app != "" {
+		bodyH--
+	}
 	h := bodyH - c.fieldAreaOverhead()
 	if h < 3 {
 		h = 3
@@ -1089,6 +1180,17 @@ func (c content) View() string {
 	}
 	headerStr := c.renderHeader(headerW)
 
+	// breadcrumb line between header and field list
+	c.breadcrumb.SetWidth(fieldListW)
+	crumbStr := c.breadcrumb.View()
+	if crumbStr != "" {
+		crumbStr += "\n"
+		bodyH-- // breadcrumb takes one line from body
+		if bodyH < 3 {
+			bodyH = 3
+		}
+	}
+
 	// auto-scroll (cursor position is relative to field area)
 	if len(c.visible) > 0 {
 		cl := c.cursorLine()
@@ -1125,7 +1227,7 @@ func (c content) View() string {
 
 	if detailW == 0 {
 		footerStr := c.renderFooter(innerW)
-		return outerStyle.Render(headerStr + fieldView + "\n" + footerStr)
+		return outerStyle.Render(headerStr + crumbStr + fieldView + "\n" + footerStr)
 	}
 
 	// sync detail
@@ -1139,7 +1241,7 @@ func (c content) View() string {
 	if wide {
 		// wide layout: detail spans full height, header lives in left column
 		footerStr := c.renderFooter(fieldListW)
-		leftContent := headerStr + fieldView + "\n" + footerStr
+		leftContent := headerStr + crumbStr + fieldView + "\n" + footerStr
 		leftLines := strings.Count(leftContent, "\n") + 1
 		for leftLines < c.height {
 			leftContent += "\n"
@@ -1191,7 +1293,7 @@ func (c content) View() string {
 	bodyRow := lipgloss.JoinHorizontal(lipgloss.Top, fieldCol, detailStyled)
 	footerStr := c.renderFooter(fieldListW)
 
-	return outerStyle.Render(headerStr + bodyRow + "\n" + footerStr)
+	return outerStyle.Render(headerStr + crumbStr + bodyRow + "\n" + footerStr)
 }
 
 // labelColumnWidth computes the max label width for the active section.

@@ -1,11 +1,12 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/emin/konfigurator/theme"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 type keyHint struct {
@@ -19,6 +20,8 @@ type statusbar struct {
 	hints     []keyHint
 	width     int
 	theme     *theme.Theme
+	mode      string // e.g. "NORMAL", "EDIT", "SEARCH"
+	undoCount int    // number of undoable operations
 }
 
 func newStatusbar(th *theme.Theme) statusbar {
@@ -28,14 +31,28 @@ func newStatusbar(th *theme.Theme) statusbar {
 	}
 }
 
+func (s *statusbar) SetMode(mode string)     { s.mode = mode }
+func (s *statusbar) SetUndoCount(count int)  { s.undoCount = count }
+
 func (s *statusbar) View() string {
 	style := s.theme.Statusbar.Width(s.width)
 
-	// left side: transient status
-	left := s.theme.Muted.Render("ready")
-	if s.status != "" {
-		left = s.theme.Subtext.Render("status ") + s.theme.Text.Render(s.status)
+	// left side: mode badge + transient status
+	var leftParts []string
+	if s.mode != "" {
+		modeBadge := s.theme.KeyCap.Render("[" + s.mode + "]")
+		leftParts = append(leftParts, modeBadge)
 	}
+	if s.status != "" {
+		leftParts = append(leftParts, s.theme.Subtext.Render("status ")+s.theme.Text.Render(s.status))
+	} else {
+		leftParts = append(leftParts, s.theme.Muted.Render("ready"))
+	}
+	if s.undoCount > 0 {
+		undoBadge := s.theme.Muted.Render(fmt.Sprintf("↩ %d", s.undoCount))
+		leftParts = append(leftParts, undoBadge)
+	}
+	left := strings.Join(leftParts, "  ")
 
 	// right side: key-cap hints + theme badge
 	// build hint parts, then trim from the left until they fit

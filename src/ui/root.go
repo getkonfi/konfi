@@ -8,8 +8,8 @@ import (
 	"github.com/emin/konfigurator/setup"
 	"github.com/emin/konfigurator/theme"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type pane int
@@ -19,6 +19,21 @@ const (
 	paneContent
 )
 
+// AppMode governs how key events are routed.
+type AppMode int
+
+const (
+	ModeNormal AppMode = iota
+	ModeEdit
+	ModeSearch
+)
+
+// navEntry records a navigation position for back/forward.
+type navEntry struct {
+	appIndex     int
+	sectionIndex int
+}
+
 const sidebarWidth = 20
 
 type root struct {
@@ -26,7 +41,9 @@ type root struct {
 	sidebar  sidebar
 	content  content
 	status   statusbar
+	palette  palette
 	focus    pane
+	mode     AppMode
 	width    int
 	height   int
 	ready    bool
@@ -35,6 +52,10 @@ type root struct {
 	// all konfables (indexed by sidebar item order)
 	allKonfables []konfables.Konfable
 	installed    map[string]bool
+
+	// navigation history for back/forward
+	navHistory    []navEntry
+	navHistoryPos int
 
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
@@ -86,13 +107,16 @@ func NewRoot(app *setup.App) tea.Model {
 	ct := newContent(th)
 	ct.versions = app.Versions
 	st := newStatusbar(th)
+	pal := newPalette(th)
 
 	r := &root{
 		app:          app,
 		sidebar:      sb,
 		content:      ct,
 		status:       st,
+		palette:      pal,
 		focus:        paneSidebar,
+		mode:         ModeNormal,
 		allKonfables: allK,
 		installed:    installed,
 	}
@@ -117,10 +141,32 @@ func (r *root) Init() tea.Cmd {
 func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	// palette intercepts ALL input when visible
+	if r.palette.Visible() {
+		switch msg.(type) {
+		case tea.KeyPressMsg:
+			p, cmd := r.palette.Update(msg)
+			r.palette = p
+			return r, cmd
+		case PaletteSelectedMsg:
+			sel := msg.(PaletteSelectedMsg)
+			r.palette.Close()
+			// re-dispatch the inner action
+			return r.Update(sel.Action)
+		case PaletteClosedMsg:
+			r.palette.Close()
+			return r, nil
+		default:
+			p, cmd := r.palette.Update(msg)
+			r.palette = p
+			return r, cmd
+		}
+	}
+
 	// when content is in edit mode, only ctrl+c stays at root level —
 	// everything else passes through so esc/blink/keys reach the editor.
 	if r.content.Editing() {
-		if km, ok := msg.(tea.KeyMsg); ok && km.String() == "ctrl+c" {
+		if km, ok := msg.(tea.KeyPressMsg); ok && km.String() == "ctrl+c" {
 			if r.content.config != nil {
 				r.content.stopWatching()
 			}
@@ -139,7 +185,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// when content is searching, forward keys to content (same pattern as sidebar search)
 	if r.content.searching {
-		if km, ok := msg.(tea.KeyMsg); ok {
+		if km, ok := msg.(tea.KeyPressMsg); ok {
 			if km.String() == "ctrl+c" {
 				if r.content.config != nil {
 					r.content.stopWatching()
@@ -155,7 +201,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// when help overlay is shown, swallow all keys except ?/esc to dismiss
 	if r.showHelp {
-		if km, ok := msg.(tea.KeyMsg); ok {
+		if km, ok := msg.(tea.KeyPressMsg); ok {
 			switch km.String() {
 			case "?", "esc":
 				r.showHelp = false
@@ -173,7 +219,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.layout()
 		return r, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		// when sidebar is searching, don't intercept keys that should reach the textinput
 		if r.sidebar.searching {
 			switch msg.String() {
@@ -261,7 +307,92 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.showHelp = true
 			r.updateHints()
 			return r, nil
+
+		case "ctrl+k":
+			items := r.buildPaletteItems()
+			cmd := r.palette.Open(PaletteModeCommands, items)
+			r.palette.width = r.width
+			r.palette.height = r.height
+			return r, cmd
+
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+			idx := int(msg.String()[0]-'0') - 1
+			if idx < len(r.allKonfables) {
+				r.pushNav()
+				r.sidebar.cursor = idx
+				return r, func() tea.Msg {
+					return AppSelectedMsg{Index: idx, Confirmed: true}
+				}
+			}
+			return r, nil
+
+		case "ctrl+n":
+			cur := r.sidebar.cursor
+			if cur < len(r.allKonfables)-1 {
+				r.pushNav()
+				r.sidebar.cursor = cur + 1
+				idx := r.sidebar.cursor
+				return r, func() tea.Msg {
+					return AppSelectedMsg{Index: idx}
+				}
+			}
+			return r, nil
+
+		case "ctrl+p":
+			cur := r.sidebar.cursor
+			if cur > 0 {
+				r.pushNav()
+				r.sidebar.cursor = cur - 1
+				idx := r.sidebar.cursor
+				return r, func() tea.Msg {
+					return AppSelectedMsg{Index: idx}
+				}
+			}
+			return r, nil
+
+		case "ctrl+o":
+			if cmd := r.navBack(); cmd != nil {
+				return r, cmd
+			}
+			return r, nil
+
+		case "ctrl+]":
+			if cmd := r.navForward(); cmd != nil {
+				return r, cmd
+			}
+			return r, nil
+
+		case "ctrl+z":
+			return r, func() tea.Msg { return UndoMsg{} }
+
+		case "ctrl+y":
+			return r, func() tea.Msg { return RedoMsg{} }
 		}
+
+	case SelectAppMsg:
+		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
+			r.pushNav()
+			r.sidebar.cursor = msg.Index
+			return r, func() tea.Msg {
+				return AppSelectedMsg{Index: msg.Index, Confirmed: true}
+			}
+		}
+		return r, nil
+
+	case SaveMsg:
+		if r.content.config != nil && r.content.config.Dirty() {
+			if err := r.content.config.Save(context.Background()); err != nil {
+				r.status.status = "save failed: " + err.Error()
+			} else {
+				r.content.fileState = "saved"
+				r.content.snapshotOrigValues()
+				r.status.status = "saved"
+				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+					return fileStateClearMsg{}
+				})
+			}
+		}
+		return r, nil
 
 	case AppSelectedMsg:
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
@@ -304,6 +435,24 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, nil
 
+	case UndoMsg:
+		var cmd tea.Cmd
+		r.content, cmd = r.content.Update(msg)
+		if r.content.config != nil && r.content.config.Dirty() {
+			r.content.fileState = "unsaved"
+		}
+		r.updateHints()
+		return r, cmd
+
+	case RedoMsg:
+		var cmd tea.Cmd
+		r.content, cmd = r.content.Update(msg)
+		if r.content.config != nil && r.content.config.Dirty() {
+			r.content.fileState = "unsaved"
+		}
+		r.updateHints()
+		return r, cmd
+
 	case DocOpenedMsg:
 		if msg.URL != "" {
 			r.status.status = "opened docs"
@@ -339,7 +488,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// bounce nav keys from empty content back to sidebar
-	if km, ok := msg.(tea.KeyMsg); ok && r.focus == paneContent {
+	if km, ok := msg.(tea.KeyPressMsg); ok && r.focus == paneContent {
 		switch km.String() {
 		case "j", "k", "up", "down":
 			if c := &r.content; c.schema == nil && c.config == nil {
@@ -366,9 +515,15 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, tea.Batch(cmds...)
 }
 
-func (r *root) View() string {
+func (r *root) View() tea.View {
+	v := tea.View{
+		AltScreen: true,
+		MouseMode: tea.MouseModeAllMotion,
+	}
+
 	if !r.ready {
-		return "loading..."
+		v.Content = "loading..."
+		return v
 	}
 
 	r.layout()
@@ -400,21 +555,38 @@ func (r *root) View() string {
 	if cbH > 0 {
 		cbView := renderChangebar(changes, r.width, r.app.Theme)
 		cbStyle := r.app.Theme.Statusbar.Width(r.width)
-		view := lipgloss.JoinVertical(lipgloss.Left, body, cbStyle.Render(cbView), statusView)
+		content := lipgloss.JoinVertical(lipgloss.Left, body, cbStyle.Render(cbView), statusView)
 
 		if r.showHelp {
-			return renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
+			v.Content = renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
+			return v
 		}
-		return view
+		if r.palette.Visible() {
+			r.palette.width = r.width
+			r.palette.height = r.height
+			v.Content = r.palette.View()
+			return v
+		}
+		v.Content = content
+		return v
 	}
 
-	view := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
+	content := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
 
 	if r.showHelp {
-		return renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
+		v.Content = renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
+		return v
 	}
 
-	return view
+	if r.palette.Visible() {
+		r.palette.width = r.width
+		r.palette.height = r.height
+		v.Content = r.palette.View()
+		return v
+	}
+
+	v.Content = content
+	return v
 }
 
 func (r *root) layout() {
@@ -488,7 +660,9 @@ func (r *root) updateHints() {
 			r.content.hints = []keyHint{
 				{"←↑↓", "navigate"},
 				{"⏎", "open"},
+				{"1-9", "jump"},
 				{"/", "search"},
+				{"^K", "palette"},
 				{"→", "content"},
 				{"t", "theme"},
 				{"?", "help"},
@@ -544,4 +718,93 @@ func (r *root) cycleTheme() {
 		}
 	}
 	r.app.Theme.SetPalette(&palettes[nextIdx])
+}
+
+// buildPaletteItems creates the command palette entries from current state.
+func (r *root) buildPaletteItems() []PaletteItem {
+	var items []PaletteItem
+
+	// app entries
+	for i, k := range r.allKonfables {
+		idx := i
+		items = append(items, PaletteItem{
+			Label:      k.Name(),
+			Category:   "app",
+			MatchTerms: k.Name(),
+			Action:     SelectAppMsg{Index: idx},
+		})
+	}
+
+	// actions
+	items = append(items, PaletteItem{
+		Label:      "Save",
+		Shortcut:   "ctrl+s",
+		Category:   "action",
+		MatchTerms: "save write",
+		Action:     SaveMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "Undo",
+		Shortcut:   "ctrl+z",
+		Category:   "action",
+		MatchTerms: "undo revert",
+		Action:     UndoMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "Redo",
+		Shortcut:   "ctrl+y",
+		Category:   "action",
+		MatchTerms: "redo repeat",
+		Action:     RedoMsg{},
+	})
+
+	return items
+}
+
+// pushNav records the current position in the navigation history.
+func (r *root) pushNav() {
+	entry := navEntry{
+		appIndex:     r.sidebar.cursor,
+		sectionIndex: r.content.activeSection,
+	}
+	// truncate forward history when pushing
+	if r.navHistoryPos < len(r.navHistory) {
+		r.navHistory = r.navHistory[:r.navHistoryPos]
+	}
+	r.navHistory = append(r.navHistory, entry)
+	r.navHistoryPos = len(r.navHistory)
+}
+
+// navBack navigates to the previous position in history.
+func (r *root) navBack() tea.Cmd {
+	if r.navHistoryPos <= 0 || len(r.navHistory) == 0 {
+		return nil
+	}
+	// save current position for forward nav before moving back
+	r.pushNav()
+	// move back two: one past the push we just did, one to the actual target
+	r.navHistoryPos -= 2
+	if r.navHistoryPos < 0 {
+		r.navHistoryPos = 0
+	}
+	entry := r.navHistory[r.navHistoryPos]
+	r.sidebar.cursor = entry.appIndex
+	idx := entry.appIndex
+	return func() tea.Msg {
+		return AppSelectedMsg{Index: idx, Confirmed: true}
+	}
+}
+
+// navForward navigates to the next position in history.
+func (r *root) navForward() tea.Cmd {
+	if r.navHistoryPos >= len(r.navHistory)-1 {
+		return nil
+	}
+	r.navHistoryPos++
+	entry := r.navHistory[r.navHistoryPos]
+	r.sidebar.cursor = entry.appIndex
+	idx := entry.appIndex
+	return func() tea.Msg {
+		return AppSelectedMsg{Index: idx, Confirmed: true}
+	}
 }

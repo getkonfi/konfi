@@ -59,3 +59,17 @@ type FontsLoadedMsg struct {
 	Fonts []string // sorted, deduplicated family names
 	Err   error    // nil on success, non-nil triggers freetext fallback
 }
+
+// SelectAppMsg requests navigating to a specific app by index.
+type SelectAppMsg struct {
+	Index int
+}
+
+// SaveMsg requests saving the current config.
+type SaveMsg struct{}
+
+// UndoMsg requests undoing the last edit.
+type UndoMsg struct{}
+
+// RedoMsg requests redoing the last undone edit.
+type RedoMsg struct{}
