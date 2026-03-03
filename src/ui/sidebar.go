@@ -234,7 +234,7 @@ func (s sidebar) viewCollapsed() string {
 		var styled string
 		switch {
 		case isCursor:
-			styled = s.theme.Primary.Underline(true).Render(glyph)
+			styled = s.theme.Primary.Render(glyph)
 		case !item.installed:
 			styled = s.theme.Muted.Render(glyph)
 		default:
@@ -254,7 +254,7 @@ func (s sidebar) viewCollapsed() string {
 		glyph := string([]rune(item.name)[0])
 		isCursor := fi == s.cursor
 		if isCursor {
-			sysLabels = append(sysLabels, s.theme.Primary.Underline(true).Render(glyph))
+			sysLabels = append(sysLabels, s.theme.Primary.Render(glyph))
 		} else {
 			sysLabels = append(sysLabels, s.theme.Muted.Render(glyph))
 		}
@@ -364,9 +364,9 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	if isCursor {
 		prefix = s.theme.Primary.Render("> ")
 		if item.installed {
-			nameStyle = s.theme.Primary.Underline(true)
+			nameStyle = s.theme.Primary
 		} else {
-			nameStyle = s.theme.Muted.Underline(true)
+			nameStyle = s.theme.Muted
 		}
 	}
 

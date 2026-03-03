@@ -1422,53 +1422,95 @@ func (c content) insightTickCmd() tea.Cmd {
 	})
 }
 
-// renderTabs draws a scrolling horizontal section tab bar.
-// shows a window of up to 5 tabs centered on the active one.
-func (c content) renderTabs(_ int) string {
+// renderTabs draws a centered section tab bar.
+// the active tab is pinned to the horizontal center; neighbors scroll around it
+// with distance-based dimming for a carousel feel.
+func (c content) renderTabs(width int) string {
 	if c.schema == nil || len(c.schema.Sections) <= 1 {
 		return ""
 	}
 
 	total := len(c.schema.Sections)
-	const maxVisible = 5
+	const neighbors = 2 // show up to 2 sections on each side
 
-	start := 0
-	end := total
-	if total > maxVisible {
-		start = c.activeSection - maxVisible/2
-		start = max(0, start)
-		if start+maxVisible > total {
-			start = total - maxVisible
+	// render the active tab
+	activeName := c.schema.Sections[c.activeSection].Name
+	activeTab := c.theme.Primary.Bold(true).Underline(true).Padding(0, 1).Render(activeName)
+	activeW := lipgloss.Width(activeTab)
+
+	// build left neighbors (nearest first, then reverse for display order)
+	var leftParts []string
+	for offset := 1; offset <= neighbors; offset++ {
+		idx := c.activeSection - offset
+		if idx < 0 {
+			break
 		}
-		end = start + maxVisible
-	}
-
-	var parts []string
-	for i := start; i < end; i++ {
-		name := c.schema.Sections[i].Name
-		if i == c.activeSection {
-			// active tab: primary bold with surface background + thick bottom border
-			tab := c.theme.Primary.Bold(true).
-				Background(c.theme.Palette.Surface).
-				Padding(0, 1).
-				Render(name)
-			parts = append(parts, tab)
+		name := c.schema.Sections[idx].Name
+		var styled string
+		if offset == 1 {
+			styled = c.theme.Subtext.Padding(0, 1).Render(name)
 		} else {
-			parts = append(parts, c.theme.Muted.Faint(true).Padding(0, 1).Render(name))
+			styled = c.theme.Muted.Faint(true).Padding(0, 1).Render(name)
 		}
+		leftParts = append([]string{styled}, leftParts...)
 	}
 
-	sep := c.theme.Muted.Render("│")
-	line := strings.Join(parts, sep)
-
-	if start > 0 {
-		line = c.theme.Muted.Render("‹ ") + line
+	// build right neighbors
+	var rightParts []string
+	for offset := 1; offset <= neighbors; offset++ {
+		idx := c.activeSection + offset
+		if idx >= total {
+			break
+		}
+		name := c.schema.Sections[idx].Name
+		var styled string
+		if offset == 1 {
+			styled = c.theme.Subtext.Padding(0, 1).Render(name)
+		} else {
+			styled = c.theme.Muted.Faint(true).Padding(0, 1).Render(name)
+		}
+		rightParts = append(rightParts, styled)
 	}
-	if end < total {
-		line += c.theme.Muted.Render(" ›")
+
+	// overflow arrows
+	leftArrow := "  "
+	if c.activeSection > neighbors {
+		leftArrow = c.theme.Muted.Render("‹ ")
+	}
+	rightArrow := "  "
+	if c.activeSection+neighbors < total-1 {
+		rightArrow = c.theme.Muted.Render(" ›")
 	}
 
-	return line
+	leftStr := strings.Join(leftParts, " ")
+	rightStr := strings.Join(rightParts, " ")
+
+	// compute left padding to pin active tab at center
+	leftW := lipgloss.Width(leftArrow) + lipgloss.Width(leftStr)
+	if len(leftParts) > 0 {
+		leftW++ // account for space between left group and active tab
+	}
+	centerTarget := width/2 - activeW/2
+	pad := centerTarget - leftW
+	if pad < 0 {
+		pad = 0
+	}
+
+	var b strings.Builder
+	b.WriteString(strings.Repeat(" ", pad))
+	b.WriteString(leftArrow)
+	b.WriteString(leftStr)
+	if len(leftParts) > 0 {
+		b.WriteByte(' ')
+	}
+	b.WriteString(activeTab)
+	if len(rightParts) > 0 {
+		b.WriteByte(' ')
+	}
+	b.WriteString(rightStr)
+	b.WriteString(rightArrow)
+
+	return b.String()
 }
 
 // renderBody produces the scrollable field area: tabs + search + field rows.
@@ -1556,7 +1598,7 @@ func (c content) renderBody(width int) string {
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
 		var prefix, label string
 		if isCursor {
-			prefix = c.theme.Primary.Render("▸ "+icon) + " "
+			prefix = c.theme.Primary.Render("▎ "+icon) + " "
 			label = c.theme.Text.Bold(true).Render(paddedLabel)
 		} else {
 			prefix = "  " + c.theme.Muted.Render(icon) + " "
@@ -1602,14 +1644,6 @@ func (c content) renderBody(width int) string {
 			}
 		}
 
-		if isCursor {
-			// pad to full width and apply background-based selection
-			padW := width - lipgloss.Width(line)
-			if padW > 0 {
-				line += strings.Repeat(" ", padW)
-			}
-			line = c.theme.RowActive.Render(line)
-		}
 		b.WriteString(line)
 		b.WriteByte('\n')
 
