@@ -1,10 +1,6 @@
 package theme
 
-import (
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/glamour/ansi"
-	"github.com/charmbracelet/lipgloss"
-)
+import "charm.land/lipgloss/v2"
 
 // Theme holds the active palette and pre-computed lipgloss styles.
 type Theme struct {
@@ -165,46 +161,3 @@ func (t *Theme) recompute() {
 		Padding(0, 1)
 }
 
-// GlamourStyle returns a glamour renderer option using palette colors.
-// dark-mode only with zero margins for embedding in the content pane.
-func (t *Theme) GlamourStyle() glamour.TermRendererOption {
-	p := t.Palette
-	noMargin := uintPtr(0)
-	// extract dark TrueColor from CompleteAdaptiveColor
-	col := func(c lipgloss.CompleteAdaptiveColor) *string {
-		s := c.Dark.TrueColor
-		return &s
-	}
-
-	return glamour.WithStyles(ansi.StyleConfig{
-		Document: ansi.StyleBlock{
-			StylePrimitive: ansi.StylePrimitive{Color: col(p.Muted)},
-			Margin:         noMargin,
-		},
-		Paragraph: ansi.StyleBlock{
-			StylePrimitive: ansi.StylePrimitive{Color: col(p.Muted)},
-			Margin:         noMargin,
-		},
-		Code: ansi.StyleBlock{
-			StylePrimitive: ansi.StylePrimitive{Color: col(p.Accent)},
-		},
-		Emph: ansi.StylePrimitive{
-			Italic: boolPtr(true),
-			Color:  col(p.Subtext),
-		},
-		Strong: ansi.StylePrimitive{
-			Bold:  boolPtr(true),
-			Color: col(p.Text),
-		},
-		Link: ansi.StylePrimitive{
-			Color:     col(p.Secondary),
-			Underline: boolPtr(true),
-		},
-		LinkText: ansi.StylePrimitive{
-			Color: col(p.Primary),
-		},
-	})
-}
-
-func boolPtr(b bool) *bool { return &b }
-func uintPtr(u uint) *uint { return &u }

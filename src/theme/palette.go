@@ -1,35 +1,41 @@
 package theme
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"fmt"
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
+)
 
 // Palette defines a complete set of colors for theming.
-// uses lipgloss.CompleteAdaptiveColor for light/dark terminal support.
+// uses compat.CompleteAdaptiveColor for light/dark terminal support.
 type Palette struct {
 	Name string
 
 	// primary surfaces
-	Base    lipgloss.CompleteAdaptiveColor
-	Surface lipgloss.CompleteAdaptiveColor
-	Overlay lipgloss.CompleteAdaptiveColor
+	Base    compat.CompleteAdaptiveColor
+	Surface compat.CompleteAdaptiveColor
+	Overlay compat.CompleteAdaptiveColor
 
 	// text
-	Text    lipgloss.CompleteAdaptiveColor
-	Subtext lipgloss.CompleteAdaptiveColor
-	Muted   lipgloss.CompleteAdaptiveColor
+	Text    compat.CompleteAdaptiveColor
+	Subtext compat.CompleteAdaptiveColor
+	Muted   compat.CompleteAdaptiveColor
 
 	// accents
-	Primary   lipgloss.CompleteAdaptiveColor
-	Secondary lipgloss.CompleteAdaptiveColor
-	Accent    lipgloss.CompleteAdaptiveColor
+	Primary   compat.CompleteAdaptiveColor
+	Secondary compat.CompleteAdaptiveColor
+	Accent    compat.CompleteAdaptiveColor
 
 	// semantic
-	Success lipgloss.CompleteAdaptiveColor
-	Warning lipgloss.CompleteAdaptiveColor
-	Error   lipgloss.CompleteAdaptiveColor
+	Success compat.CompleteAdaptiveColor
+	Warning compat.CompleteAdaptiveColor
+	Error   compat.CompleteAdaptiveColor
 
 	// borders
-	Border      lipgloss.CompleteAdaptiveColor
-	BorderFocus lipgloss.CompleteAdaptiveColor
+	Border      compat.CompleteAdaptiveColor
+	BorderFocus compat.CompleteAdaptiveColor
 }
 
 // built-in palettes
@@ -51,21 +57,27 @@ type PaletteHex struct {
 	Hex  string
 }
 
+// colorToHex converts a color.Color to a "#rrggbb" hex string.
+func colorToHex(c color.Color) string {
+	r, g, b, _ := c.RGBA()
+	return fmt.Sprintf("#%02x%02x%02x", r>>8, g>>8, b>>8)
+}
+
 // Hexes returns the palette's accent and semantic colors as hex strings.
 // uses dark-mode TrueColor values.
 func (p Palette) Hexes() []PaletteHex {
 	return []PaletteHex{
-		{"base", p.Base.Dark.TrueColor},
-		{"surface", p.Surface.Dark.TrueColor},
-		{"overlay", p.Overlay.Dark.TrueColor},
-		{"text", p.Text.Dark.TrueColor},
-		{"muted", p.Muted.Dark.TrueColor},
-		{"primary", p.Primary.Dark.TrueColor},
-		{"secondary", p.Secondary.Dark.TrueColor},
-		{"accent", p.Accent.Dark.TrueColor},
-		{"success", p.Success.Dark.TrueColor},
-		{"warning", p.Warning.Dark.TrueColor},
-		{"error", p.Error.Dark.TrueColor},
+		{"base", colorToHex(p.Base.Dark.TrueColor)},
+		{"surface", colorToHex(p.Surface.Dark.TrueColor)},
+		{"overlay", colorToHex(p.Overlay.Dark.TrueColor)},
+		{"text", colorToHex(p.Text.Dark.TrueColor)},
+		{"muted", colorToHex(p.Muted.Dark.TrueColor)},
+		{"primary", colorToHex(p.Primary.Dark.TrueColor)},
+		{"secondary", colorToHex(p.Secondary.Dark.TrueColor)},
+		{"accent", colorToHex(p.Accent.Dark.TrueColor)},
+		{"success", colorToHex(p.Success.Dark.TrueColor)},
+		{"warning", colorToHex(p.Warning.Dark.TrueColor)},
+		{"error", colorToHex(p.Error.Dark.TrueColor)},
 	}
 }
 
@@ -78,92 +90,106 @@ func PaletteNames() []string {
 	return names
 }
 
+// cc is shorthand for constructing a compat.CompleteColor from hex strings.
+func cc(trueColor, ansi256, ansi string) compat.CompleteColor {
+	return compat.CompleteColor{
+		TrueColor: lipgloss.Color(trueColor),
+		ANSI256:   lipgloss.Color(ansi256),
+		ANSI:      lipgloss.Color(ansi),
+	}
+}
+
+// cac is shorthand for constructing a compat.CompleteAdaptiveColor.
+func cac(light, dark compat.CompleteColor) compat.CompleteAdaptiveColor {
+	return compat.CompleteAdaptiveColor{Light: light, Dark: dark}
+}
+
 var Catppuccin = Palette{
 	Name:        "catppuccin",
-	Base:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#eff1f5", ANSI256: "255", ANSI: "15"}, Dark: lipgloss.CompleteColor{TrueColor: "#1e1e2e", ANSI256: "234", ANSI: "0"}},
-	Surface:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#ccd0da", ANSI256: "252", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#313244", ANSI256: "236", ANSI: "8"}},
-	Overlay:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#bcc0cc", ANSI256: "250", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#45475a", ANSI256: "238", ANSI: "8"}},
-	Text:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#4c4f69", ANSI256: "239", ANSI: "0"}, Dark: lipgloss.CompleteColor{TrueColor: "#cdd6f4", ANSI256: "254", ANSI: "15"}},
-	Subtext:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#6c6f85", ANSI256: "242", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#bac2de", ANSI256: "252", ANSI: "7"}},
-	Muted:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9ca0b0", ANSI256: "246", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#6c7086", ANSI256: "242", ANSI: "8"}},
-	Primary:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#8839ef", ANSI256: "129", ANSI: "5"}, Dark: lipgloss.CompleteColor{TrueColor: "#cba6f7", ANSI256: "183", ANSI: "13"}},
-	Secondary:   lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#1e66f5", ANSI256: "33", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#89b4fa", ANSI256: "111", ANSI: "12"}},
-	Accent:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#179299", ANSI256: "30", ANSI: "6"}, Dark: lipgloss.CompleteColor{TrueColor: "#94e2d5", ANSI256: "115", ANSI: "14"}},
-	Success:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#40a02b", ANSI256: "34", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#a6e3a1", ANSI256: "114", ANSI: "10"}},
-	Warning:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#df8e1d", ANSI256: "172", ANSI: "3"}, Dark: lipgloss.CompleteColor{TrueColor: "#f9e2af", ANSI256: "223", ANSI: "11"}},
-	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d20f39", ANSI256: "160", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#f38ba8", ANSI256: "211", ANSI: "9"}},
-	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9ca0b0", ANSI256: "246", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#585b70", ANSI256: "240", ANSI: "8"}},
-	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#8839ef", ANSI256: "129", ANSI: "5"}, Dark: lipgloss.CompleteColor{TrueColor: "#cba6f7", ANSI256: "183", ANSI: "13"}},
+	Base:        cac(cc("#eff1f5", "255", "15"), cc("#1e1e2e", "234", "0")),
+	Surface:     cac(cc("#ccd0da", "252", "7"), cc("#313244", "236", "8")),
+	Overlay:     cac(cc("#bcc0cc", "250", "7"), cc("#45475a", "238", "8")),
+	Text:        cac(cc("#4c4f69", "239", "0"), cc("#cdd6f4", "254", "15")),
+	Subtext:     cac(cc("#6c6f85", "242", "8"), cc("#bac2de", "252", "7")),
+	Muted:       cac(cc("#9ca0b0", "246", "8"), cc("#6c7086", "242", "8")),
+	Primary:     cac(cc("#8839ef", "129", "5"), cc("#cba6f7", "183", "13")),
+	Secondary:   cac(cc("#1e66f5", "33", "4"), cc("#89b4fa", "111", "12")),
+	Accent:      cac(cc("#179299", "30", "6"), cc("#94e2d5", "115", "14")),
+	Success:     cac(cc("#40a02b", "34", "2"), cc("#a6e3a1", "114", "10")),
+	Warning:     cac(cc("#df8e1d", "172", "3"), cc("#f9e2af", "223", "11")),
+	Error:       cac(cc("#d20f39", "160", "1"), cc("#f38ba8", "211", "9")),
+	Border:      cac(cc("#9ca0b0", "246", "8"), cc("#585b70", "240", "8")),
+	BorderFocus: cac(cc("#8839ef", "129", "5"), cc("#cba6f7", "183", "13")),
 }
 
 var GhDash = Palette{
 	Name:        "gh-dash",
-	Base:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#f6f8fa", ANSI256: "255", ANSI: "15"}, Dark: lipgloss.CompleteColor{TrueColor: "#0d1117", ANSI256: "233", ANSI: "0"}},
-	Surface:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#eef2f7", ANSI256: "254", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#161b22", ANSI256: "235", ANSI: "8"}},
-	Overlay:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d8dee4", ANSI256: "252", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#21262d", ANSI256: "236", ANSI: "8"}},
-	Text:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#24292f", ANSI256: "236", ANSI: "0"}, Dark: lipgloss.CompleteColor{TrueColor: "#c9d1d9", ANSI256: "252", ANSI: "7"}},
-	Subtext:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#57606a", ANSI256: "241", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#8b949e", ANSI256: "246", ANSI: "8"}},
-	Muted:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#6e7781", ANSI256: "243", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#6e7681", ANSI256: "242", ANSI: "8"}},
-	Primary:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#0969da", ANSI256: "25", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#58a6ff", ANSI256: "75", ANSI: "12"}},
-	Secondary:   lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#1f883d", ANSI256: "28", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#3fb950", ANSI256: "71", ANSI: "10"}},
-	Accent:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#0a7ea4", ANSI256: "31", ANSI: "6"}, Dark: lipgloss.CompleteColor{TrueColor: "#79c0ff", ANSI256: "117", ANSI: "14"}},
-	Success:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#1f883d", ANSI256: "28", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#3fb950", ANSI256: "71", ANSI: "10"}},
-	Warning:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9a6700", ANSI256: "94", ANSI: "3"}, Dark: lipgloss.CompleteColor{TrueColor: "#d29922", ANSI256: "178", ANSI: "11"}},
-	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#cf222e", ANSI256: "160", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#f85149", ANSI256: "203", ANSI: "9"}},
-	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d0d7de", ANSI256: "252", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#30363d", ANSI256: "238", ANSI: "8"}},
-	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#0969da", ANSI256: "25", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#58a6ff", ANSI256: "75", ANSI: "12"}},
+	Base:        cac(cc("#f6f8fa", "255", "15"), cc("#0d1117", "233", "0")),
+	Surface:     cac(cc("#eef2f7", "254", "7"), cc("#161b22", "235", "8")),
+	Overlay:     cac(cc("#d8dee4", "252", "7"), cc("#21262d", "236", "8")),
+	Text:        cac(cc("#24292f", "236", "0"), cc("#c9d1d9", "252", "7")),
+	Subtext:     cac(cc("#57606a", "241", "8"), cc("#8b949e", "246", "8")),
+	Muted:       cac(cc("#6e7781", "243", "8"), cc("#6e7681", "242", "8")),
+	Primary:     cac(cc("#0969da", "25", "4"), cc("#58a6ff", "75", "12")),
+	Secondary:   cac(cc("#1f883d", "28", "2"), cc("#3fb950", "71", "10")),
+	Accent:      cac(cc("#0a7ea4", "31", "6"), cc("#79c0ff", "117", "14")),
+	Success:     cac(cc("#1f883d", "28", "2"), cc("#3fb950", "71", "10")),
+	Warning:     cac(cc("#9a6700", "94", "3"), cc("#d29922", "178", "11")),
+	Error:       cac(cc("#cf222e", "160", "1"), cc("#f85149", "203", "9")),
+	Border:      cac(cc("#d0d7de", "252", "7"), cc("#30363d", "238", "8")),
+	BorderFocus: cac(cc("#0969da", "25", "4"), cc("#58a6ff", "75", "12")),
 }
 
 var TokyoNight = Palette{
 	Name:        "tokyonight",
-	Base:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d5d6db", ANSI256: "253", ANSI: "15"}, Dark: lipgloss.CompleteColor{TrueColor: "#1a1b26", ANSI256: "234", ANSI: "0"}},
-	Surface:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#c4c5cb", ANSI256: "251", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#24283b", ANSI256: "235", ANSI: "8"}},
-	Overlay:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#b4b5bb", ANSI256: "249", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#414868", ANSI256: "238", ANSI: "8"}},
-	Text:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#343b58", ANSI256: "237", ANSI: "0"}, Dark: lipgloss.CompleteColor{TrueColor: "#c0caf5", ANSI256: "253", ANSI: "15"}},
-	Subtext:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#4e5579", ANSI256: "240", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#a9b1d6", ANSI256: "249", ANSI: "7"}},
-	Muted:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#6e7191", ANSI256: "243", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#565f89", ANSI256: "242", ANSI: "8"}},
-	Primary:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#7830f0", ANSI256: "93", ANSI: "5"}, Dark: lipgloss.CompleteColor{TrueColor: "#bb9af7", ANSI256: "141", ANSI: "13"}},
-	Secondary:   lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#2e7de9", ANSI256: "33", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#7aa2f7", ANSI256: "111", ANSI: "12"}},
-	Accent:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#007197", ANSI256: "30", ANSI: "6"}, Dark: lipgloss.CompleteColor{TrueColor: "#7dcfff", ANSI256: "117", ANSI: "14"}},
-	Success:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#587539", ANSI256: "64", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#9ece6a", ANSI256: "149", ANSI: "10"}},
-	Warning:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#8c6c3e", ANSI256: "136", ANSI: "3"}, Dark: lipgloss.CompleteColor{TrueColor: "#e0af68", ANSI256: "179", ANSI: "11"}},
-	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#c64343", ANSI256: "160", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#f7768e", ANSI256: "204", ANSI: "9"}},
-	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9ca0b0", ANSI256: "246", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#414868", ANSI256: "238", ANSI: "8"}},
-	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#7830f0", ANSI256: "93", ANSI: "5"}, Dark: lipgloss.CompleteColor{TrueColor: "#bb9af7", ANSI256: "141", ANSI: "13"}},
+	Base:        cac(cc("#d5d6db", "253", "15"), cc("#1a1b26", "234", "0")),
+	Surface:     cac(cc("#c4c5cb", "251", "7"), cc("#24283b", "235", "8")),
+	Overlay:     cac(cc("#b4b5bb", "249", "7"), cc("#414868", "238", "8")),
+	Text:        cac(cc("#343b58", "237", "0"), cc("#c0caf5", "253", "15")),
+	Subtext:     cac(cc("#4e5579", "240", "8"), cc("#a9b1d6", "249", "7")),
+	Muted:       cac(cc("#6e7191", "243", "8"), cc("#565f89", "242", "8")),
+	Primary:     cac(cc("#7830f0", "93", "5"), cc("#bb9af7", "141", "13")),
+	Secondary:   cac(cc("#2e7de9", "33", "4"), cc("#7aa2f7", "111", "12")),
+	Accent:      cac(cc("#007197", "30", "6"), cc("#7dcfff", "117", "14")),
+	Success:     cac(cc("#587539", "64", "2"), cc("#9ece6a", "149", "10")),
+	Warning:     cac(cc("#8c6c3e", "136", "3"), cc("#e0af68", "179", "11")),
+	Error:       cac(cc("#c64343", "160", "1"), cc("#f7768e", "204", "9")),
+	Border:      cac(cc("#9ca0b0", "246", "8"), cc("#414868", "238", "8")),
+	BorderFocus: cac(cc("#7830f0", "93", "5"), cc("#bb9af7", "141", "13")),
 }
 
 var Gruvbox = Palette{
 	Name:        "gruvbox",
-	Base:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#fbf1c7", ANSI256: "230", ANSI: "15"}, Dark: lipgloss.CompleteColor{TrueColor: "#282828", ANSI256: "235", ANSI: "0"}},
-	Surface:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#ebdbb2", ANSI256: "223", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#3c3836", ANSI256: "237", ANSI: "8"}},
-	Overlay:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d5c4a1", ANSI256: "187", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#504945", ANSI256: "239", ANSI: "8"}},
-	Text:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#3c3836", ANSI256: "237", ANSI: "0"}, Dark: lipgloss.CompleteColor{TrueColor: "#ebdbb2", ANSI256: "223", ANSI: "15"}},
-	Subtext:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#504945", ANSI256: "239", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#d5c4a1", ANSI256: "187", ANSI: "7"}},
-	Muted:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#928374", ANSI256: "245", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#928374", ANSI256: "245", ANSI: "8"}},
-	Primary:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9d0006", ANSI256: "88", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#fb4934", ANSI256: "167", ANSI: "9"}},
-	Secondary:   lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#076678", ANSI256: "24", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#83a598", ANSI256: "109", ANSI: "12"}},
-	Accent:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#427b58", ANSI256: "65", ANSI: "6"}, Dark: lipgloss.CompleteColor{TrueColor: "#8ec07c", ANSI256: "108", ANSI: "14"}},
-	Success:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#79740e", ANSI256: "100", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#b8bb26", ANSI256: "142", ANSI: "10"}},
-	Warning:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#b57614", ANSI256: "136", ANSI: "3"}, Dark: lipgloss.CompleteColor{TrueColor: "#fabd2f", ANSI256: "214", ANSI: "11"}},
-	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9d0006", ANSI256: "88", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#fb4934", ANSI256: "167", ANSI: "9"}},
-	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#928374", ANSI256: "245", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#665c54", ANSI256: "241", ANSI: "8"}},
-	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#9d0006", ANSI256: "88", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#fb4934", ANSI256: "167", ANSI: "9"}},
+	Base:        cac(cc("#fbf1c7", "230", "15"), cc("#282828", "235", "0")),
+	Surface:     cac(cc("#ebdbb2", "223", "7"), cc("#3c3836", "237", "8")),
+	Overlay:     cac(cc("#d5c4a1", "187", "7"), cc("#504945", "239", "8")),
+	Text:        cac(cc("#3c3836", "237", "0"), cc("#ebdbb2", "223", "15")),
+	Subtext:     cac(cc("#504945", "239", "8"), cc("#d5c4a1", "187", "7")),
+	Muted:       cac(cc("#928374", "245", "8"), cc("#928374", "245", "8")),
+	Primary:     cac(cc("#9d0006", "88", "1"), cc("#fb4934", "167", "9")),
+	Secondary:   cac(cc("#076678", "24", "4"), cc("#83a598", "109", "12")),
+	Accent:      cac(cc("#427b58", "65", "6"), cc("#8ec07c", "108", "14")),
+	Success:     cac(cc("#79740e", "100", "2"), cc("#b8bb26", "142", "10")),
+	Warning:     cac(cc("#b57614", "136", "3"), cc("#fabd2f", "214", "11")),
+	Error:       cac(cc("#9d0006", "88", "1"), cc("#fb4934", "167", "9")),
+	Border:      cac(cc("#928374", "245", "8"), cc("#665c54", "241", "8")),
+	BorderFocus: cac(cc("#9d0006", "88", "1"), cc("#fb4934", "167", "9")),
 }
 
 var Nord = Palette{
 	Name:        "nord",
-	Base:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#eceff4", ANSI256: "255", ANSI: "15"}, Dark: lipgloss.CompleteColor{TrueColor: "#2e3440", ANSI256: "236", ANSI: "0"}},
-	Surface:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#e5e9f0", ANSI256: "254", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#3b4252", ANSI256: "237", ANSI: "8"}},
-	Overlay:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#d8dee9", ANSI256: "253", ANSI: "7"}, Dark: lipgloss.CompleteColor{TrueColor: "#434c5e", ANSI256: "238", ANSI: "8"}},
-	Text:        lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#2e3440", ANSI256: "236", ANSI: "0"}, Dark: lipgloss.CompleteColor{TrueColor: "#eceff4", ANSI256: "255", ANSI: "15"}},
-	Subtext:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#3b4252", ANSI256: "237", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#e5e9f0", ANSI256: "254", ANSI: "7"}},
-	Muted:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#4c566a", ANSI256: "240", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#4c566a", ANSI256: "240", ANSI: "8"}},
-	Primary:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#5e81ac", ANSI256: "67", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#81a1c1", ANSI256: "110", ANSI: "12"}},
-	Secondary:   lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#b48ead", ANSI256: "139", ANSI: "5"}, Dark: lipgloss.CompleteColor{TrueColor: "#b48ead", ANSI256: "139", ANSI: "13"}},
-	Accent:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#88c0d0", ANSI256: "110", ANSI: "6"}, Dark: lipgloss.CompleteColor{TrueColor: "#88c0d0", ANSI256: "110", ANSI: "14"}},
-	Success:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#a3be8c", ANSI256: "144", ANSI: "2"}, Dark: lipgloss.CompleteColor{TrueColor: "#a3be8c", ANSI256: "144", ANSI: "10"}},
-	Warning:     lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#ebcb8b", ANSI256: "222", ANSI: "3"}, Dark: lipgloss.CompleteColor{TrueColor: "#ebcb8b", ANSI256: "222", ANSI: "11"}},
-	Error:       lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#bf616a", ANSI256: "131", ANSI: "1"}, Dark: lipgloss.CompleteColor{TrueColor: "#bf616a", ANSI256: "131", ANSI: "9"}},
-	Border:      lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#4c566a", ANSI256: "240", ANSI: "8"}, Dark: lipgloss.CompleteColor{TrueColor: "#4c566a", ANSI256: "240", ANSI: "8"}},
-	BorderFocus: lipgloss.CompleteAdaptiveColor{Light: lipgloss.CompleteColor{TrueColor: "#5e81ac", ANSI256: "67", ANSI: "4"}, Dark: lipgloss.CompleteColor{TrueColor: "#81a1c1", ANSI256: "110", ANSI: "12"}},
+	Base:        cac(cc("#eceff4", "255", "15"), cc("#2e3440", "236", "0")),
+	Surface:     cac(cc("#e5e9f0", "254", "7"), cc("#3b4252", "237", "8")),
+	Overlay:     cac(cc("#d8dee9", "253", "7"), cc("#434c5e", "238", "8")),
+	Text:        cac(cc("#2e3440", "236", "0"), cc("#eceff4", "255", "15")),
+	Subtext:     cac(cc("#3b4252", "237", "8"), cc("#e5e9f0", "254", "7")),
+	Muted:       cac(cc("#4c566a", "240", "8"), cc("#4c566a", "240", "8")),
+	Primary:     cac(cc("#5e81ac", "67", "4"), cc("#81a1c1", "110", "12")),
+	Secondary:   cac(cc("#b48ead", "139", "5"), cc("#b48ead", "139", "13")),
+	Accent:      cac(cc("#88c0d0", "110", "6"), cc("#88c0d0", "110", "14")),
+	Success:     cac(cc("#a3be8c", "144", "2"), cc("#a3be8c", "144", "10")),
+	Warning:     cac(cc("#ebcb8b", "222", "3"), cc("#ebcb8b", "222", "11")),
+	Error:       cac(cc("#bf616a", "131", "1"), cc("#bf616a", "131", "9")),
+	Border:      cac(cc("#4c566a", "240", "8"), cc("#4c566a", "240", "8")),
+	BorderFocus: cac(cc("#5e81ac", "67", "4"), cc("#81a1c1", "110", "12")),
 }
