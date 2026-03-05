@@ -103,6 +103,25 @@ func (d detail) View(width, height int) string {
 	return d.viewBrowse(width, height)
 }
 
+// typeBadgeStyle returns a styled badge for the field type with per-type coloring.
+func (d detail) typeBadgeStyle(typ string) lipgloss.Style {
+	base := lipgloss.NewStyle().Bold(true).Padding(0, 1)
+	switch typ {
+	case "number":
+		return base.Background(d.theme.Palette.Secondary).Foreground(d.theme.Palette.Base)
+	case "enum":
+		return base.Background(d.theme.Palette.Primary).Foreground(d.theme.Palette.Base)
+	case "color":
+		return base.Background(d.theme.Palette.Accent).Foreground(d.theme.Palette.Base)
+	case "bool":
+		return base.Background(d.theme.Palette.Success).Foreground(d.theme.Palette.Base)
+	case "list", "multi":
+		return base.Background(d.theme.Palette.Warning).Foreground(d.theme.Palette.Base)
+	default:
+		return d.theme.Badge
+	}
+}
+
 // viewBrowse renders the structured detail panel in browse mode.
 // all sections are rendered unconditionally, then scrolled into the viewport.
 func (d detail) viewBrowse(width, height int) string {
@@ -121,14 +140,14 @@ func (d detail) viewBrowse(width, height int) string {
 		b.WriteString(d.theme.Subtext.Render(pathDisplay))
 		b.WriteByte('\n')
 		if d.docsURL != "" {
+			link := d.theme.Subtext.Hyperlink(d.docsURL).Render("open docs")
 			key := d.theme.Badge.Render(" o ")
-			label := d.theme.Subtext.Render(" open docs")
-			b.WriteString(key + label)
+			b.WriteString(key + " " + link)
 		}
 		return b.String()
 	}
 
-	// type badge
+	// type badge — color-coded per type
 	icon := fieldTypeIcon[f.Widget]
 	if icon == "" {
 		icon = fieldTypeIcon[f.Type]
@@ -136,7 +155,16 @@ func (d detail) viewBrowse(width, height int) string {
 	if icon == "" {
 		icon = " "
 	}
-	b.WriteString(d.theme.Badge.Render(icon + " " + f.Type))
+	badgeStyle := d.typeBadgeStyle(f.Type)
+	b.WriteString(badgeStyle.Render(icon + " " + f.Type))
+
+	// version badges (inline with type badge)
+	if f.Since != "" {
+		b.WriteString(" " + d.theme.Success.Render("since "+f.Since))
+	}
+	if f.Until != "" {
+		b.WriteString(" " + d.theme.Warning.Render("until "+f.Until))
+	}
 	b.WriteByte('\n')
 
 	// field label
@@ -148,6 +176,23 @@ func (d detail) viewBrowse(width, height int) string {
 	typeVis := d.renderTypeVisual(f, width)
 	if typeVis != "" {
 		b.WriteString(typeVis)
+		b.WriteByte('\n')
+	}
+
+	// default vs current value
+	curVal, hasCur := d.values[f.Key]
+	if f.Type != "color" {
+		if f.Default != "" {
+			b.WriteString(d.theme.FieldLabel.Render("default ") + d.theme.FieldDefault.Render(f.Default))
+			b.WriteByte('\n')
+		}
+		if hasCur && curVal != f.Default {
+			b.WriteString(d.theme.FieldLabel.Render("current ") + d.theme.FieldValue.Render(curVal))
+			b.WriteByte('\n')
+		} else if hasCur {
+			b.WriteString(d.theme.FieldLabel.Render("current ") + d.theme.FieldValue.Render(curVal) + d.theme.Muted.Render(" (default)"))
+			b.WriteByte('\n')
+		}
 		b.WriteByte('\n')
 	}
 
@@ -172,20 +217,22 @@ func (d detail) viewBrowse(width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	// doc link
-	hasDoc := f.DocURL != "" || d.docsURL != ""
-	if hasDoc {
-		key := d.theme.Badge.Render("o")
-		label := d.theme.Subtext.Render(" open doc")
-		b.WriteString(key + label)
+	// doc link — OSC 8 clickable hyperlink
+	docURL := f.DocURL
+	if docURL == "" {
+		docURL = d.docsURL
+	}
+	if docURL != "" {
+		linkStyle := d.theme.Secondary.Underline(true).Hyperlink(docURL)
+		b.WriteString(linkStyle.Render("docs ↗"))
 		b.WriteByte('\n')
 	}
 
 	// live config line (skip for color — already shown in type visual)
 	if f.Type != "color" {
 		val := f.Default
-		if v, ok := d.values[f.Key]; ok {
-			val = v
+		if hasCur {
+			val = curVal
 		}
 		keyStr := f.Key
 		sep := " = "

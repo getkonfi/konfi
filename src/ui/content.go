@@ -93,6 +93,13 @@ type content struct {
 	breadcrumb breadcrumb
 	undoStack  *UndoStack
 	diffView   *diffView
+
+	// search match tracking for n/N navigation
+	searchMatches []int // indices into c.visible for matched rows
+	searchIdx     int   // current position in searchMatches
+
+	// "what's new" filter — toggled by root via n key
+	showNewOnly bool
 }
 
 func newContent(th *theme.Theme) content {
@@ -102,15 +109,16 @@ func newContent(th *theme.Theme) content {
 	ti.Prompt = ""
 
 	return content{
-		title:      "konfigurator",
-		values:     make(map[string]string),
-		collapsed:  make(map[int]bool),
-		search:     ti,
-		theme:      th,
-		detail:     newDetail(th),
-		breadcrumb: newBreadcrumb(th),
-		undoStack:  NewUndoStack(50),
-		diffView:   newDiffView(th),
+		title:         "konfigurator",
+		values:        make(map[string]string),
+		collapsed:     make(map[int]bool),
+		search:        ti,
+		theme:         th,
+		detail:        newDetail(th),
+		breadcrumb:    newBreadcrumb(th),
+		undoStack:     NewUndoStack(50),
+		diffView:      newDiffView(th),
+		searchMatches: make([]int, 0),
 	}
 }
 
@@ -220,6 +228,21 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.searching = true
 				c.search.SetValue("")
 				return c, c.search.Focus()
+			}
+		case "n":
+			if len(c.searchMatches) > 0 {
+				c.searchIdx = (c.searchIdx + 1) % len(c.searchMatches)
+				c.cursor = c.searchMatches[c.searchIdx]
+				c.syncDetail()
+			}
+		case "N":
+			if len(c.searchMatches) > 0 {
+				c.searchIdx--
+				if c.searchIdx < 0 {
+					c.searchIdx = len(c.searchMatches) - 1
+				}
+				c.cursor = c.searchMatches[c.searchIdx]
+				c.syncDetail()
 			}
 		case "j", "down":
 			if hasRows {
@@ -598,6 +621,7 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.collapsed = make(map[int]bool)
 	c.activeSection = 0
 	c.configuredOnly = false
+	c.showNewOnly = false
 	c.searching = false
 	c.search.SetValue("")
 	c.search.Blur()
@@ -643,6 +667,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.collapsed = make(map[int]bool)
 	c.activeSection = 0
 	c.configuredOnly = false
+	c.showNewOnly = false
 	c.searching = false
 	c.search.SetValue("")
 	c.search.Blur()
@@ -767,14 +792,28 @@ func (c *content) refilter() {
 				continue
 			}
 		}
+		if c.showNewOnly && f.Since == "" {
+			continue
+		}
 		if hasSearch {
-			label := strings.ToLower(f.Label)
-			key := strings.ToLower(f.Key)
-			if !strings.Contains(label, query) && !strings.Contains(key, query) {
+			if !fieldMatchesQuery(f, query) {
 				continue
 			}
 		}
 		c.visible = append(c.visible, row{sectionIdx: c.activeSection, fieldIdx: i})
+	}
+
+	// rebuild search match indices (for n/N navigation after search is locked)
+	c.searchMatches = c.searchMatches[:0]
+	if query != "" {
+		for vi, r := range c.visible {
+			if fieldMatchesQuery(&c.fields[r.fieldIdx], query) {
+				c.searchMatches = append(c.searchMatches, vi)
+			}
+		}
+	}
+	if c.searchIdx >= len(c.searchMatches) {
+		c.searchIdx = 0
 	}
 
 	// clamp cursor
@@ -786,6 +825,13 @@ func (c *content) refilter() {
 	if c.cursor < 0 {
 		c.cursor = 0
 	}
+}
+
+// fieldMatchesQuery checks if a field matches the search query against key, label, and description.
+func fieldMatchesQuery(f *pkg.Field, query string) bool {
+	return strings.Contains(strings.ToLower(f.Key), query) ||
+		strings.Contains(strings.ToLower(f.Label), query) ||
+		strings.Contains(strings.ToLower(f.Description), query)
 }
 
 // currentField returns the field under the cursor, or nil if empty.
@@ -1026,7 +1072,7 @@ func (c content) fieldAreaOverhead() int {
 	if c.schema != nil && len(c.schema.Sections) > 1 {
 		h++ // tab bar line
 	}
-	if c.searching {
+	if c.searching || len(c.searchMatches) > 0 {
 		h++ // search bar line
 	}
 	return h
@@ -1626,11 +1672,21 @@ func (c content) renderBody(width int) string {
 		b.WriteByte('\n')
 	}
 
-	// search bar (when active)
-	if c.searching {
+	// search bar (when active or has locked query)
+	if c.searching || len(c.searchMatches) > 0 {
 		prompt := c.theme.Primary.Render("/ ")
-		count := c.theme.Muted.Render(fmt.Sprintf("  %d/%d fields", len(c.visible), len(c.fields)))
-		b.WriteString(prompt + c.search.View() + count)
+		var countStr string
+		if len(c.searchMatches) > 0 {
+			countStr = c.theme.Muted.Render(fmt.Sprintf("  %d/%d matches", c.searchIdx+1, len(c.searchMatches)))
+		} else if c.searching {
+			countStr = c.theme.Muted.Render(fmt.Sprintf("  %d/%d fields", len(c.visible), len(c.fields)))
+		}
+		if c.searching {
+			b.WriteString(prompt + c.search.View() + countStr)
+		} else {
+			// locked search: show query text as static
+			b.WriteString(prompt + c.theme.Subtext.Render(c.search.Value()) + countStr)
+		}
 		b.WriteByte('\n')
 	}
 
@@ -1638,6 +1694,7 @@ func (c content) renderBody(width int) string {
 
 	// detect inline editing state once before the loop
 	editingInline := c.detail.editing && c.detail.editor != nil
+	gutterStyle := c.theme.Muted.Faint(true)
 
 	for i, r := range c.visible {
 		f := &c.fields[r.fieldIdx]
@@ -1645,6 +1702,9 @@ func (c content) renderBody(width int) string {
 
 		// is this row the one being edited?
 		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
+
+		// gutter annotations: [changed][version][type]
+		gutter := c.renderGutter(f, gutterStyle)
 
 		// type icon (widget hint takes precedence)
 		icon := fieldTypeIcon[f.Widget]
@@ -1696,14 +1756,14 @@ func (c content) renderBody(width int) string {
 		// inline min/max bounds for number fields (skipped for slider widgets and inline-editing)
 		showBounds := f.Type == "number" && f.Widget != "slider" && (f.Min != nil || f.Max != nil) && !isEditRow
 
-		// build prefix and label
+		// build prefix and label (gutter + cursor/icon)
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
 		var prefix, label string
 		if isCursor {
-			prefix = c.theme.Primary.Render("▎ "+icon) + " "
+			prefix = gutter + c.theme.Primary.Render("▎ "+icon) + " "
 			label = c.theme.Text.Bold(true).Render(paddedLabel)
 		} else {
-			prefix = "  " + c.theme.Muted.Render(icon) + " "
+			prefix = gutter + "  " + c.theme.Muted.Render(icon) + " "
 			label = c.theme.FieldLabel.Render(paddedLabel)
 		}
 
@@ -1813,6 +1873,47 @@ func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) strin
 	default:
 		return c.theme.FieldValue.Render(val)
 	}
+}
+
+// gutterTypeIcon maps field types to compact ASCII gutter symbols.
+var gutterTypeIcon = map[string]string{
+	"number": "#",
+	"bool":   "◉",
+	"enum":   "▾",
+	"color":  "█",
+	"list":   "⊞",
+}
+
+// renderGutter builds the left-margin annotation column for a field row.
+// format: [changed][version][type] (3 chars + trailing space).
+func (c content) renderGutter(f *pkg.Field, dim lipgloss.Style) string {
+	var ch, ver, typ string
+
+	// changed from default: value exists and differs from schema default
+	if v, ok := c.values[f.Key]; ok && v != f.Default {
+		ch = c.theme.Warning.Faint(true).Render("*")
+	} else {
+		ch = " "
+	}
+
+	// version annotations: deprecated takes priority over new
+	switch {
+	case f.Until != "":
+		ver = c.theme.Error.Faint(true).Render("!")
+	case f.Since != "":
+		ver = c.theme.Success.Faint(true).Render("+")
+	default:
+		ver = " "
+	}
+
+	// type icon
+	if icon, ok := gutterTypeIcon[f.Type]; ok {
+		typ = dim.Render(icon)
+	} else {
+		typ = " "
+	}
+
+	return ch + ver + typ + " "
 }
 
 // centerBlock centers each line of a multi-line string within the given width.

@@ -2,14 +2,17 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/emin/konfigurator/konfables"
+	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/setup"
 	"github.com/emin/konfigurator/theme"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"golang.org/x/mod/semver"
 )
 
 type pane int
@@ -57,6 +60,12 @@ type root struct {
 	navHistory    []navEntry
 	navHistoryPos int
 
+	// clipboard paste pending — set when ReadClipboard is issued
+	clipboardPending bool
+
+	// per-app count of "new" fields (since == detected version)
+	newCounts map[string]int
+
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
 }
@@ -103,7 +112,11 @@ func NewRoot(app *setup.App) tea.Model {
 		}
 	}
 
+	// compute per-app "what's new" field counts
+	newCounts := computeNewCounts(allK, app.Versions)
+
 	sb := newSidebar(items, th)
+	sb.newCounts = newCounts
 	ct := newContent(th)
 	ct.versions = app.Versions
 	st := newStatusbar(th)
@@ -119,6 +132,7 @@ func NewRoot(app *setup.App) tea.Model {
 		mode:         ModeNormal,
 		allKonfables: allK,
 		installed:    installed,
+		newCounts:    newCounts,
 	}
 	r.sidebar.focused = true
 	r.updateHints()
@@ -362,6 +376,31 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return r, nil
 
+		case "y":
+			if r.focus == paneContent {
+				cmd := r.yankField()
+				if cmd != nil {
+					r.updateHints()
+					return r, cmd
+				}
+			}
+
+		case "p":
+			if r.focus == paneContent {
+				cmd := r.pasteField()
+				if cmd != nil {
+					return r, cmd
+				}
+			}
+
+		case "n":
+			// only toggle "what's new" filter when content focused with no active search matches
+			if r.focus == paneContent && len(r.content.searchMatches) == 0 {
+				r.toggleNewFilter()
+				r.updateHints()
+				return r, nil
+			}
+
 		case "ctrl+z":
 			return r, func() tea.Msg { return UndoMsg{} }
 
@@ -432,6 +471,25 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.content.fileState = "unsaved"
 		} else {
 			r.content.fileState = ""
+		}
+		return r, nil
+
+	case statusClearMsg:
+		r.status.status = ""
+		return r, nil
+
+	case tea.ClipboardMsg:
+		if r.clipboardPending {
+			r.clipboardPending = false
+			r.applyPaste(msg.Content)
+			if r.content.config != nil && r.content.config.Dirty() {
+				r.content.fileState = "unsaved"
+			}
+			r.status.status = "pasted"
+			r.updateHints()
+			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+				return statusClearMsg{}
+			})
 		}
 		return r, nil
 
@@ -686,8 +744,17 @@ func (r *root) updateHints() {
 			{"JK", "scroll detail"},
 			{"[]", "section"},
 			{"/", "search"},
-			{"f", "filter"},
 		}
+		hints = append(hints, []keyHint{
+			{"y", "copy"},
+			{"p", "paste"},
+		}...)
+		if len(r.content.searchMatches) > 0 {
+			hints = append(hints, keyHint{"nN", "next/prev match"})
+		} else if r.newCounts[r.content.title] > 0 {
+			hints = append(hints, keyHint{"n", "what's new"})
+		}
+		hints = append(hints, keyHint{"f", "filter"})
 		if r.content.currentDocURL() != "" {
 			hints = append(hints, keyHint{"o", "docs"})
 		}
@@ -808,3 +875,119 @@ func (r *root) navForward() tea.Cmd {
 		return AppSelectedMsg{Index: idx, Confirmed: true}
 	}
 }
+
+// computeNewCounts counts fields with a `since` matching the detected version per app.
+// returns nil map entries for apps without version info — degrades silently.
+func computeNewCounts(allK []konfables.Konfable, versions map[string]string) map[string]int {
+	counts := make(map[string]int)
+	for _, k := range allK {
+		ver, ok := versions[k.Name()]
+		if !ok || ver == "" {
+			continue
+		}
+		nv := pkg.NormalizeSemver(ver)
+		if nv == "" {
+			continue
+		}
+		schemaData, err := k.Schema()
+		if err != nil || schemaData == nil {
+			continue
+		}
+		s, err := pkg.LoadSchema(schemaData)
+		if err != nil {
+			continue
+		}
+		count := 0
+		for si := range s.Sections {
+			for fi := range s.Sections[si].Fields {
+				ns := pkg.NormalizeSemver(s.Sections[si].Fields[fi].Since)
+				if ns == "" {
+					continue
+				}
+				if semver.MajorMinor(ns) == semver.MajorMinor(nv) {
+					count++
+				}
+			}
+		}
+		if count > 0 {
+			counts[k.Name()] = count
+		}
+	}
+	return counts
+}
+
+// yankField copies the current field's value to the system clipboard.
+func (r *root) yankField() tea.Cmd {
+	f := r.content.currentField()
+	if f == nil {
+		return nil
+	}
+	val, ok := r.content.values[f.Key]
+	if !ok || val == "" {
+		val = f.Default
+	}
+	if val == "" {
+		return nil
+	}
+	r.status.status = "copied!"
+	return tea.Batch(
+		tea.SetClipboard(val),
+		tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+			return statusClearMsg{}
+		}),
+	)
+}
+
+// pasteField initiates a clipboard read for pasting into the focused field.
+func (r *root) pasteField() tea.Cmd {
+	if r.content.currentField() == nil {
+		return nil
+	}
+	r.clipboardPending = true
+	return tea.ReadClipboard
+}
+
+// applyPaste writes clipboard content to the focused field with undo support.
+func (r *root) applyPaste(value string) {
+	f := r.content.currentField()
+	if f == nil || r.content.konfable == nil || r.content.config == nil {
+		return
+	}
+	p := r.content.konfable.Parser()
+	if p == nil {
+		return
+	}
+	oldVal := r.content.values[f.Key]
+	if value == oldVal {
+		return
+	}
+	data := r.content.config.Content()
+	serialized := formatValue(value, f.Type, r.content.konfable.Info().Format)
+	newData, err := p.SetValue(data, f.Key, serialized)
+	if err != nil {
+		return
+	}
+	r.content.config.SetContent(newData)
+	r.content.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldVal, NewValue: value})
+	r.content.refreshValues()
+}
+
+// toggleNewFilter toggles the "what's new" field filter on content.
+func (r *root) toggleNewFilter() {
+	r.content.showNewOnly = !r.content.showNewOnly
+	r.content.refilter()
+	r.content.syncDetail()
+	if r.content.showNewOnly {
+		name := ""
+		if r.content.konfable != nil {
+			name = r.content.konfable.Name()
+		}
+		count := r.newCounts[name]
+		r.status.status = fmt.Sprintf("showing %d new fields", count)
+	} else {
+		r.status.status = ""
+	}
+}
+
+// statusClearMsg clears the transient status after a delay.
+type statusClearMsg struct{}

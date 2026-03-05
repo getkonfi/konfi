@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/emin/konfigurator/theme"
@@ -29,6 +30,7 @@ type sidebar struct {
 	height    int
 	theme     *theme.Theme
 	dirtyApps map[string]bool // apps with unsaved changes
+	newCounts map[string]int  // per-app count of "new" fields
 }
 
 func newSidebar(items []sidebarItem, th *theme.Theme) sidebar {
@@ -346,10 +348,19 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		name += " *"
 	}
 
+	// "what's new" badge
+	badge := ""
+	if n := s.newCounts[item.name]; n > 0 {
+		badge = fmt.Sprintf(" %d new", n)
+	}
+
 	// when sidebar is unfocused, dim all items
 	if !s.focused {
 		nameStyle := s.theme.Muted.Faint(true)
 		body := nameStyle.Render(name)
+		if badge != "" {
+			body += nameStyle.Render(badge)
+		}
 		return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
 	}
 
@@ -370,7 +381,11 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		}
 	}
 
-	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(prefix + nameStyle.Render(name))
+	rendered := prefix + nameStyle.Render(name)
+	if badge != "" {
+		rendered += s.theme.Muted.Render(badge)
+	}
+	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(rendered)
 }
 
 // renderPanel wraps content in the sidebar style with right-edge border.
