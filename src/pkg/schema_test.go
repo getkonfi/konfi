@@ -601,6 +601,234 @@ sections:
 	}
 }
 
+// --- CheckVersion tests ---
+
+func TestCheckVersion_SchemaOutdated(t *testing.T) {
+	s := &Schema{App: "ghostty", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	r := s.CheckVersion("3.0.0")
+	if !r.SchemaOutdated {
+		t.Error("expected SchemaOutdated=true for app newer than max")
+	}
+	if r.AppTooOld {
+		t.Error("AppTooOld should be false")
+	}
+	if r.Reason == "" {
+		t.Error("expected a reason")
+	}
+}
+
+func TestCheckVersion_AppTooOld(t *testing.T) {
+	s := &Schema{App: "ghostty", MinAppVersion: "2.0.0", MaxAppVersion: "3.0.0"}
+	r := s.CheckVersion("1.0.0")
+	if !r.AppTooOld {
+		t.Error("expected AppTooOld=true for app older than min")
+	}
+	if r.SchemaOutdated {
+		t.Error("SchemaOutdated should be false")
+	}
+	if r.Reason == "" {
+		t.Error("expected a reason")
+	}
+}
+
+func TestCheckVersion_InRange(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "3.0.0"}
+	r := s.CheckVersion("2.0.0")
+	if r.SchemaOutdated || r.AppTooOld {
+		t.Error("expected no mismatch for in-range version")
+	}
+	if r.Reason != "" {
+		t.Errorf("expected empty reason, got %q", r.Reason)
+	}
+}
+
+func TestCheckVersion_EmptyVersion(t *testing.T) {
+	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
+	r := s.CheckVersion("")
+	if r.SchemaOutdated || r.AppTooOld || r.Reason != "" {
+		t.Error("empty version should produce zero result")
+	}
+}
+
+func TestCheckVersion_NoBounds(t *testing.T) {
+	s := &Schema{App: "test"}
+	r := s.CheckVersion("99.0.0")
+	if r.SchemaOutdated || r.AppTooOld {
+		t.Error("no bounds should produce no mismatch")
+	}
+}
+
+// --- FieldsAddedSince tests ---
+
+func TestFieldsAddedSince_Basic(t *testing.T) {
+	s := makeVersionSchema()
+	// new-field has Since=2.0.0, should appear when base is 1.0.0
+	added := s.FieldsAddedSince("1.0.0")
+	found := false
+	for _, f := range added {
+		if f.Key == "new-field" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("new-field (since=2.0.0) should be in FieldsAddedSince(1.0.0)")
+	}
+}
+
+func TestFieldsAddedSince_NoneNew(t *testing.T) {
+	s := makeVersionSchema()
+	added := s.FieldsAddedSince("99.0.0")
+	if len(added) != 0 {
+		t.Errorf("expected 0 new fields at v99, got %d", len(added))
+	}
+}
+
+func TestFieldsAddedSince_EmptyVersion(t *testing.T) {
+	s := makeVersionSchema()
+	added := s.FieldsAddedSince("")
+	if added != nil {
+		t.Error("empty version should return nil")
+	}
+}
+
+// --- SelectSchema tests ---
+
+func TestSelectSchema_Empty(t *testing.T) {
+	if got := SelectSchema(nil, "1.0.0"); got != nil {
+		t.Error("nil input should return nil")
+	}
+}
+
+func TestSelectSchema_Single(t *testing.T) {
+	s := &Schema{App: "test", FormatSince: "1.0.0"}
+	if got := SelectSchema([]*Schema{s}, "2.0.0"); got != s {
+		t.Error("single schema should always be returned")
+	}
+}
+
+func TestSelectSchema_PicksCorrect(t *testing.T) {
+	v1 := &Schema{App: "test", FormatSince: "1.0.0", SchemaVersion: "v1"}
+	v2 := &Schema{App: "test", FormatSince: "3.0.0", SchemaVersion: "v2"}
+	schemas := []*Schema{v1, v2}
+
+	// app at 2.0.0 should get v1 schema (FormatSince=1.0.0 <= 2.0.0, highest match)
+	got := SelectSchema(schemas, "2.0.0")
+	if got.SchemaVersion != "v1" {
+		t.Errorf("expected v1 schema for app 2.0.0, got %s", got.SchemaVersion)
+	}
+
+	// app at 3.0.0 should get v2 schema
+	got = SelectSchema(schemas, "3.0.0")
+	if got.SchemaVersion != "v2" {
+		t.Errorf("expected v2 schema for app 3.0.0, got %s", got.SchemaVersion)
+	}
+
+	// app at 5.0.0 should get v2 schema (highest FormatSince <= 5.0.0)
+	got = SelectSchema(schemas, "5.0.0")
+	if got.SchemaVersion != "v2" {
+		t.Errorf("expected v2 schema for app 5.0.0, got %s", got.SchemaVersion)
+	}
+}
+
+func TestSelectSchema_UnknownVersion(t *testing.T) {
+	v1 := &Schema{App: "test", FormatSince: "1.0.0", SchemaVersion: "v1"}
+	v2 := &Schema{App: "test", FormatSince: "3.0.0", SchemaVersion: "v2"}
+	// empty version should return the latest (highest FormatSince)
+	got := SelectSchema([]*Schema{v1, v2}, "")
+	if got.SchemaVersion != "v2" {
+		t.Errorf("empty version should pick latest schema, got %s", got.SchemaVersion)
+	}
+}
+
+func TestSelectSchema_AllFuture(t *testing.T) {
+	v1 := &Schema{App: "test", FormatSince: "5.0.0", SchemaVersion: "v1"}
+	v2 := &Schema{App: "test", FormatSince: "8.0.0", SchemaVersion: "v2"}
+	// app at 1.0.0 — all schemas are future, should fall back to the lowest
+	got := SelectSchema([]*Schema{v1, v2}, "1.0.0")
+	if got.SchemaVersion != "v1" {
+		t.Errorf("expected v1 (lowest FormatSince) as fallback, got %s", got.SchemaVersion)
+	}
+}
+
+func TestSelectSchema_EmptyFormatSince(t *testing.T) {
+	legacy := &Schema{App: "test", SchemaVersion: "legacy"}
+	v2 := &Schema{App: "test", FormatSince: "2.0.0", SchemaVersion: "v2"}
+	// at 1.0.0, v2 is too new — should pick legacy (empty FormatSince treated as oldest)
+	got := SelectSchema([]*Schema{legacy, v2}, "1.0.0")
+	if got.SchemaVersion != "legacy" {
+		t.Errorf("expected legacy schema at 1.0.0, got %s", got.SchemaVersion)
+	}
+	// at 3.0.0, v2 matches
+	got = SelectSchema([]*Schema{legacy, v2}, "3.0.0")
+	if got.SchemaVersion != "v2" {
+		t.Errorf("expected v2 schema at 3.0.0, got %s", got.SchemaVersion)
+	}
+}
+
+// --- Coverage + FormatSince YAML round-trip ---
+
+func TestLoadSchema_NewMetadataFields(t *testing.T) {
+	raw := `
+app: test
+format: toml
+format_since: "2.0.0"
+coverage: "85%"
+sections:
+  - name: General
+    fields:
+      - key: foo
+        label: Foo
+        type: string
+`
+	s, err := LoadSchema([]byte(raw))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if s.FormatSince != "2.0.0" {
+		t.Errorf("format_since: got %q, want %q", s.FormatSince, "2.0.0")
+	}
+	if s.Coverage != "85%" {
+		t.Errorf("coverage: got %q, want %q", s.Coverage, "85%")
+	}
+}
+
+func TestLoadSchema_NewFieldsOmitEmpty(t *testing.T) {
+	s := Schema{App: "test", Format: "toml"}
+	data, err := yaml.Marshal(s)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	out := string(data)
+	for _, key := range []string{"format_since:", "coverage:"} {
+		if contains(out, key) {
+			t.Errorf("empty schema should omit %q, got:\n%s", key, out)
+		}
+	}
+}
+
+// --- FilterByVersion preserves new metadata ---
+
+func TestFilterByVersion_PreservesNewFields(t *testing.T) {
+	s := &Schema{
+		App:         "test",
+		Format:      "toml",
+		FormatSince: "2.0.0",
+		Coverage:    "90%",
+		Sections: []Section{
+			{Name: "General", Fields: []Field{
+				{Key: "a", Label: "A", Type: "string"},
+			}},
+		},
+	}
+	got := s.FilterByVersion("")
+	if got.FormatSince != "2.0.0" {
+		t.Errorf("FormatSince not copied: got %q", got.FormatSince)
+	}
+	if got.Coverage != "90%" {
+		t.Errorf("Coverage not copied: got %q", got.Coverage)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && searchString(s, substr)
 }
