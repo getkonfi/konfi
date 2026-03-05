@@ -1,0 +1,238 @@
+app: kitty
+format: kitty
+schema_version: 1.0.0
+min_app_version: "0.35.0"
+max_app_version: "0.40.0"
+docs_url: "https://sw.kovidgoyal.net/kitty/conf/"
+hints:
+  - "key-value config — one setting per line, space-separated"
+  - "live reload with ctrl+shift+f5 or kill -SIGUSR1"
+  - "include other configs with include directive"
+sections:
+  # -- Font -------------------------------------------------------------
+  - name: Font
+    key: font
+    fields:
+      - key: font_family
+        label: Font Family
+        type: string
+        widget: font
+        default: monospace
+        description: primary font family
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.font_family"
+      - key: bold_font
+        label: Bold Font
+        type: string
+        widget: font
+        default: auto
+        description: bold font family
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.bold_font"
+      - key: italic_font
+        label: Italic Font
+        type: string
+        widget: font
+        default: auto
+        description: italic font family
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.italic_font"
+      - key: bold_italic_font
+        label: Bold Italic Font
+        type: string
+        widget: font
+        default: auto
+        description: bold italic font family
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.bold_italic_font"
+      - key: font_size
+        label: Font Size
+        type: number
+        default: "11.0"
+        description: font size in points
+        min: 1
+        max: 72
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.font_size"
+
+  # -- Cursor -----------------------------------------------------------
+  - name: Cursor
+    key: cursor
+    fields:
+      - key: cursor_shape
+        label: Cursor Shape
+        type: enum
+        default: block
+        description: cursor shape
+        options: [block, beam, underline]
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.cursor_shape"
+      - key: cursor_blink_interval
+        label: Blink Interval
+        type: number
+        default: "-1"
+        description: blink interval in seconds (negative = system default, 0 = off)
+        min: -1
+        max: 5
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.cursor_blink_interval"
+      - key: cursor_stop_blinking_after
+        label: Stop Blinking After
+        type: number
+        default: "15.0"
+        description: stop blinking after N seconds of idle (0 = never)
+        min: 0
+        max: 60
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.cursor_stop_blinking_after"
+
+  # -- Scrollback -------------------------------------------------------
+  - name: Scrollback
+    key: scrollback
+    fields:
+      - key: scrollback_lines
+        label: Scrollback Lines
+        type: number
+        default: "2000"
+        description: max lines in scrollback buffer
+        min: 0
+        max: 1000000
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.scrollback_lines"
+      - key: wheel_scroll_multiplier
+        label: Scroll Multiplier
+        type: number
+        default: "5.0"
+        description: lines per mouse wheel scroll
+        min: 0
+        max: 50
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.wheel_scroll_multiplier"
+
+  # -- Window -----------------------------------------------------------
+  - name: Window
+    key: window
+    fields:
+      - key: window_padding_width
+        label: Padding
+        type: number
+        default: "0"
+        description: window padding in points
+        min: 0
+        max: 200
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.window_padding_width"
+      - key: hide_window_decorations
+        label: Hide Decorations
+        type: enum
+        default: "no"
+        description: window decoration visibility
+        options: ["no", "yes", titlebar-only, titlebar-and-corners]
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.hide_window_decorations"
+      - key: background_opacity
+        label: BG Opacity
+        type: number
+        widget: slider
+        default: "1.0"
+        description: background opacity
+        min: 0
+        max: 1
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.background_opacity"
+      - key: background_blur
+        label: BG Blur
+        type: number
+        default: "0"
+        description: blur radius for transparent background
+        min: 0
+        max: 64
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.background_blur"
+      - key: confirm_os_window_close
+        label: Confirm Close
+        type: number
+        default: "-1"
+        description: confirm before closing window (-1 = if processes running, 0 = never)
+        min: -1
+        max: 100
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.confirm_os_window_close"
+
+  # -- Colors -----------------------------------------------------------
+  - name: Colors
+    key: colors
+    fields:
+      - key: foreground
+        label: Foreground
+        type: color
+        default: "#dddddd"
+        description: foreground color
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.foreground"
+      - key: background
+        label: Background
+        type: color
+        default: "#000000"
+        description: background color
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.background"
+      - key: selection_foreground
+        label: Selection FG
+        type: color
+        default: "#000000"
+        description: selection foreground
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.selection_foreground"
+      - key: selection_background
+        label: Selection BG
+        type: color
+        default: "#fffacd"
+        description: selection background
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.selection_background"
+
+  # -- Tab Bar ----------------------------------------------------------
+  - name: Tab Bar
+    key: tab_bar
+    fields:
+      - key: tab_bar_style
+        label: Tab Bar Style
+        type: enum
+        default: fade
+        description: tab bar rendering style
+        options: [fade, slant, separator, powerline, custom, hidden]
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.tab_bar_style"
+      - key: tab_bar_edge
+        label: Tab Bar Edge
+        type: enum
+        default: bottom
+        description: tab bar position
+        options: [top, bottom]
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.tab_bar_edge"
+
+  # -- Shell ------------------------------------------------------------
+  - name: Shell
+    key: shell
+    fields:
+      - key: shell
+        label: Shell
+        type: string
+        widget: path
+        default: "."
+        description: shell program (. = default login shell)
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.shell"
+      - key: editor
+        label: Editor
+        type: string
+        widget: path
+        default: "."
+        description: text editor (. = $VISUAL or $EDITOR)
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.editor"
+
+  # -- Advanced ---------------------------------------------------------
+  - name: Advanced
+    key: advanced
+    fields:
+      - key: allow_remote_control
+        label: Remote Control
+        type: enum
+        default: "no"
+        description: remote control permission
+        options: ["no", "yes", socket-only, password]
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.allow_remote_control"
+      - key: enable_audio_bell
+        label: Audio Bell
+        type: bool
+        default: "true"
+        description: play sound on bell
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.enable_audio_bell"
+      - key: visual_bell_duration
+        label: Visual Bell
+        type: number
+        default: "0.0"
+        description: visual bell flash duration in seconds (0 = off)
+        min: 0
+        max: 5
+        doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.visual_bell_duration"

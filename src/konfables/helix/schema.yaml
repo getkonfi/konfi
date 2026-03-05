@@ -1,0 +1,212 @@
+app: helix
+format: toml
+schema_version: 1.0.0
+min_app_version: "24.7.0"
+max_app_version: "25.1.0"
+docs_url: "https://docs.helix-editor.com/configuration.html"
+hints:
+  - "TOML config — sections are [tables]"
+  - "config at ~/.config/helix/config.toml"
+  - "language-specific settings in languages.toml"
+sections:
+  # -- Theme ------------------------------------------------------------
+  - name: Theme
+    key: theme
+    fields:
+      - key: theme
+        label: Theme
+        type: string
+        default: ""
+        description: color theme name
+        hint: use :theme command to preview
+        doc_url: "https://docs.helix-editor.com/themes.html"
+
+  # -- Editor -----------------------------------------------------------
+  - name: Editor
+    key: editor
+    fields:
+      - key: editor.scrolloff
+        label: Scroll Off
+        type: number
+        default: "5"
+        description: min lines above/below cursor
+        min: 0
+        max: 50
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorscrolloff"
+      - key: editor.mouse
+        label: Mouse
+        type: bool
+        default: "true"
+        description: enable mouse support
+        doc_url: "https://docs.helix-editor.com/configuration.html#editormouse"
+      - key: editor.middle-click-paste
+        label: Middle Click Paste
+        type: bool
+        default: "true"
+        description: middle mouse button pastes primary clipboard
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.line-number
+        label: Line Numbers
+        type: enum
+        default: absolute
+        description: line number display
+        options: [absolute, relative]
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorline-number"
+      - key: editor.cursorline
+        label: Cursor Line
+        type: bool
+        default: "false"
+        description: highlight the cursor line
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorcursorline"
+      - key: editor.cursorcolumn
+        label: Cursor Column
+        type: bool
+        default: "false"
+        description: highlight the cursor column
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.auto-completion
+        label: Auto Completion
+        type: bool
+        default: "true"
+        description: enable auto-completion popup
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.auto-format
+        label: Auto Format
+        type: bool
+        default: "true"
+        description: format on save
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.auto-save
+        label: Auto Save
+        type: bool
+        default: "false"
+        description: auto-save after idle timeout
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.idle-timeout
+        label: Idle Timeout
+        type: number
+        default: "250"
+        description: idle timeout in ms before auto-actions
+        min: 0
+        max: 10000
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.true-color
+        label: True Color
+        type: bool
+        default: "false"
+        description: force true color support
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.color-modes
+        label: Color Modes
+        type: bool
+        default: "false"
+        description: color mode indicator in statusline
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.rulers
+        label: Rulers
+        type: string
+        default: "[]"
+        description: column ruler positions (e.g. [80, 120])
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.bufferline
+        label: Buffer Line
+        type: enum
+        default: never
+        description: buffer/tab line display
+        options: [never, always, multiple]
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+      - key: editor.shell
+        label: Shell
+        type: string
+        default: ""
+        description: shell for :sh and pipe commands
+        hint: 'default: ["sh", "-c"] on unix'
+        doc_url: "https://docs.helix-editor.com/configuration.html"
+
+  # -- Cursor -----------------------------------------------------------
+  - name: Cursor Shape
+    key: editor.cursor-shape
+    fields:
+      - key: editor.cursor-shape.normal
+        label: Normal Mode
+        type: enum
+        default: block
+        description: cursor shape in normal mode
+        options: [block, bar, underline, hidden]
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorcursor-shape"
+      - key: editor.cursor-shape.insert
+        label: Insert Mode
+        type: enum
+        default: block
+        description: cursor shape in insert mode
+        options: [block, bar, underline, hidden]
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorcursor-shape"
+      - key: editor.cursor-shape.select
+        label: Select Mode
+        type: enum
+        default: block
+        description: cursor shape in select mode
+        options: [block, bar, underline, hidden]
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorcursor-shape"
+
+  # -- Statusline -------------------------------------------------------
+  - name: Statusline
+    key: editor.statusline
+    fields:
+      - key: editor.statusline.separator
+        label: Separator
+        type: string
+        default: "│"
+        description: separator character between elements
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorstatusline"
+
+  # -- LSP --------------------------------------------------------------
+  - name: LSP
+    key: editor.lsp
+    fields:
+      - key: editor.lsp.enable
+        label: Enable LSP
+        type: bool
+        default: "true"
+        description: enable language server protocol
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorlsp"
+      - key: editor.lsp.display-messages
+        label: Display Messages
+        type: bool
+        default: "false"
+        description: show LSP progress messages
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorlsp"
+      - key: editor.lsp.display-inlay-hints
+        label: Inlay Hints
+        type: bool
+        default: "false"
+        description: show inlay hints from LSP
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorlsp"
+
+  # -- File Picker ------------------------------------------------------
+  - name: File Picker
+    key: editor.file-picker
+    fields:
+      - key: editor.file-picker.hidden
+        label: Show Hidden
+        type: bool
+        default: "true"
+        description: show hidden files in picker
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorfile-picker"
+
+  # -- Indent -----------------------------------------------------------
+  - name: Indent
+    key: editor.indent-guides
+    fields:
+      - key: editor.indent-guides.render
+        label: Render Guides
+        type: bool
+        default: "false"
+        description: render indent guides
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorindent-guides"
+      - key: editor.indent-guides.character
+        label: Guide Character
+        type: string
+        default: "│"
+        description: character for indent guides
+        doc_url: "https://docs.helix-editor.com/configuration.html#editorindent-guides"

@@ -13,8 +13,11 @@ import (
 	"github.com/emin/konfigurator/konfables/alacritty"
 	"github.com/emin/konfigurator/konfables/ghostty"
 	"github.com/emin/konfigurator/konfables/gnome"
+	"github.com/emin/konfigurator/konfables/helix"
 	"github.com/emin/konfigurator/konfables/hyprland"
+	"github.com/emin/konfigurator/konfables/kitty"
 	"github.com/emin/konfigurator/konfables/konfigurator"
+	"github.com/emin/konfigurator/konfables/rio"
 	"github.com/emin/konfigurator/konfables/starship"
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/setup/cst"
@@ -54,6 +57,15 @@ var allKonfables = []konfableEntry{
 	{"gsettings", func() Konfable {
 		return gnome.New(&gnome.GsettingsPersister{})
 	}, false, probeGsettings},
+	{"kitty", func() Konfable {
+		return kitty.New(pkg.NewFilePersister(pkg.XDGConfigPath("kitty", "kitty.conf")))
+	}, false, nil},
+	{"hx", func() Konfable {
+		return helix.New(pkg.NewFilePersister(pkg.XDGConfigPath("helix", "config.toml")))
+	}, false, nil},
+	{"rio", func() Konfable {
+		return rio.New(pkg.NewFilePersister(pkg.XDGConfigPath("rio", "config.toml")))
+	}, false, nil},
 }
 
 // probeGsettings checks whether the gnome desktop interface schema is available.
