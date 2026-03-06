@@ -82,12 +82,14 @@ type Pixel struct{ Row, Col int }
 // AnimConfig holds per-app animation parameters.
 type AnimConfig struct {
 	Kind   AnimKind
-	Frames int // total frames
-	TickMs int // ms per frame (60 for 60ms)
+	Frames int  // total frames
+	TickMs int  // ms per frame (60 for 60ms)
+	Loop   bool // restart when done
 
 	// blink-specific
 	BlinkPixels []Pixel  // eye pixel coordinates
 	BlinkSeq    []bool   // per-frame: true = eyes visible
+	BlinkColor  uint8    // color when eyes close (0 = transparent)
 
 	// flame-specific
 	FlameZone   [4]int   // {rowMin, rowMax, colMin, colMax}
@@ -139,6 +141,10 @@ func (s *AnimState) Tick() bool {
 	}
 	s.Frame++
 	if s.Frame >= s.Config.Frames {
+		if s.Config.Loop {
+			s.Frame = 0
+			return false
+		}
 		s.Done = true
 		return true
 	}
@@ -161,17 +167,17 @@ func (s *AnimState) CurrentFrame() PixelArt {
 	return frame
 }
 
-// applyBlink toggles eye pixels between dark and transparent per BlinkSeq.
+// applyBlink toggles eye pixels between BlinkColor and base per BlinkSeq.
 func (s *AnimState) applyBlink(frame *PixelArt) {
 	idx := s.Frame
 	if idx >= len(s.Config.BlinkSeq) {
 		return
 	}
 	if !s.Config.BlinkSeq[idx] {
-		// eyes closed: set eye pixels to transparent
+		// eyes closed: set eye pixels to blink color
 		for _, p := range s.Config.BlinkPixels {
 			if p.Row >= 0 && p.Row < frame.Height && p.Col >= 0 && p.Col < frame.Width {
-				frame.Pixels[p.Row][p.Col] = 0
+				frame.Pixels[p.Row][p.Col] = s.Config.BlinkColor
 			}
 		}
 	}

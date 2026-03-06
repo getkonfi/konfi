@@ -111,6 +111,7 @@ var LogoAnims = map[string]pkg.AnimConfig{
 			{Row: 4, Col: 4}, {Row: 4, Col: 5}, {Row: 5, Col: 4}, {Row: 5, Col: 5},
 			{Row: 4, Col: 10}, {Row: 4, Col: 11}, {Row: 5, Col: 10}, {Row: 5, Col: 11},
 		},
+		BlinkColor: wh,
 		// pause → single blink → eyes stay open
 		BlinkSeq: []bool{
 			true, true, true, true, true, true, true, true, true, true,
