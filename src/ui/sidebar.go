@@ -354,14 +354,18 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		badge = fmt.Sprintf(" %d new", n)
 	}
 
-	// when sidebar is unfocused, dim all items
+	// when sidebar is unfocused, dim all items but keep cursor arrow
 	if !s.focused {
 		nameStyle := s.theme.Muted.Faint(true)
+		prefix := "  "
+		if isCursor {
+			prefix = nameStyle.Render("> ")
+		}
 		body := nameStyle.Render(name)
 		if badge != "" {
 			body += nameStyle.Render(badge)
 		}
-		return lipgloss.NewStyle().Width(width).MaxWidth(width).Render("  " + body)
+		return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(prefix + body)
 	}
 
 	var nameStyle lipgloss.Style
