@@ -179,18 +179,19 @@ func (d detail) viewBrowse(width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	// default vs current value
+	// value — single line, git-diff style
 	curVal, hasCur := d.values[f.Key]
 	if f.Type != "color" {
-		if f.Default != "" {
-			b.WriteString(d.theme.FieldLabel.Render("default ") + d.theme.FieldDefault.Render(f.Default))
+		if hasCur {
+			// configured — show in red (git "existing line" style)
+			b.WriteString(d.theme.Error.Render(curVal))
+			if f.Default != "" && curVal != f.Default {
+				b.WriteString(d.theme.Muted.Render("  ← default " + f.Default))
+			}
 			b.WriteByte('\n')
-		}
-		if hasCur && curVal != f.Default {
-			b.WriteString(d.theme.FieldLabel.Render("current ") + d.theme.FieldValue.Render(curVal))
-			b.WriteByte('\n')
-		} else if hasCur {
-			b.WriteString(d.theme.FieldLabel.Render("current ") + d.theme.FieldValue.Render(curVal) + d.theme.Muted.Render(" (default)"))
+		} else if f.Default != "" {
+			// not configured — show default in gray
+			b.WriteString(d.theme.Muted.Render(f.Default))
 			b.WriteByte('\n')
 		}
 		b.WriteByte('\n')
@@ -228,7 +229,7 @@ func (d detail) viewBrowse(width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	// live config line (skip for color — already shown in type visual)
+	// live config line — git-diff style (skip for color)
 	if f.Type != "color" {
 		val := f.Default
 		if hasCur {
@@ -236,12 +237,17 @@ func (d detail) viewBrowse(width, height int) string {
 		}
 		keyStr := f.Key
 		sep := " = "
-		usedW := len(keyStr) + len(sep)
+		prefixLen := 2 // "─ " or "+ "
+		usedW := prefixLen + len(keyStr) + len(sep)
 		if len(val)+usedW > width && width > usedW+1 {
 			val = val[:width-usedW-1] + "…"
 		}
 		b.WriteByte('\n')
-		b.WriteString(d.theme.PreviewHL.Render(keyStr) + d.theme.Text.Render(sep) + d.theme.Accent.Render(val))
+		if hasCur {
+			b.WriteString(d.theme.Error.Render("─ ") + d.theme.PreviewHL.Render(keyStr) + d.theme.Text.Render(sep) + d.theme.Error.Render(val))
+		} else {
+			b.WriteString(d.theme.Success.Render("+ ") + d.theme.Muted.Render(keyStr+sep) + d.theme.Success.Render(val))
+		}
 		b.WriteByte('\n')
 	}
 
@@ -383,17 +389,20 @@ func (d detail) renderFileSnippet(width, height int) string {
 	}
 
 	if !d.previewFound {
-		val := ""
-		if d.field != nil {
-			val = d.field.Default
-			if v, ok := d.values[d.field.Key]; ok {
-				val = v
-			}
+		if d.field == nil {
+			return ""
 		}
-		if d.field != nil {
-			return d.theme.Success.Render(fmt.Sprintf("+ %s = %s", d.field.Key, val))
+		val := d.field.Default
+		if v, ok := d.values[d.field.Key]; ok {
+			val = v
 		}
-		return ""
+		var sb strings.Builder
+		if d.field.Default != "" {
+			sb.WriteString(d.theme.Muted.Render("  " + d.field.Default))
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(d.theme.Success.Render(fmt.Sprintf("+ %s = %s", d.field.Key, val)))
+		return sb.String()
 	}
 
 	data := d.config.Content()
@@ -421,7 +430,7 @@ func (d detail) renderFileSnippet(width, height int) string {
 		}
 
 		if i == d.previewLine {
-			b.WriteString(d.theme.PreviewHL.Render("▶ " + line))
+			b.WriteString(d.theme.Error.Render("▶ " + line))
 		} else {
 			b.WriteString(d.theme.Muted.Render("  " + line))
 		}

@@ -50,6 +50,7 @@ var helpContent = helpGroup{
 		{"/", "search fields"},
 		{"f", "toggle configured"},
 		{"o", "open docs"},
+		{"e", "open in $EDITOR"},
 		{"esc", "back to sidebar"},
 	},
 }

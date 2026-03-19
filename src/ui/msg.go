@@ -73,3 +73,6 @@ type UndoMsg struct{}
 
 // RedoMsg requests redoing the last undone edit.
 type RedoMsg struct{}
+
+// EditorExitMsg is sent when the external $EDITOR process exits.
+type EditorExitMsg struct{ Err error }

@@ -3,6 +3,8 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"time"
 
 	"github.com/emin/konfigurator/konfables"
@@ -415,6 +417,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, nil
 			}
 
+		case "e":
+			if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
+				return r, r.openInEditor()
+			}
+
 		case "ctrl+z":
 			return r, func() tea.Msg { return UndoMsg{} }
 
@@ -557,6 +564,18 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.app.Config.LogLevel = msg.Value
 		}
 		return r, tea.Batch(cmds...)
+
+	case EditorExitMsg:
+		// reload config after external editor exits
+		if r.content.config != nil {
+			if err := r.content.config.Reload(context.Background()); err == nil {
+				r.content.refreshValues()
+				r.content.snapshotOrigValues()
+				r.content.fileState = ""
+			}
+		}
+		r.updateHints()
+		return r, nil
 
 	case insightTickMsg, splitFlapTickMsg, logoAnimTickMsg:
 		var cmd tea.Cmd
@@ -775,6 +794,9 @@ func (r *root) updateHints() {
 		hints = append(hints, keyHint{"f", "filter"})
 		if r.content.currentDocURL() != "" {
 			hints = append(hints, keyHint{"o", "docs"})
+		}
+		if r.content.config != nil && r.content.config.Path != "" {
+			hints = append(hints, keyHint{"e", "$EDITOR"})
 		}
 		hints = append(hints, []keyHint{
 			{"←", "back"},
@@ -1004,6 +1026,32 @@ func (r *root) toggleNewFilter() {
 	} else {
 		r.status.status = ""
 	}
+}
+
+// openInEditor launches $EDITOR (or $VISUAL, fallback vim) on the config file.
+func (r *root) openInEditor() tea.Cmd {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		return func() tea.Msg {
+			return StatusMsg{Text: "$EDITOR not set"}
+		}
+	}
+
+	path := r.content.config.Path
+	args := []string{path}
+
+	// pass +LINE for editors that support it (vim, nvim, nano, emacs, etc.)
+	if r.content.detail.previewFound && r.content.detail.previewLine >= 0 {
+		args = []string{fmt.Sprintf("+%d", r.content.detail.previewLine+1), path}
+	}
+
+	cmd := exec.Command(editor, args...)
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return EditorExitMsg{Err: err}
+	})
 }
 
 // statusClearMsg clears the transient status after a delay.

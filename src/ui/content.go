@@ -858,6 +858,11 @@ func (c *content) refilter() {
 	if c.cursor < 0 {
 		c.cursor = 0
 	}
+
+	// ensure cursor is not stuck on a section header after clamping
+	if len(c.visible) > 0 && c.cursor >= 0 && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
+		c.skipSectionHeaders(1)
+	}
 }
 
 // fieldMatchesQuery checks if a field matches the search query against key, label, and description.
