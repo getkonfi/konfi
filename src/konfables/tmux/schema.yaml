@@ -1,0 +1,170 @@
+app: tmux
+format: tmux
+schema_version: 1.0.0
+docs_url: "https://man7.org/linux/man-pages/man1/tmux.1.html"
+coverage: partial
+hints:
+  - "set -g option value"
+  - "reload with: tmux source ~/.tmux.conf"
+
+sections:
+  - name: General
+    fields:
+      - key: default-terminal
+        label: Default Terminal
+        type: string
+        default: screen
+        description: default terminal type for new windows
+        hint: "recommended: tmux-256color or screen-256color"
+      - key: escape-time
+        label: Escape Time
+        type: number
+        default: "500"
+        min: 0
+        max: 2000
+        description: time in ms to wait after escape key press
+        hint: "set to 0 for vim/neovim responsiveness"
+      - key: history-limit
+        label: History Limit
+        type: number
+        default: "2000"
+        min: 0
+        max: 100000
+        description: maximum number of lines in scrollback buffer
+      - key: mouse
+        label: Mouse
+        type: enum
+        default: "off"
+        options: ["on", "off"]
+        description: enable mouse support for selection and scrolling
+      - key: focus-events
+        label: Focus Events
+        type: enum
+        default: "off"
+        options: ["on", "off"]
+        description: pass focus events to programs running inside tmux
+      - key: set-clipboard
+        label: Set Clipboard
+        type: enum
+        default: external
+        options: ["on", "off", "external"]
+        description: clipboard integration mode
+      - key: default-command
+        label: Default Command
+        type: string
+        description: default command for new windows
+      - key: default-shell
+        label: Default Shell
+        type: string
+        description: default shell for new windows
+        widget: path
+
+  - name: Display
+    fields:
+      - key: base-index
+        label: Base Index
+        type: number
+        default: "0"
+        min: 0
+        max: 9
+        description: starting index for window numbering
+      - key: pane-base-index
+        label: Pane Base Index
+        type: number
+        default: "0"
+        min: 0
+        max: 9
+        description: starting index for pane numbering
+      - key: renumber-windows
+        label: Renumber Windows
+        type: enum
+        default: "off"
+        options: ["on", "off"]
+        description: renumber windows sequentially after closing
+      - key: display-time
+        label: Display Time
+        type: number
+        default: "750"
+        min: 0
+        max: 10000
+        description: time in ms to display status messages
+      - key: display-panes-time
+        label: Display Panes Time
+        type: number
+        default: "1000"
+        min: 0
+        max: 10000
+        description: time in ms to display pane numbers
+      - key: status
+        label: Status Bar
+        type: enum
+        default: "on"
+        options: ["on", "off", "2", "3", "4", "5"]
+        description: show or hide the status bar (number = multi-line)
+      - key: status-position
+        label: Status Position
+        type: enum
+        default: bottom
+        options: [top, bottom]
+        description: status bar position
+      - key: status-interval
+        label: Status Interval
+        type: number
+        default: "15"
+        min: 0
+        max: 300
+        description: seconds between status bar refreshes
+      - key: status-justify
+        label: Status Justify
+        type: enum
+        default: left
+        options: [left, centre, right]
+        description: window list alignment in status bar
+
+  - name: Style
+    fields:
+      - key: status-style
+        label: Status Style
+        type: string
+        description: status bar style
+        hint: "e.g. bg=black,fg=white"
+      - key: window-status-current-style
+        label: Current Window Style
+        type: string
+        description: style for the active window in status bar
+        hint: "e.g. bg=blue,fg=white,bold"
+      - key: pane-border-style
+        label: Pane Border
+        type: string
+        description: inactive pane border style
+        hint: "e.g. fg=colour238"
+      - key: pane-active-border-style
+        label: Active Pane Border
+        type: string
+        description: active pane border style
+        hint: "e.g. fg=blue"
+      - key: message-style
+        label: Message Style
+        type: string
+        description: command prompt and message style
+
+  - name: Keys
+    fields:
+      - key: prefix
+        label: Prefix Key
+        type: string
+        default: C-b
+        description: key combination to enter command mode
+        hint: "common alternative: C-a"
+      - key: mode-keys
+        label: Mode Keys
+        type: enum
+        default: emacs
+        options: [vi, emacs]
+        description: key bindings style for copy mode
+      - key: status-keys
+        label: Status Keys
+        type: enum
+        default: emacs
+        options: [vi, emacs]
+        description: key bindings style for command prompt

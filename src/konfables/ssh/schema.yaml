@@ -1,0 +1,155 @@
+app: ssh
+format: ssh
+schema_version: 1.0.0
+docs_url: "https://man.openbsd.org/ssh_config.5"
+coverage: partial
+hints:
+  - "Keyword Value (space-separated)"
+  - "settings apply to Host * (all hosts)"
+
+sections:
+  - name: Connection
+    fields:
+      - key: ServerAliveInterval
+        label: Server Alive Interval
+        type: number
+        default: "0"
+        min: 0
+        max: 3600
+        description: seconds between keepalive messages to server
+        hint: "set to 60 to prevent idle disconnects"
+      - key: ServerAliveCountMax
+        label: Server Alive Count Max
+        type: number
+        default: "3"
+        min: 0
+        max: 100
+        description: number of keepalive failures before disconnecting
+      - key: ConnectTimeout
+        label: Connect Timeout
+        type: number
+        default: "0"
+        min: 0
+        max: 300
+        description: connection timeout in seconds (0 = system default)
+      - key: ConnectionAttempts
+        label: Connection Attempts
+        type: number
+        default: "1"
+        min: 1
+        max: 100
+        description: number of connection attempts before giving up
+      - key: TCPKeepAlive
+        label: TCP Keep Alive
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: send TCP keepalive messages to detect broken connections
+
+  - name: Authentication
+    fields:
+      - key: PubkeyAuthentication
+        label: Pubkey Authentication
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: try public key authentication
+      - key: PasswordAuthentication
+        label: Password Authentication
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: allow password authentication
+      - key: PreferredAuthentications
+        label: Preferred Authentications
+        type: string
+        default: "publickey,keyboard-interactive,password"
+        description: comma-separated authentication methods in priority order
+      - key: IdentitiesOnly
+        label: Identities Only
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: only use explicitly configured identity files
+      - key: AddKeysToAgent
+        label: Add Keys to Agent
+        type: enum
+        default: "no"
+        options: ["yes", "no", "ask", "confirm"]
+        description: automatically add keys to ssh-agent on first use
+      - key: IdentityFile
+        label: Identity File
+        type: string
+        default: "~/.ssh/id_rsa"
+        description: path to private key file
+        widget: path
+
+  - name: Security
+    fields:
+      - key: StrictHostKeyChecking
+        label: Strict Host Key Checking
+        type: enum
+        default: ask
+        options: ["yes", "no", "ask", "accept-new"]
+        description: how to handle unknown or changed host keys
+      - key: VerifyHostKeyDNS
+        label: Verify Host Key DNS
+        type: enum
+        default: "no"
+        options: ["yes", "no", "ask"]
+        description: verify host keys using DNS SSHFP records
+      - key: HashKnownHosts
+        label: Hash Known Hosts
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: hash host names in known_hosts file
+      - key: UpdateHostKeys
+        label: Update Host Keys
+        type: enum
+        default: "no"
+        options: ["yes", "no", "ask"]
+        description: accept updated host keys from server
+
+  - name: Forwarding
+    fields:
+      - key: ForwardAgent
+        label: Forward Agent
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: forward SSH agent to remote machine
+        hint: "security risk — only enable for trusted hosts"
+      - key: ForwardX11
+        label: Forward X11
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: forward X11 display to remote machine
+      - key: ForwardX11Trusted
+        label: Forward X11 Trusted
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: use trusted X11 forwarding (full display access)
+
+  - name: General
+    fields:
+      - key: Compression
+        label: Compression
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: enable compression over the connection
+      - key: LogLevel
+        label: Log Level
+        type: enum
+        default: INFO
+        options: [QUIET, FATAL, ERROR, INFO, VERBOSE, DEBUG, DEBUG1, DEBUG2, DEBUG3]
+        description: verbosity of SSH logging
+      - key: VisualHostKey
+        label: Visual Host Key
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: display ASCII art of host key fingerprint

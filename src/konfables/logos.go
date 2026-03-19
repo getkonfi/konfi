@@ -10,6 +10,9 @@ var Logos = map[string]pkg.PixelArt{
 	"starship":     starshipLogo,
 	"hyprland":     hyprlandLogo,
 	"konfigurator": konfiguratorLogo,
+	"git":          gitLogo,
+	"tmux":         tmuxLogo,
+	"ssh":          sshLogo,
 }
 
 // color aliases for readability
@@ -25,6 +28,7 @@ const (
 	rd uint8 = 203 // red (flame)
 	lb uint8 = 75  // light blue
 	mb uint8 = 111 // medium blue
+	gn uint8 = 34  // green (tmux)
 )
 
 // ghostty — ghost silhouette with eyes, wavy bottom
@@ -154,5 +158,62 @@ var hyprlandLogo = pkg.PixelArt{
 		{__, __, __, __, __, lb, lb, mb, mb, __, __, lb, lb, __, __, __},
 		{__, __, __, __, __, __, lb, lb, mb, mb, lb, lb, __, __, __, __},
 		{__, __, __, __, __, __, __, __, lb, lb, lb, __, __, __, __, __},
+	},
+}
+
+// git — branching diamond in orange (git logo silhouette)
+var gitLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, __, __, __, __, or, or, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, or, or, or, or, __, __, __, __, __, __},
+		{__, __, __, __, __, or, or, or, or, or, or, __, __, __, __, __},
+		{__, __, __, __, or, or, or, __, __, or, or, or, __, __, __, __},
+		{__, __, __, or, or, or, __, __, __, __, or, or, or, __, __, __},
+		{__, __, or, or, or, __, __, or, or, __, __, or, or, or, __, __},
+		{__, __, __, or, or, or, __, or, or, __, or, or, or, __, __, __},
+		{__, __, __, __, or, or, or, __, __, or, or, or, __, __, __, __},
+		{__, __, __, __, __, or, or, or, or, or, or, __, __, __, __, __},
+		{__, __, __, __, __, __, or, or, or, or, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, or, or, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+	},
+}
+
+// tmux — split pane layout in green
+var tmuxLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, dk, dk, dk, dk, dk, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, dk, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+	},
+}
+
+// ssh — key shape in yellow
+var sshLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, __, __, __, yl, yl, yl, yl, __, __, __, __, __, __},
+		{__, __, __, __, __, yl, yl, __, __, yl, yl, __, __, __, __, __},
+		{__, __, __, __, __, yl, __, __, __, __, yl, __, __, __, __, __},
+		{__, __, __, __, __, yl, yl, __, __, yl, yl, __, __, __, __, __},
+		{__, __, __, __, __, __, yl, yl, yl, yl, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, yl, yl, yl, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }

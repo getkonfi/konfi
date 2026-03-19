@@ -1,0 +1,62 @@
+package ssh
+
+import (
+	"context"
+	_ "embed"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/emin/konfigurator/konfables"
+	"github.com/emin/konfigurator/pkg"
+)
+
+//go:embed schema.yaml
+var schemaData []byte
+
+type SSH struct {
+	*pkg.FilePersister
+}
+
+func New(p *pkg.FilePersister) *SSH {
+	return &SSH{FilePersister: p}
+}
+
+func (s *SSH) Info() konfables.AppInfo {
+	return konfables.AppInfo{
+		Name:       "ssh",
+		Binary:     "ssh",
+		ConfigPath: s.Path,
+		Format:     "ssh",
+		Icon:       "",
+		NerdIcon:   "\uf489", // nf-oct-terminal
+	}
+}
+
+func (s *SSH) Name() string             { return "ssh" }
+func (s *SSH) ConfigPath() string       { return s.Path }
+func (s *SSH) Parser() konfables.Parser { return &parser{} }
+func (s *SSH) Schema() ([]byte, error)  { return schemaData, nil }
+
+// Version runs "ssh -V" and extracts the version string from stderr.
+func (s *SSH) Version(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "ssh", "-V")
+	// ssh -V writes to stderr
+	out, err := cmd.CombinedOutput()
+	if err != nil && len(out) == 0 {
+		return "", err
+	}
+	line := strings.TrimSpace(string(out))
+	// "OpenSSH_9.9p1, OpenSSL ..." → "OpenSSH_9.9p1"
+	if idx := strings.IndexByte(line, ','); idx > 0 {
+		line = line[:idx]
+	}
+	return line, nil
+}
+
+// DefaultConfigPath returns ~/.ssh/config.
+func DefaultConfigPath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".ssh", "config")
+}

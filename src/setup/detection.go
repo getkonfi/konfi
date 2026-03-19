@@ -12,13 +12,16 @@ import (
 
 	"github.com/emin/konfigurator/konfables/alacritty"
 	"github.com/emin/konfigurator/konfables/ghostty"
+	"github.com/emin/konfigurator/konfables/git"
 	"github.com/emin/konfigurator/konfables/gnome"
 	"github.com/emin/konfigurator/konfables/helix"
 	"github.com/emin/konfigurator/konfables/hyprland"
 	"github.com/emin/konfigurator/konfables/kitty"
 	"github.com/emin/konfigurator/konfables/konfigurator"
 	"github.com/emin/konfigurator/konfables/rio"
+	"github.com/emin/konfigurator/konfables/ssh"
 	"github.com/emin/konfigurator/konfables/starship"
+	"github.com/emin/konfigurator/konfables/tmux"
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/setup/cst"
 )
@@ -65,6 +68,15 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"rio", func() Konfable {
 		return rio.New(pkg.NewFilePersister(pkg.XDGConfigPath("rio", "config.toml")))
+	}, false, nil},
+	{"git", func() Konfable {
+		return git.New(pkg.NewFilePersister(git.DefaultConfigPath()))
+	}, false, nil},
+	{"tmux", func() Konfable {
+		return tmux.New(pkg.NewFilePersister(tmux.DefaultConfigPath()))
+	}, false, nil},
+	{"ssh", func() Konfable {
+		return ssh.New(pkg.NewFilePersister(ssh.DefaultConfigPath()))
 	}, false, nil},
 }
 

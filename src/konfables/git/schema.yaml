@@ -1,0 +1,198 @@
+app: git
+format: ini
+schema_version: 1.0.0
+docs_url: "https://git-scm.com/docs/git-config"
+coverage: partial
+hints:
+  - "INI format — sections are [headers]"
+  - "run `git config --list` to see all settings"
+
+sections:
+  - name: User
+    key: user
+    fields:
+      - key: user.name
+        label: Name
+        type: string
+        description: full name for commit authorship
+        doc_url: "https://git-scm.com/docs/git-config#Documentation/git-config.txt-username"
+      - key: user.email
+        label: Email
+        type: string
+        description: email address for commit authorship
+        doc_url: "https://git-scm.com/docs/git-config#Documentation/git-config.txt-useremail"
+      - key: user.signingkey
+        label: Signing Key
+        type: string
+        description: default GPG/SSH signing key
+
+  - name: Core
+    key: core
+    fields:
+      - key: core.editor
+        label: Editor
+        type: string
+        default: vim
+        description: text editor for commit messages and interactive commands
+      - key: core.autocrlf
+        label: Auto CRLF
+        type: enum
+        default: "false"
+        options: ["true", "false", "input"]
+        description: automatic line ending conversion
+      - key: core.ignorecase
+        label: Ignore Case
+        type: bool
+        default: "true"
+        description: whether the filesystem is case-insensitive
+      - key: core.filemode
+        label: File Mode
+        type: bool
+        default: "true"
+        description: track file permission changes
+      - key: core.pager
+        label: Pager
+        type: string
+        default: less
+        description: pager for command output
+      - key: core.excludesfile
+        label: Excludes File
+        type: string
+        description: global gitignore file path
+        widget: path
+      - key: core.whitespace
+        label: Whitespace
+        type: string
+        description: comma-separated whitespace error detection rules
+
+  - name: Init
+    key: init
+    fields:
+      - key: init.defaultBranch
+        label: Default Branch
+        type: string
+        default: master
+        description: default branch name for new repositories
+
+  - name: Pull
+    key: pull
+    fields:
+      - key: pull.rebase
+        label: Rebase
+        type: enum
+        default: "false"
+        options: ["true", "false", "merges", "interactive"]
+        description: rebase branches on pull instead of merging
+      - key: pull.ff
+        label: Fast-Forward
+        type: enum
+        default: "true"
+        options: ["true", "false", "only"]
+        description: fast-forward strategy for pull
+
+  - name: Push
+    key: push
+    fields:
+      - key: push.default
+        label: Default
+        type: enum
+        default: simple
+        options: [nothing, current, upstream, tracking, simple, matching]
+        description: default push behavior
+      - key: push.autoSetupRemote
+        label: Auto Setup Remote
+        type: bool
+        default: "false"
+        description: automatically set up remote tracking on first push
+      - key: push.followTags
+        label: Follow Tags
+        type: bool
+        default: "false"
+        description: push annotated tags alongside commits
+
+  - name: Merge
+    key: merge
+    fields:
+      - key: merge.tool
+        label: Tool
+        type: string
+        description: merge tool for resolving conflicts
+      - key: merge.conflictstyle
+        label: Conflict Style
+        type: enum
+        default: merge
+        options: [merge, diff3, zdiff3]
+        description: conflict marker style
+      - key: merge.ff
+        label: Fast-Forward
+        type: enum
+        default: "true"
+        options: ["true", "false", "only"]
+        description: fast-forward merge strategy
+
+  - name: Diff
+    key: diff
+    fields:
+      - key: diff.tool
+        label: Tool
+        type: string
+        description: external diff tool
+      - key: diff.colorMoved
+        label: Color Moved
+        type: enum
+        default: "no"
+        options: ["no", "default", "plain", "blocks", "zebra", "dimmed-zebra"]
+        description: highlight moved lines in diff output
+      - key: diff.algorithm
+        label: Algorithm
+        type: enum
+        default: myers
+        options: [myers, minimal, patience, histogram]
+        description: diff algorithm
+
+  - name: Rebase
+    key: rebase
+    fields:
+      - key: rebase.autoStash
+        label: Auto Stash
+        type: bool
+        default: "false"
+        description: automatically stash and unstash during rebase
+      - key: rebase.autoSquash
+        label: Auto Squash
+        type: bool
+        default: "false"
+        description: automatically reorder fixup/squash commits
+
+  - name: Fetch
+    key: fetch
+    fields:
+      - key: fetch.prune
+        label: Prune
+        type: bool
+        default: "false"
+        description: remove remote-tracking branches that no longer exist
+      - key: fetch.pruneTags
+        label: Prune Tags
+        type: bool
+        default: "false"
+        description: remove tags that no longer exist on remote
+
+  - name: Color
+    key: color
+    fields:
+      - key: color.ui
+        label: UI
+        type: enum
+        default: auto
+        options: ["true", "false", "auto", "always"]
+        description: colorize git output
+
+  - name: Credential
+    key: credential
+    fields:
+      - key: credential.helper
+        label: Helper
+        type: string
+        description: credential storage helper
+        hint: "common values: cache, store, osxkeychain, manager"
