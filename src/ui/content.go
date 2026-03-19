@@ -1092,11 +1092,15 @@ func (c content) cursorLine() int {
 		return 0
 	}
 	line := c.fieldAreaOverhead()
-	for i := range c.visible {
+	for i, r := range c.visible {
 		if i == c.cursor {
 			return line
 		}
-		line++ // field row
+		// section headers have a blank line before them (except first)
+		if r.isSection && i > 0 {
+			line++
+		}
+		line++
 	}
 	return 0
 }
@@ -1694,16 +1698,26 @@ func (c content) renderBody(width int) string {
 
 	// detect inline editing state once before the loop
 	editingInline := c.detail.editing && c.detail.editor != nil
-	gutterStyle := c.theme.Muted.Faint(true)
+
+	// rotating section colors for visual distinction
+	sectionColors := []lipgloss.Style{
+		c.theme.Primary, c.theme.Secondary, c.theme.Accent,
+		c.theme.Success, c.theme.Warning,
+	}
 
 	for i, r := range c.visible {
 		// section header row
 		if r.isSection {
 			name := c.schema.Sections[r.sectionIdx].Name
-			header := c.theme.Muted.Bold(true).Render("── " + name + " ")
+			sc := sectionColors[r.sectionIdx%len(sectionColors)]
+			header := sc.Faint(true).Bold(true).Render("── " + name + " ")
 			remaining := width - lipgloss.Width(header)
 			if remaining > 0 {
-				header += c.theme.Muted.Faint(true).Render(strings.Repeat("─", remaining))
+				header += sc.Faint(true).Render(strings.Repeat("─", remaining))
+			}
+			// breathing room before sections (except the first visible row)
+			if i > 0 {
+				b.WriteByte('\n')
 			}
 			b.WriteString(header)
 			b.WriteByte('\n')
@@ -1717,7 +1731,7 @@ func (c content) renderBody(width int) string {
 		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
 
 		// gutter annotations: [changed][version][type]
-		gutter := c.renderGutter(f, gutterStyle)
+		gutter := c.renderGutter(f)
 
 		// type icon (widget hint takes precedence)
 		icon := fieldTypeIcon[f.Widget]
@@ -1771,12 +1785,13 @@ func (c content) renderBody(width int) string {
 
 		// build prefix and label (gutter + cursor/icon)
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
+		iconStyle := c.typeIconStyle(f.Type)
 		var prefix, label string
 		if isCursor {
-			prefix = gutter + c.theme.Primary.Render("▎ "+icon) + " "
+			prefix = gutter + c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
 			label = c.theme.Text.Bold(true).Render(paddedLabel)
 		} else {
-			prefix = gutter + "  " + c.theme.Muted.Render(icon) + " "
+			prefix = gutter + "  " + iconStyle.Faint(true).Render(icon) + " "
 			label = c.theme.FieldLabel.Render(paddedLabel)
 		}
 
@@ -1888,6 +1903,25 @@ func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) strin
 	}
 }
 
+// typeIconStyle returns a per-type color for field type icons.
+// mirrors the type badge colors in detail.go for visual consistency.
+func (c content) typeIconStyle(typ string) lipgloss.Style {
+	switch typ {
+	case "number":
+		return c.theme.Secondary
+	case "enum":
+		return c.theme.Primary
+	case "color":
+		return c.theme.Accent
+	case "bool":
+		return c.theme.Success
+	case "list", "multi":
+		return c.theme.Warning
+	default:
+		return c.theme.Muted
+	}
+}
+
 // gutterTypeIcon maps field types to compact ASCII gutter symbols.
 var gutterTypeIcon = map[string]string{
 	"number": "#",
@@ -1899,7 +1933,7 @@ var gutterTypeIcon = map[string]string{
 
 // renderGutter builds the left-margin annotation column for a field row.
 // format: [changed][version][type] (3 chars + trailing space).
-func (c content) renderGutter(f *pkg.Field, dim lipgloss.Style) string {
+func (c content) renderGutter(f *pkg.Field) string {
 	var ch, ver, typ string
 
 	// changed from default: value exists and differs from schema default
@@ -1919,9 +1953,9 @@ func (c content) renderGutter(f *pkg.Field, dim lipgloss.Style) string {
 		ver = " "
 	}
 
-	// type icon
+	// type icon (colored per type, faint for subtlety)
 	if icon, ok := gutterTypeIcon[f.Type]; ok {
-		typ = dim.Render(icon)
+		typ = c.typeIconStyle(f.Type).Faint(true).Render(icon)
 	} else {
 		typ = " "
 	}
