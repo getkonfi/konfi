@@ -464,15 +464,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			k := r.allKonfables[msg.Index]
 			r.status.status = ""
 
-			if !r.installed[k.Name()] {
-				r.content.showNotInstalled(k)
-			} else {
-				cmd := r.content.loadApp(k)
-				cmds = append(cmds, cmd)
+			cmd := r.content.loadApp(k)
+			cmds = append(cmds, cmd)
 
-				if msg.Confirmed {
-					r.focusPane(paneContent)
-				}
+			if msg.Confirmed {
+				r.focusPane(paneContent)
 			}
 		}
 		return r, tea.Batch(cmds...)

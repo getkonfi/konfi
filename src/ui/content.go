@@ -639,40 +639,6 @@ func (c *content) showDashboard() {
 	c.diffView.SetEntries(nil)
 }
 
-// showNotInstalled sets the active konfable for display without loading config or schema.
-func (c *content) showNotInstalled(k konfables.Konfable) {
-	c.stopWatching()
-	c.konfable = k
-	c.title = k.Name()
-	c.config = nil
-	c.schema = nil
-	c.fields = nil
-	c.fieldSection = nil
-	c.visible = nil
-	c.collapsed = make(map[int]bool)
-	c.configuredOnly = false
-	c.showNewOnly = false
-	c.searching = false
-	c.search.SetValue("")
-	c.search.Blur()
-	c.values = make(map[string]string)
-	c.origValues = make(map[string]string)
-	c.scrollY = 0
-	c.cursor = 0
-	c.detail.editing = false
-	c.detail.editor = nil
-	c.detail.reset()
-	c.insightLines = nil
-	c.insightIdx = 0
-	c.insightWarningCount = 0
-	c.insightGen++
-	c.logoAnimGen++
-	c.logoAnim = nil
-	c.undoStack.Clear()
-	c.breadcrumb.SetPath(k.Name(), "", "")
-	c.diffView.SetEntries(nil)
-}
-
 // loadApp sets the active konfable, loads its config and schema, and reads values.
 func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	// snapshot current header lines for split-flap transition
@@ -709,23 +675,17 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.undoStack.Clear()
 	c.diffView.SetEntries(nil)
 
-	info := k.Info()
-
 	// detect whether this is a fresh file (before Load potentially creates it)
 	isNewFile := k.ConfigPath() != "" && !pkg.FileExists(k.ConfigPath())
 
-	// load config through the konfable's persister
+	// load config through the konfable's persister (may fail for uninstalled apps)
 	cf, err := pkg.NewConfigFile(context.Background(), k)
-	if err != nil {
-		return func() tea.Msg {
-			return StatusMsg{Text: fmt.Sprintf("no config: %s", info.ConfigPath)}
+	if err == nil {
+		c.config = cf
+		c.config.Path = k.ConfigPath()
+		if isNewFile {
+			c.fileState = "new"
 		}
-	}
-	c.config = cf
-	c.config.Path = k.ConfigPath()
-
-	if isNewFile {
-		c.fileState = "new"
 	}
 
 	// load schema (filter by detected version if known)
@@ -1438,9 +1398,13 @@ func (c *content) buildInsights() {
 		}
 		diags := pkg.Diagnose(keys, c.schema, version)
 		for _, d := range diags {
+			// skip "unknown key" warnings — schemas don't cover every valid key
+			if d.Kind == "unknown" {
+				continue
+			}
 			c.insightLines = append(c.insightLines, d.Message)
+			c.insightWarningCount++
 		}
-		c.insightWarningCount += len(diags)
 	}
 
 	totalFields := 0
@@ -1477,6 +1441,8 @@ func (c content) headerLeftLines() []string {
 		if path == "" && c.konfable != nil {
 			path = c.konfable.Info().Name
 		}
+	} else if c.konfable != nil {
+		path = "not installed — browse only"
 	}
 	if c.fileState != "" {
 		path += " [" + c.fileState + "]"
