@@ -9,7 +9,7 @@ hints:
   - supports ligatures and font features via font-feature
   - use keybind to customize shortcuts
 sections:
-  - name: Font Family
+  - name: Font
     key: ""
     fields:
       - key: font-family
@@ -26,7 +26,7 @@ sections:
         type: string
         widget: font
         default: ""
-        description: font family for bold text
+        description: overrides primary font for bold
         doc_url: https://ghostty.org/docs/config/reference#font-family-bold
         since: 1.0.0
       - key: font-family-italic
@@ -34,7 +34,7 @@ sections:
         type: string
         widget: font
         default: ""
-        description: font family for italic text
+        description: overrides primary font for italic
         doc_url: https://ghostty.org/docs/config/reference#font-family-italic
         since: 1.0.0
       - key: font-family-bold-italic
@@ -42,12 +42,9 @@ sections:
         type: string
         widget: font
         default: ""
-        description: font family for bold italic text
+        description: overrides primary font for bold italic
         doc_url: https://ghostty.org/docs/config/reference#font-family-bold-italic
         since: 1.0.0
-  - name: Font Style
-    key: ""
-    fields:
       - key: font-size
         label: Font Size
         type: number
@@ -61,26 +58,23 @@ sections:
         label: Font Style
         type: string
         default: ""
-        description: default font style (e.g., regular, medium, light)
+        description: named style variant (e.g. regular, medium, light)
         doc_url: https://ghostty.org/docs/config/reference#font-style
         since: 1.0.0
       - key: font-style-bold
         label: Bold Style
         type: string
         default: ""
-        description: font style to use for bold
+        description: named style variant for bold weight
         doc_url: https://ghostty.org/docs/config/reference#font-style-bold
         since: 1.0.0
       - key: font-style-italic
         label: Italic Style
         type: string
         default: ""
-        description: font style to use for italic
+        description: named style variant for italic
         doc_url: https://ghostty.org/docs/config/reference#font-style-italic
         since: 1.0.0
-  - name: Font Advanced
-    key: ""
-    fields:
       - key: font-feature
         label: Font Feature
         type: list
@@ -101,9 +95,10 @@ sections:
         type: bool
         default: "false"
         description: thicken glyphs for HiDPI
+        hint: adds weight to thin fonts on high-resolution displays
         doc_url: https://ghostty.org/docs/config/reference#font-thicken
         since: 1.0.0
-  - name: Color Theme
+  - name: Colors
     key: ""
     fields:
       - key: theme
@@ -117,7 +112,7 @@ sections:
         label: Background
         type: color
         default: "282828"
-        description: hex color without #
+        description: terminal background color
         palette:
           - "282828"
           - 1d2021
@@ -134,7 +129,7 @@ sections:
         label: Foreground
         type: color
         default: ebdbb2
-        description: hex color without #
+        description: terminal text color
         palette:
           - ebdbb2
           - fbf1c7
@@ -147,9 +142,6 @@ sections:
           - 93a1a1
           - fdf6e3
         doc_url: https://ghostty.org/docs/config/reference#foreground
-  - name: Color Selection
-    key: ""
-    fields:
       - key: selection-foreground
         label: Selection FG
         type: color
@@ -188,7 +180,7 @@ sections:
         label: Cursor Color
         type: color
         default: ""
-        description: cursor color
+        description: block/bar/underline cursor color
         palette:
           - ebdbb2
           - cc241d
@@ -220,25 +212,34 @@ sections:
         label: Unfocused Fill
         type: color
         default: ""
-        description: fill color for unfocused splits
+        description: dimming overlay color for unfocused splits
         doc_url: https://ghostty.org/docs/config/reference#unfocused-split-fill
-  - name: Color Appearance
-    key: ""
-    fields:
       - key: background-opacity
         label: BG Opacity
         type: number
         widget: slider
         default: "1.0"
-        description: background opacity
+        description: window transparency level
+        hint: requires a compositor; 0 = fully transparent, 1 = opaque
         min: 0
         max: 1
         doc_url: https://ghostty.org/docs/config/reference#background-opacity
+      - key: unfocused-split-opacity
+        label: Unfocused Opacity
+        type: number
+        widget: slider
+        default: "0.7"
+        description: dimming level for unfocused splits
+        hint: "1.0 disables dimming; min 0.15"
+        min: 0.15
+        max: 1
+        doc_url: https://ghostty.org/docs/config/reference#unfocused-split-opacity
       - key: minimum-contrast
         label: Min Contrast
         type: number
         default: "1"
         description: minimum contrast ratio
+        hint: "WCAG AA ≈ 4.5, AAA ≈ 7"
         min: 1
         max: 21
         doc_url: https://ghostty.org/docs/config/reference#minimum-contrast
@@ -249,7 +250,7 @@ sections:
         label: Cursor Style
         type: enum
         default: block
-        description: cursor shape
+        description: "cursor shape: █ block, │ bar, ▁ underline"
         options:
           - block
           - bar
@@ -260,14 +261,15 @@ sections:
         label: Cursor Blink
         type: bool
         default: "true"
-        description: whether the cursor blinks
+        description: animate cursor on/off at interval
         doc_url: https://ghostty.org/docs/config/reference#cursor-style-blink
       - key: cursor-opacity
         label: Cursor Opacity
         type: number
         widget: slider
         default: "1.0"
-        description: cursor opacity
+        description: transparency of the cursor itself
+        hint: only affects block cursor; 0 = invisible, 1 = solid
         min: 0
         max: 1
         doc_url: https://ghostty.org/docs/config/reference#cursor-opacity
@@ -276,6 +278,7 @@ sections:
         type: bool
         default: "false"
         description: click to reposition cursor in apps that support it
+        hint: works in shells with prompt redrawing (zsh, fish)
         doc_url: https://ghostty.org/docs/config/reference#cursor-click-to-move
       - key: mouse-hide-while-typing
         label: Hide Mouse Typing
@@ -283,20 +286,20 @@ sections:
         default: "false"
         description: hide the mouse cursor while typing
         doc_url: https://ghostty.org/docs/config/reference#mouse-hide-while-typing
-  - name: Window Chrome
+  - name: Window
     key: ""
     fields:
       - key: window-decoration
         label: Window Decoration
         type: enum
         default: auto
-        description: window decoration mode
+        description: "title bar and border style: none = borderless, client = app-drawn (CSD), server = WM-drawn (SSD)"
         options:
           - none
           - auto
           - client
           - server
-        hint: auto uses OS/desktop default; client/server controls CSD vs SSD on Wayland
+        hint: auto follows your desktop environment's preference
         doc_url: https://ghostty.org/docs/config/reference#window-decoration
       - key: window-title-font-family
         label: Title Font
@@ -309,7 +312,7 @@ sections:
         label: Inherit Font Size
         type: bool
         default: "true"
-        description: inherit font size from focused window
+        description: new windows/splits use the font size of the focused surface
         doc_url: https://ghostty.org/docs/config/reference#window-inherit-font-size
       - key: title
         label: Title
@@ -317,9 +320,6 @@ sections:
         default: ""
         description: fixed window title
         doc_url: https://ghostty.org/docs/config/reference#title
-  - name: Window Padding
-    key: ""
-    fields:
       - key: window-padding-x
         label: Padding X
         type: number
@@ -340,30 +340,29 @@ sections:
         label: Pad Balance
         type: bool
         default: "false"
-        description: balance padding on both sides
+        description: center the grid by distributing extra space equally on both sides
         doc_url: https://ghostty.org/docs/config/reference#window-padding-balance
       - key: window-padding-color
         label: Pad Color
         type: enum
         default: background
-        description: color source for padding area
+        description: how padding area is colored
         options:
           - background
           - extend
           - extend-always
+        hint: "background = bg color; extend = stretches nearest cell color into padding"
         doc_url: https://ghostty.org/docs/config/reference#window-padding-color
-  - name: Window State
-    key: ""
-    fields:
       - key: window-save-state
         label: Save State
         type: enum
         default: default
-        description: save/restore window position and size
+        description: remember window position, size, and splits between sessions
         options:
           - default
           - never
           - always
+        hint: default follows OS convention
         doc_url: https://ghostty.org/docs/config/reference#window-save-state
       - key: fullscreen
         label: Fullscreen
@@ -415,7 +414,7 @@ sections:
         label: Cursor Thick
         type: string
         default: ""
-        description: cursor bar/underline thickness adjustment
+        description: cursor bar │ and underline ▁ thickness adjustment
         doc_url: https://ghostty.org/docs/config/reference#adjust-cursor-thickness
   - name: Input
     key: ""
@@ -445,12 +444,13 @@ sections:
         label: Option as Alt
         type: enum
         default: "false"
-        description: treat macOS Option key as Alt
+        description: treat macOS Option key as Alt for key combos (e.g. Alt+B word-jump)
         options:
           - "false"
           - "true"
           - left
           - right
+        hint: left/right applies only to that Option key
         doc_url: https://ghostty.org/docs/config/reference#macos-option-as-alt
       - key: link-url
         label: Clickable URLs
@@ -462,12 +462,13 @@ sections:
         label: Shift+Click
         type: enum
         default: "false"
-        description: shift+click capture behavior
+        description: whether Shift bypasses mouse capture in full-screen TUI apps
         options:
           - "false"
           - "true"
           - always
           - never
+        hint: "true/false = app-togglable; always/never = locked"
         doc_url: https://ghostty.org/docs/config/reference#mouse-shift-capture
   - name: Shell
     key: ""
@@ -483,7 +484,7 @@ sections:
         label: Shell Integration
         type: enum
         default: detect
-        description: shell integration mode
+        description: inject ghostty hooks into your shell for prompt marking and sudo pass-through
         options:
           - none
           - detect
@@ -491,12 +492,13 @@ sections:
           - zsh
           - fish
           - elvish
+        hint: detect auto-identifies your shell; none disables all integration
         doc_url: https://ghostty.org/docs/config/reference#shell-integration
       - key: shell-integration-features
         label: Integration Features
         type: multi
         default: ""
-        description: shell integration features
+        description: pick which shell hooks to enable
         options:
           - cursor
           - sudo
@@ -504,6 +506,7 @@ sections:
           - no-cursor
           - no-sudo
           - no-title
+        hint: "cursor = change shape at prompt; sudo = pass-through; title = set window title"
         doc_url: https://ghostty.org/docs/config/reference#shell-integration-features
       - key: scrollback-limit
         label: Scrollback Limit
@@ -523,7 +526,8 @@ sections:
         label: Abnormal Exit Time
         type: number
         default: "250"
-        description: abnormal exit threshold (ms)
+        description: if a command exits faster than this, treat it as abnormal
+        hint: set to 0 to disable abnormal exit detection
         min: 0
         max: 60000
         doc_url: https://ghostty.org/docs/config/reference#abnormal-command-exit-runtime
@@ -534,18 +538,19 @@ sections:
         label: Copy on Select
         type: enum
         default: "false"
-        description: auto-copy on selection
+        description: auto-copy text when you select it
         options:
           - "false"
           - "true"
           - clipboard
           - primary
+        hint: "clipboard = Ctrl+V paste; primary = middle-click paste (X11)"
         doc_url: https://ghostty.org/docs/config/reference#copy-on-select
       - key: clipboard-read
         label: Clipboard Read
         type: enum
         default: ask
-        description: program clipboard read access
+        description: whether programs (via OSC 52) can read your clipboard
         options:
           - allow
           - deny
@@ -555,7 +560,7 @@ sections:
         label: Clipboard Write
         type: enum
         default: allow
-        description: program clipboard write access
+        description: whether programs (via OSC 52) can write to your clipboard
         options:
           - allow
           - deny
@@ -571,7 +576,7 @@ sections:
         label: Paste Protection
         type: bool
         default: "true"
-        description: warn on unsafe paste
+        description: show confirmation dialog when pasting text containing newlines or control chars
         doc_url: https://ghostty.org/docs/config/reference#clipboard-paste-protection
   - name: Advanced
     key: ""
@@ -611,15 +616,16 @@ sections:
         label: Bold is Bright
         type: bool
         default: "false"
-        description: bold text uses bright color variant
+        description: bold ANSI colors map to their bright variant (e.g. red → bright red)
         doc_url: https://ghostty.org/docs/config/reference#bold-is-bright
       - key: grapheme-width-method
         label: Grapheme Width
         type: enum
         default: unicode
-        description: grapheme width computation method
+        description: how character widths are calculated for layout
         options:
           - unicode
           - wcswidth
           - legacy
+        hint: "unicode = UAX #11; wcswidth = libc; legacy = older compat"
         doc_url: https://ghostty.org/docs/config/reference#grapheme-width-method
