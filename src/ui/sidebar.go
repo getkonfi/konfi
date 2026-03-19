@@ -17,6 +17,7 @@ type sidebarItem struct {
 	name      string
 	installed bool
 	system    bool // system items render in bottom section
+	home      bool // home/dashboard item (always first)
 }
 
 type sidebar struct {
@@ -52,11 +53,24 @@ func newSidebar(items []sidebarItem, th *theme.Theme) sidebar {
 func (s *sidebar) refilter() {
 	query := strings.ToLower(s.search.Value())
 	s.filtered = s.filtered[:0]
+
+	// partition: home items first, then regular apps, then system items
 	for i, item := range s.items {
-		if query == "" || strings.Contains(strings.ToLower(item.name), query) {
+		if item.home && (query == "" || strings.Contains(strings.ToLower(item.name), query)) {
 			s.filtered = append(s.filtered, i)
 		}
 	}
+	for i, item := range s.items {
+		if !item.home && !item.system && (query == "" || strings.Contains(strings.ToLower(item.name), query)) {
+			s.filtered = append(s.filtered, i)
+		}
+	}
+	for i, item := range s.items {
+		if item.system && (query == "" || strings.Contains(strings.ToLower(item.name), query)) {
+			s.filtered = append(s.filtered, i)
+		}
+	}
+
 	if s.cursor >= len(s.filtered) {
 		s.cursor = len(s.filtered) - 1
 	}
@@ -124,10 +138,7 @@ func (s sidebar) updateSearching(msg tea.KeyPressMsg) (sidebar, tea.Cmd) {
 		s.refilter()
 		// emit selection change if filter changed what's under cursor
 		if len(s.filtered) > 0 && (prev != len(s.filtered)) {
-			idx := s.filtered[s.cursor]
-			return s, tea.Batch(cmd, func() tea.Msg {
-				return AppSelectedMsg{Index: idx, Name: s.items[idx].name}
-			})
+			return s, tea.Batch(cmd, s.emitSelection(s.filtered[s.cursor], false))
 		}
 		return s, cmd
 	}
@@ -144,10 +155,7 @@ func (s sidebar) moveDown() (sidebar, tea.Cmd) {
 	if s.cursor == prev {
 		return s, nil
 	}
-	idx := s.filtered[s.cursor]
-	return s, func() tea.Msg {
-		return AppSelectedMsg{Index: idx, Name: s.items[idx].name}
-	}
+	return s, s.emitSelection(s.filtered[s.cursor], false)
 }
 
 func (s sidebar) moveUp() (sidebar, tea.Cmd) {
@@ -161,10 +169,7 @@ func (s sidebar) moveUp() (sidebar, tea.Cmd) {
 	if s.cursor == prev {
 		return s, nil
 	}
-	idx := s.filtered[s.cursor]
-	return s, func() tea.Msg {
-		return AppSelectedMsg{Index: idx, Name: s.items[idx].name}
-	}
+	return s, s.emitSelection(s.filtered[s.cursor], false)
 }
 
 func (s sidebar) moveTo(pos int) (sidebar, tea.Cmd) {
@@ -181,9 +186,27 @@ func (s sidebar) moveTo(pos int) (sidebar, tea.Cmd) {
 		return s, nil
 	}
 	s.cursor = pos
-	idx := s.filtered[s.cursor]
-	return s, func() tea.Msg {
-		return AppSelectedMsg{Index: idx, Name: s.items[idx].name}
+	return s, s.emitSelection(s.filtered[s.cursor], false)
+}
+
+// emitSelection builds an AppSelectedMsg for the item at the given sidebar item index.
+// home items get Index -1; regular items get their konfable index (item index minus home count).
+func (s sidebar) emitSelection(itemIdx int, confirmed bool) tea.Cmd {
+	item := s.items[itemIdx]
+	if item.home {
+		return func() tea.Msg {
+			return AppSelectedMsg{Index: -1, Name: item.name, Confirmed: confirmed}
+		}
+	}
+	// konfable index = item index minus number of home items before it
+	ki := itemIdx
+	for i := 0; i < itemIdx; i++ {
+		if s.items[i].home {
+			ki--
+		}
+	}
+	return func() tea.Msg {
+		return AppSelectedMsg{Index: ki, Name: item.name, Confirmed: confirmed}
 	}
 }
 
@@ -191,10 +214,7 @@ func (s sidebar) selectCurrent(confirmed bool) (sidebar, tea.Cmd) {
 	if len(s.filtered) == 0 {
 		return s, nil
 	}
-	idx := s.filtered[s.cursor]
-	return s, func() tea.Msg {
-		return AppSelectedMsg{Index: idx, Name: s.items[idx].name, Confirmed: confirmed}
-	}
+	return s, s.emitSelection(s.filtered[s.cursor], confirmed)
 }
 
 // collapsed returns true when the sidebar is in icon-rail mode.
@@ -218,19 +238,23 @@ func (s sidebar) viewCollapsed() string {
 
 	line := 0
 	for fi, origIdx := range s.filtered {
-		if s.items[origIdx].system {
+		item := s.items[origIdx]
+		if item.system {
 			continue
 		}
 		if line > 0 {
 			b.WriteByte('\n')
 		}
-		item := s.items[origIdx]
 		isCursor := fi == s.cursor
 
-		// first letter as label
-		glyph := string([]rune(item.name)[0])
-		if s.dirtyApps[item.name] {
-			glyph += "*"
+		var glyph string
+		if item.home {
+			glyph = item.icon
+		} else {
+			glyph = string([]rune(item.name)[0])
+			if s.dirtyApps[item.name] {
+				glyph += "*"
+			}
 		}
 
 		var styled string
@@ -301,6 +325,7 @@ func (s sidebar) viewExpanded() string {
 		top.WriteByte('\n')
 		top.WriteString(s.theme.Muted.Render("no matches"))
 	} else {
+		afterHome := false
 		for fi, origIdx := range s.filtered {
 			item := s.items[origIdx]
 			isCursor := fi == s.cursor
@@ -312,8 +337,19 @@ func (s sidebar) viewExpanded() string {
 				}
 				bot.WriteString(line)
 			} else {
-				top.WriteByte('\n')
-				top.WriteString(line)
+				if item.home {
+					top.WriteByte('\n')
+					top.WriteString(line)
+					afterHome = true
+				} else {
+					if afterHome {
+						top.WriteByte('\n')
+						top.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
+						afterHome = false
+					}
+					top.WriteByte('\n')
+					top.WriteString(line)
+				}
 			}
 		}
 	}

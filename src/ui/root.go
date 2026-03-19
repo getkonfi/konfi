@@ -33,8 +33,7 @@ const (
 
 // navEntry records a navigation position for back/forward.
 type navEntry struct {
-	appIndex     int
-	sectionIndex int
+	appIndex int
 }
 
 const sidebarWidth = 20
@@ -90,8 +89,13 @@ func NewRoot(app *setup.App) tea.Model {
 		installed[d.Name()] = true
 	}
 
-	// build sidebar items and konfable lookup from all registered apps
-	var items []sidebarItem
+	// home item at top of sidebar
+	items := []sidebarItem{{
+		icon:      "\uf015", // nf-fa-home
+		name:      "home",
+		installed: true,
+		home:      true,
+	}}
 	var allK []konfables.Konfable
 	for _, ki := range setup.AllKonfablesWithInfo() {
 		if k, ok := ki.Konfable.(konfables.Konfable); ok {
@@ -119,6 +123,25 @@ func NewRoot(app *setup.App) tea.Model {
 	sb.newCounts = newCounts
 	ct := newContent(th)
 	ct.versions = app.Versions
+	ct.appVersion = app.AppVersion
+
+	// populate dashboard data (skip home item at index 0)
+	for _, k := range allK {
+		info := k.Info()
+		icon := info.NerdIcon
+		if icon == "" {
+			icon = info.Icon
+		}
+		da := dashboardApp{
+			icon:      icon,
+			name:      k.Name(),
+			installed: installed[k.Name()],
+		}
+		if v, ok := app.Versions[k.Name()]; ok {
+			da.version = v
+		}
+		ct.dashboardApps = append(ct.dashboardApps, da)
+	}
 	st := newStatusbar(th)
 	pal := newPalette(th)
 
@@ -140,15 +163,6 @@ func NewRoot(app *setup.App) tea.Model {
 }
 
 func (r *root) Init() tea.Cmd {
-	// auto-select first app
-	if len(r.allKonfables) > 0 {
-		k := r.allKonfables[0]
-		if r.installed[k.Name()] {
-			return r.content.loadApp(k)
-		}
-		r.content.showNotInstalled(k)
-		return nil
-	}
 	return nil
 }
 
@@ -434,6 +448,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case AppSelectedMsg:
+		if msg.Index == -1 {
+			r.content.showDashboard()
+			r.status.status = ""
+			return r, nil
+		}
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
 			k := r.allKonfables[msg.Index]
 			r.status.status = ""
@@ -742,7 +761,6 @@ func (r *root) updateHints() {
 			{"⏎", "edit"},
 			{"⌫", "revert/del"},
 			{"JK", "scroll detail"},
-			{"[]", "section"},
 			{"/", "search"},
 		}
 		hints = append(hints, []keyHint{
@@ -831,8 +849,7 @@ func (r *root) buildPaletteItems() []PaletteItem {
 // pushNav records the current position in the navigation history.
 func (r *root) pushNav() {
 	entry := navEntry{
-		appIndex:     r.sidebar.cursor,
-		sectionIndex: r.content.activeSection,
+		appIndex: r.sidebar.cursor,
 	}
 	// truncate forward history when pushing
 	if r.navHistoryPos < len(r.navHistory) {

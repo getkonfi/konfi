@@ -51,8 +51,7 @@ type content struct {
 	fields       []pkg.Field // flattened field list across all sections
 	fieldSection []int       // len == len(c.fields), maps field → section index
 	visible      []row       // navigable rows (section headers + fields)
-	collapsed      map[int]bool // section index → collapsed
-	activeSection  int          // current section tab
+	collapsed map[int]bool // section index → collapsed
 	configuredOnly bool
 	searching      bool
 	search         textinput.Model
@@ -100,6 +99,18 @@ type content struct {
 
 	// "what's new" filter — toggled by root via n key
 	showNewOnly bool
+
+	// dashboard data (shown when no app is selected)
+	dashboardApps []dashboardApp
+	appVersion    string
+}
+
+// dashboardApp holds summary info for the landing page.
+type dashboardApp struct {
+	icon      string
+	name      string
+	installed bool
+	version   string
 }
 
 func newContent(th *theme.Theme) content {
@@ -111,7 +122,7 @@ func newContent(th *theme.Theme) content {
 	return content{
 		title:         "konfigurator",
 		values:        make(map[string]string),
-		collapsed:     make(map[int]bool),
+		collapsed: make(map[int]bool),
 		search:        ti,
 		theme:         th,
 		detail:        newDetail(th),
@@ -159,12 +170,14 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			case "j", "down":
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
+					c.skipSectionHeaders(1)
 				}
 				c.syncDetail()
 				return c, nil
 			case "k", "up":
 				if c.cursor > 0 {
 					c.cursor--
+					c.skipSectionHeaders(-1)
 				}
 				c.syncDetail()
 				return c, nil
@@ -194,28 +207,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				}
 				cmd := c.openEditor()
 				return c, cmd
-			}
-		case "[":
-			if c.schema != nil && len(c.schema.Sections) > 1 {
-				c.activeSection--
-				if c.activeSection < 0 {
-					c.activeSection = len(c.schema.Sections) - 1
-				}
-				c.cursor = 0
-				c.scrollY = 0
-				c.refilter()
-				c.syncDetail()
-			}
-		case "]":
-			if c.schema != nil && len(c.schema.Sections) > 1 {
-				c.activeSection++
-				if c.activeSection >= len(c.schema.Sections) {
-					c.activeSection = 0
-				}
-				c.cursor = 0
-				c.scrollY = 0
-				c.refilter()
-				c.syncDetail()
 			}
 		case "f":
 			if c.schema != nil {
@@ -248,6 +239,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			if hasRows {
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
+					c.skipSectionHeaders(1)
 				}
 				c.syncDetail()
 			} else {
@@ -257,6 +249,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			if hasRows {
 				if c.cursor > 0 {
 					c.cursor--
+					c.skipSectionHeaders(-1)
 				}
 				c.syncDetail()
 			} else if c.scrollY > 0 {
@@ -271,6 +264,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		case "home":
 			if hasRows {
 				c.cursor = 0
+				c.skipSectionHeaders(1)
 				c.syncDetail()
 			} else {
 				c.scrollY = 0
@@ -278,6 +272,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		case "end":
 			if hasRows {
 				c.cursor = len(c.visible) - 1
+				c.skipSectionHeaders(-1)
 				c.syncDetail()
 			}
 		case "pgdown":
@@ -287,6 +282,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor >= len(c.visible) {
 					c.cursor = len(c.visible) - 1
 				}
+				c.skipSectionHeaders(-1)
 				c.syncDetail()
 			} else {
 				c.scrollY += page
@@ -298,6 +294,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor < 0 {
 					c.cursor = 0
 				}
+				c.skipSectionHeaders(1)
 				c.syncDetail()
 			} else {
 				c.scrollY -= page
@@ -608,6 +605,40 @@ func (c *content) stopWatching() {
 	}
 }
 
+// showDashboard resets content to the landing/welcome state.
+func (c *content) showDashboard() {
+	c.stopWatching()
+	c.konfable = nil
+	c.title = "konfigurator"
+	c.config = nil
+	c.schema = nil
+	c.fields = nil
+	c.fieldSection = nil
+	c.visible = nil
+	c.collapsed = make(map[int]bool)
+	c.configuredOnly = false
+	c.showNewOnly = false
+	c.searching = false
+	c.search.SetValue("")
+	c.search.Blur()
+	c.values = make(map[string]string)
+	c.origValues = make(map[string]string)
+	c.scrollY = 0
+	c.cursor = 0
+	c.detail.editing = false
+	c.detail.editor = nil
+	c.detail.reset()
+	c.insightLines = nil
+	c.insightIdx = 0
+	c.insightWarningCount = 0
+	c.insightGen++
+	c.logoAnimGen++
+	c.logoAnim = nil
+	c.undoStack.Clear()
+	c.breadcrumb.SetPath("", "", "")
+	c.diffView.SetEntries(nil)
+}
+
 // showNotInstalled sets the active konfable for display without loading config or schema.
 func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.stopWatching()
@@ -619,7 +650,6 @@ func (c *content) showNotInstalled(k konfables.Konfable) {
 	c.fieldSection = nil
 	c.visible = nil
 	c.collapsed = make(map[int]bool)
-	c.activeSection = 0
 	c.configuredOnly = false
 	c.showNewOnly = false
 	c.searching = false
@@ -665,7 +695,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.fieldSection = nil
 	c.visible = nil
 	c.collapsed = make(map[int]bool)
-	c.activeSection = 0
 	c.configuredOnly = false
 	c.showNewOnly = false
 	c.searching = false
@@ -767,26 +796,22 @@ func (c *content) buildFieldList() {
 	c.refilter()
 }
 
-// refilter rebuilds the visible row slice for the active section tab.
+// refilter rebuilds the visible row slice with interleaved section headers.
 func (c *content) refilter() {
 	c.visible = c.visible[:0]
 	if c.schema == nil {
 		return
 	}
 
-	// clamp activeSection
-	if c.activeSection >= len(c.schema.Sections) {
-		c.activeSection = 0
-	}
-
 	query := strings.ToLower(strings.TrimSpace(c.search.Value()))
 	hasSearch := c.searching && query != ""
 
+	// track which section we last emitted a header for
+	lastHeaderSection := -1
+
 	for i := range c.fields {
 		f := &c.fields[i]
-		if c.fieldSection[i] != c.activeSection {
-			continue
-		}
+		si := c.fieldSection[i]
 		if c.configuredOnly {
 			if _, ok := c.values[f.Key]; !ok {
 				continue
@@ -800,13 +825,21 @@ func (c *content) refilter() {
 				continue
 			}
 		}
-		c.visible = append(c.visible, row{sectionIdx: c.activeSection, fieldIdx: i})
+		// insert section header before first field of each section
+		if si != lastHeaderSection {
+			c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
+			lastHeaderSection = si
+		}
+		c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: i})
 	}
 
 	// rebuild search match indices (for n/N navigation after search is locked)
 	c.searchMatches = c.searchMatches[:0]
 	if query != "" {
 		for vi, r := range c.visible {
+			if r.isSection {
+				continue
+			}
 			if fieldMatchesQuery(&c.fields[r.fieldIdx], query) {
 				c.searchMatches = append(c.searchMatches, vi)
 			}
@@ -832,6 +865,19 @@ func fieldMatchesQuery(f *pkg.Field, query string) bool {
 	return strings.Contains(strings.ToLower(f.Key), query) ||
 		strings.Contains(strings.ToLower(f.Label), query) ||
 		strings.Contains(strings.ToLower(f.Description), query)
+}
+
+// skipSectionHeaders advances the cursor past section header rows in the given direction.
+func (c *content) skipSectionHeaders(dir int) {
+	for c.cursor >= 0 && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
+		c.cursor += dir
+	}
+	if c.cursor < 0 {
+		c.cursor = 0
+	}
+	if c.cursor >= len(c.visible) {
+		c.cursor = len(c.visible) - 1
+	}
 }
 
 // currentField returns the field under the cursor, or nil if empty.
@@ -997,15 +1043,11 @@ func (c *content) syncDetail() {
 	if c.konfable != nil {
 		app = c.konfable.Name()
 	}
-	section := ""
-	if c.schema != nil && c.activeSection < len(c.schema.Sections) {
-		section = c.schema.Sections[c.activeSection].Name
-	}
 	field := ""
 	if f := c.currentField(); f != nil {
 		field = f.Key
 	}
-	c.breadcrumb.SetPath(app, section, field)
+	c.breadcrumb.SetPath(app, "", field)
 }
 
 // Editing returns whether the detail panel is in edit mode.
@@ -1201,17 +1243,25 @@ func (c content) View() string {
 
 	// handle no-schema states (no detail panel, header at full width)
 	if c.schema == nil {
+		if c.konfable == nil {
+			// dashboard — vertically centered, no header
+			dash := c.renderDashboard(innerW)
+			dashLines := strings.Count(dash, "\n") + 1
+			topPad := (c.height - dashLines) / 3 // bias toward upper third
+			if topPad < 0 {
+				topPad = 0
+			}
+			return outerStyle.Render(strings.Repeat("\n", topPad) + dash)
+		}
 		headerStr := c.renderHeader(innerW)
 		var bodyStr string
 		switch {
 		case c.config != nil:
 			bodyStr = c.theme.Text.Render(string(c.config.Content()))
-		case c.konfable != nil:
+		default:
 			msg := c.theme.Muted.Render(c.konfable.Name() + " is not installed")
 			hint := c.theme.Muted.Italic(true).Render("install it to configure")
 			bodyStr = centerLine(msg, innerW) + "\n" + centerLine(hint, innerW)
-		default:
-			bodyStr = c.theme.Muted.Render("select an app to view its configuration")
 		}
 		return outerStyle.Render(headerStr + bodyStr)
 	}
@@ -1555,6 +1605,82 @@ func (c content) renderHeader(width int) string {
 	return strings.Join(outLines, "\n") + "\n"
 }
 
+// renderDashboard builds the welcome/landing page shown before any app is selected.
+func (c content) renderDashboard(width int) string {
+	var b strings.Builder
+
+	// logo
+	if logo, ok := konfables.Logos["konfigurator"]; ok {
+		art := logo.Render()
+		b.WriteString(centerBlock(art, width))
+		b.WriteByte('\n')
+	}
+
+	// title + version
+	title := c.theme.Primary.Bold(true).Render("konfigurator")
+	ver := c.theme.Muted.Render(" v" + c.appVersion)
+	b.WriteString(centerLine(title+ver, width))
+	b.WriteByte('\n')
+	b.WriteByte('\n')
+
+	// app list
+	var installed, notInstalled []dashboardApp
+	for _, a := range c.dashboardApps {
+		if a.installed {
+			installed = append(installed, a)
+		} else {
+			notInstalled = append(notInstalled, a)
+		}
+	}
+
+	if len(installed) > 0 {
+		header := c.theme.Muted.Render("── installed ──────────────────")
+		b.WriteString(centerLine(header, width))
+		b.WriteByte('\n')
+		for _, a := range installed {
+			icon := c.theme.Primary.Render(a.icon)
+			name := c.theme.Text.Render(" " + a.name)
+			ver := ""
+			if a.version != "" {
+				ver = c.theme.Muted.Render("  " + a.version)
+			}
+			b.WriteString(centerLine(icon+name+ver, width))
+			b.WriteByte('\n')
+		}
+	}
+
+	if len(notInstalled) > 0 {
+		b.WriteByte('\n')
+		header := c.theme.Muted.Render("── not detected ───────────────")
+		b.WriteString(centerLine(header, width))
+		b.WriteByte('\n')
+		for _, a := range notInstalled {
+			icon := c.theme.Muted.Faint(true).Render(a.icon)
+			name := c.theme.Muted.Faint(true).Render(" " + a.name)
+			b.WriteString(centerLine(icon+name, width))
+			b.WriteByte('\n')
+		}
+	}
+
+	b.WriteByte('\n')
+	hints := []struct{ key, desc string }{
+		{"↑↓", "navigate"},
+		{"⏎", "select"},
+		{"/", "search"},
+		{"?", "help"},
+	}
+	var parts []string
+	for _, h := range hints {
+		k := c.theme.Primary.Render(h.key)
+		d := c.theme.Muted.Render(" " + h.desc)
+		parts = append(parts, k+d)
+	}
+	hintLine := strings.Join(parts, c.theme.Muted.Render("   "))
+	b.WriteString(centerLine(hintLine, width))
+
+	return b.String()
+}
+
 // logoAnimCmd schedules the next logo animation frame at 60ms.
 func logoAnimCmd(gen int) tea.Cmd {
 	return tea.Tick(60*time.Millisecond, func(time.Time) tea.Msg {
@@ -1570,107 +1696,10 @@ func (c content) insightTickCmd() tea.Cmd {
 	})
 }
 
-// renderTabs draws a centered section tab bar.
-// the active tab is pinned to the horizontal center; neighbors scroll around it
-// with distance-based dimming for a carousel feel.
-func (c content) renderTabs(width int) string {
-	if c.schema == nil || len(c.schema.Sections) <= 1 {
-		return ""
-	}
-
-	total := len(c.schema.Sections)
-	const neighbors = 2 // show up to 2 sections on each side
-
-	// render the active tab
-	activeName := c.schema.Sections[c.activeSection].Name
-	activeTab := c.theme.Primary.Bold(true).Underline(true).Padding(0, 1).Render(activeName)
-	activeW := lipgloss.Width(activeTab)
-
-	// build left neighbors (nearest first, then reverse for display order)
-	var leftParts []string
-	for offset := 1; offset <= neighbors; offset++ {
-		idx := c.activeSection - offset
-		if idx < 0 {
-			break
-		}
-		name := c.schema.Sections[idx].Name
-		var styled string
-		if offset == 1 {
-			styled = c.theme.Subtext.Padding(0, 1).Render(name)
-		} else {
-			styled = c.theme.Muted.Faint(true).Padding(0, 1).Render(name)
-		}
-		leftParts = append([]string{styled}, leftParts...)
-	}
-
-	// build right neighbors
-	var rightParts []string
-	for offset := 1; offset <= neighbors; offset++ {
-		idx := c.activeSection + offset
-		if idx >= total {
-			break
-		}
-		name := c.schema.Sections[idx].Name
-		var styled string
-		if offset == 1 {
-			styled = c.theme.Subtext.Padding(0, 1).Render(name)
-		} else {
-			styled = c.theme.Muted.Faint(true).Padding(0, 1).Render(name)
-		}
-		rightParts = append(rightParts, styled)
-	}
-
-	// overflow arrows
-	leftArrow := "  "
-	if c.activeSection > neighbors {
-		leftArrow = c.theme.Muted.Render("‹ ")
-	}
-	rightArrow := "  "
-	if c.activeSection+neighbors < total-1 {
-		rightArrow = c.theme.Muted.Render(" ›")
-	}
-
-	leftStr := strings.Join(leftParts, " ")
-	rightStr := strings.Join(rightParts, " ")
-
-	// compute left padding to pin active tab at center
-	leftW := lipgloss.Width(leftArrow) + lipgloss.Width(leftStr)
-	if len(leftParts) > 0 {
-		leftW++ // account for space between left group and active tab
-	}
-	centerTarget := width/2 - activeW/2
-	pad := centerTarget - leftW
-	if pad < 0 {
-		pad = 0
-	}
-
-	var b strings.Builder
-	b.WriteString(strings.Repeat(" ", pad))
-	b.WriteString(leftArrow)
-	b.WriteString(leftStr)
-	if len(leftParts) > 0 {
-		b.WriteByte(' ')
-	}
-	b.WriteString(activeTab)
-	if len(rightParts) > 0 {
-		b.WriteByte(' ')
-	}
-	b.WriteString(rightStr)
-	b.WriteString(rightArrow)
-
-	return b.String()
-}
-
-// renderBody produces the scrollable field area: tabs + search + field rows.
+// renderBody produces the scrollable field area: search + field rows.
 // header and no-schema states are handled in View.
 func (c content) renderBody(width int) string {
 	var b strings.Builder
-
-	// section tabs
-	if tabs := c.renderTabs(width); tabs != "" {
-		b.WriteString(tabs)
-		b.WriteByte('\n')
-	}
 
 	// search bar (when active or has locked query)
 	if c.searching || len(c.searchMatches) > 0 {
@@ -1697,6 +1726,19 @@ func (c content) renderBody(width int) string {
 	gutterStyle := c.theme.Muted.Faint(true)
 
 	for i, r := range c.visible {
+		// section header row
+		if r.isSection {
+			name := c.schema.Sections[r.sectionIdx].Name
+			header := c.theme.Muted.Bold(true).Render("── " + name + " ")
+			remaining := width - lipgloss.Width(header)
+			if remaining > 0 {
+				header += c.theme.Muted.Faint(true).Render(strings.Repeat("─", remaining))
+			}
+			b.WriteString(header)
+			b.WriteByte('\n')
+			continue
+		}
+
 		f := &c.fields[r.fieldIdx]
 		isCursor := c.focused && i == c.cursor
 

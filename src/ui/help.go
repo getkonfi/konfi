@@ -47,7 +47,6 @@ var helpContent = helpGroup{
 	Bindings: []helpBinding{
 		{"j/k ↑↓", "navigate fields"},
 		{"⏎", "edit in detail panel"},
-		{"[ ]", "prev/next section"},
 		{"/", "search fields"},
 		{"f", "toggle configured"},
 		{"o", "open docs"},
