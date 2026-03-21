@@ -1,0 +1,187 @@
+app: pacman
+format: ini
+schema_version: 1.0.0
+docs_url: "https://man.archlinux.org/man/pacman.conf.5"
+coverage: partial
+hints:
+  - "INI format — sections are [headers], may need root to save"
+  - "bare directives (e.g. Color) are enabled by presence"
+  - "pacman-conf — dump resolved config"
+  - "pacman -Qi <pkg> — query installed package info"
+  - "pacman -Ss <query> — search remote repos"
+
+sections:
+  - name: General
+    key: options
+    fields:
+      - key: options.Architecture
+        label: Architecture
+        type: enum
+        default: auto
+        options: [auto, x86_64, i686, aarch64, armv7h]
+        description: target architecture for packages
+        example: "[options]\nArchitecture = auto"
+        doc_url: "https://man.archlinux.org/man/pacman.conf.5#GENERAL_OPTIONS"
+      - key: options.HoldPkg
+        label: Hold Packages
+        type: string
+        default: pacman glibc
+        description: packages requiring confirmation to remove
+        example: "[options]\nHoldPkg = pacman glibc"
+        hint: "pacman -R will prompt before removing these"
+      - key: options.IgnorePkg
+        label: Ignore Packages
+        type: string
+        description: packages skipped during -Syu upgrades
+        example: "[options]\nIgnorePkg = linux linux-headers"
+        hint: "pacman -Qi <pkg> — check current version before ignoring"
+      - key: options.IgnoreGroup
+        label: Ignore Groups
+        type: string
+        description: package groups skipped during -Syu upgrades
+        example: "[options]\nIgnoreGroup = gnome"
+      - key: options.NoUpgrade
+        label: No Upgrade
+        type: string
+        description: files never overwritten during upgrades (supports globs)
+        example: "[options]\nNoUpgrade = etc/pacman.conf"
+      - key: options.NoExtract
+        label: No Extract
+        type: string
+        description: files never extracted from packages (supports globs)
+        example: "[options]\nNoExtract = usr/share/man/*"
+      - key: options.ParallelDownloads
+        label: Parallel Downloads
+        type: number
+        default: "1"
+        min: 1
+        max: 64
+        description: simultaneous package downloads
+        example: "[options]\nParallelDownloads = 5"
+        doc_url: "https://man.archlinux.org/man/pacman.conf.5#GENERAL_OPTIONS"
+      - key: options.CleanMethod
+        label: Clean Method
+        type: enum
+        default: KeepInstalled
+        options: [KeepInstalled, KeepCurrent]
+        description: cache retention policy for pacman -Sc
+        example: "[options]\nCleanMethod = KeepInstalled"
+        hint: "paccache -r — more granular cache cleanup"
+
+  - name: Appearance
+    key: options
+    fields:
+      - key: options.Color
+        label: Color Output
+        type: bool
+        default: "false"
+        description: colorized terminal output
+        example: "[options]\nColor"
+      - key: options.VerbosePkgLists
+        label: Verbose Package Lists
+        type: bool
+        default: "false"
+        description: show old/new version columns in upgrade lists
+        example: "[options]\nVerbosePkgLists"
+      - key: options.ILoveCandy
+        label: ILoveCandy
+        type: bool
+        default: "false"
+        description: pac-man animation on progress bar
+        example: "[options]\nILoveCandy"
+      - key: options.NoProgressBar
+        label: No Progress Bar
+        type: bool
+        default: "false"
+        description: suppress download progress bars
+        example: "[options]\nNoProgressBar"
+
+  - name: System
+    key: options
+    fields:
+      - key: options.CheckSpace
+        label: Check Disk Space
+        type: bool
+        default: "true"
+        description: verify disk space before installing
+        example: "[options]\nCheckSpace"
+      - key: options.UseSyslog
+        label: Use Syslog
+        type: bool
+        default: "false"
+        description: log install/remove to syslog
+        example: "[options]\nUseSyslog"
+        hint: "journalctl -t ALPM — view logged events"
+      - key: options.DisableDownloadTimeout
+        label: Disable Download Timeout
+        type: bool
+        default: "false"
+        description: disable download timeout
+        example: "[options]\nDisableDownloadTimeout"
+
+  - name: Paths
+    key: options
+    fields:
+      - key: options.RootDir
+        label: Root Directory
+        type: string
+        default: /
+        description: filesystem root for operations
+        example: "[options]\nRootDir = /"
+        hint: "useful for chroot installs: pacman --root /mnt"
+        widget: path
+      - key: options.DBPath
+        label: Database Path
+        type: string
+        default: /var/lib/pacman/
+        description: package database location
+        example: "[options]\nDBPath = /var/lib/pacman/"
+        widget: path
+      - key: options.CacheDir
+        label: Cache Directory
+        type: string
+        default: /var/cache/pacman/pkg/
+        description: downloaded package cache
+        example: "[options]\nCacheDir = /var/cache/pacman/pkg/"
+        hint: "du -sh /var/cache/pacman/pkg/ — check cache size"
+        widget: path
+      - key: options.LogFile
+        label: Log File
+        type: string
+        default: /var/log/pacman.log
+        description: pacman log file path
+        example: "[options]\nLogFile = /var/log/pacman.log"
+        widget: path
+      - key: options.GPGDir
+        label: GPG Directory
+        type: string
+        default: /etc/pacman.d/gnupg/
+        description: GnuPG keyring for package signatures
+        example: "[options]\nGPGDir = /etc/pacman.d/gnupg/"
+        hint: "pacman-key --init — initialize the keyring"
+        widget: path
+      - key: options.HookDir
+        label: Hook Directory
+        type: string
+        default: /etc/pacman.d/hooks/
+        description: additional alpm hook directory
+        example: "[options]\nHookDir = /etc/pacman.d/hooks/"
+        widget: path
+
+  - name: Signing
+    key: options
+    fields:
+      - key: options.SigLevel
+        label: Signature Level
+        type: string
+        default: Required DatabaseOptional
+        description: package and database signature policy
+        example: "[options]\nSigLevel = Required DatabaseOptional"
+        hint: "pacman-key --list-keys — view trusted keys"
+        doc_url: "https://man.archlinux.org/man/pacman.conf.5#PACKAGE_AND_DATABASE_SIGNATURE_CHECKING"
+      - key: options.LocalFileSigLevel
+        label: Local File Signature Level
+        type: string
+        default: Optional
+        description: signature policy for local installs (-U)
+        example: "[options]\nLocalFileSigLevel = Optional"

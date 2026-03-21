@@ -1,0 +1,115 @@
+app: dconf
+format: dconf
+docs_url: https://help.gnome.org/admin/system-admin-guide/stable/
+coverage: partial
+hints:
+  - settings are applied live via dconf
+  - changes take effect immediately without restart
+  - covers WM, peripherals, and input sources
+
+sections:
+  - name: Window Manager
+    fields:
+      - key: /org/gnome/desktop/wm/preferences/button-layout
+        label: Button Layout
+        type: string
+        default: "appmenu:close"
+        description: titlebar button arrangement
+        hint: "colon separates left:right sides (e.g., close,minimize:appmenu)"
+      - key: /org/gnome/desktop/wm/preferences/focus-mode
+        label: Focus Mode
+        type: enum
+        default: click
+        options: [click, sloppy, mouse]
+        description: how windows receive focus
+        hint: "click = click to focus, sloppy = focus follows mouse, mouse = strict follows"
+      - key: /org/gnome/desktop/wm/preferences/auto-raise
+        label: Auto Raise
+        type: bool
+        default: "false"
+        description: automatically raise focused window
+      - key: /org/gnome/desktop/wm/preferences/titlebar-font
+        label: Titlebar Font
+        type: string
+        widget: font
+        default: Cantarell Bold 11
+        description: font for window titlebars
+      - key: /org/gnome/desktop/wm/preferences/num-workspaces
+        label: Workspaces
+        type: number
+        default: "4"
+        min: 1
+        max: 36
+        description: number of workspaces
+      - key: /org/gnome/desktop/wm/preferences/resize-with-right-button
+        label: Resize Right Click
+        type: bool
+        default: "false"
+        description: use right mouse button for window resize
+
+  - name: Touchpad
+    fields:
+      - key: /org/gnome/desktop/peripherals/touchpad/tap-to-click
+        label: Tap to Click
+        type: bool
+        default: "false"
+        description: tap the touchpad to click
+      - key: /org/gnome/desktop/peripherals/touchpad/natural-scroll
+        label: Natural Scroll
+        type: bool
+        default: "true"
+        description: content follows finger direction (reversed scroll)
+      - key: /org/gnome/desktop/peripherals/touchpad/speed
+        label: Speed
+        type: number
+        widget: slider
+        default: "0"
+        min: -1
+        max: 1
+        description: touchpad pointer speed
+      - key: /org/gnome/desktop/peripherals/touchpad/two-finger-scrolling-enabled
+        label: Two Finger Scroll
+        type: bool
+        default: "true"
+        description: scroll by dragging with two fingers
+      - key: /org/gnome/desktop/peripherals/touchpad/disable-while-typing
+        label: Disable While Typing
+        type: bool
+        default: "true"
+        description: disable touchpad while typing
+      - key: /org/gnome/desktop/peripherals/touchpad/edge-scrolling-enabled
+        label: Edge Scroll
+        type: bool
+        default: "false"
+        description: scroll by dragging along the touchpad edge
+
+  - name: Mouse
+    fields:
+      - key: /org/gnome/desktop/peripherals/mouse/natural-scroll
+        label: Natural Scroll
+        type: bool
+        default: "false"
+        description: reversed scroll direction for mouse wheel
+      - key: /org/gnome/desktop/peripherals/mouse/speed
+        label: Speed
+        type: number
+        widget: slider
+        default: "0"
+        min: -1
+        max: 1
+        description: mouse pointer speed
+      - key: /org/gnome/desktop/peripherals/mouse/accel-profile
+        label: Acceleration
+        type: enum
+        default: default
+        options: [default, flat, adaptive]
+        description: pointer acceleration profile
+
+  - name: Input Sources
+    fields:
+      - key: /org/gnome/desktop/input-sources/xkb-options
+        label: XKB Options
+        type: string
+        default: ""
+        description: keyboard layout options
+        hint: "comma-separated (e.g., caps:ctrl_modifier,compose:ralt)"

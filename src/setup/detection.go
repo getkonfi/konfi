@@ -11,12 +11,14 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/emin/konfigurator/konfables/alacritty"
+	"github.com/emin/konfigurator/konfables/dconf"
 	"github.com/emin/konfigurator/konfables/ghostty"
 	"github.com/emin/konfigurator/konfables/git"
 	"github.com/emin/konfigurator/konfables/gnome"
 	"github.com/emin/konfigurator/konfables/helix"
 	"github.com/emin/konfigurator/konfables/hyprland"
 	"github.com/emin/konfigurator/konfables/kitty"
+	"github.com/emin/konfigurator/konfables/pacman"
 	"github.com/emin/konfigurator/konfables/konfigurator"
 	"github.com/emin/konfigurator/konfables/rio"
 	"github.com/emin/konfigurator/konfables/ssh"
@@ -60,6 +62,9 @@ var allKonfables = []konfableEntry{
 	{"gsettings", func() Konfable {
 		return gnome.New(&gnome.GsettingsPersister{})
 	}, false, probeGsettings},
+	{"dconf", func() Konfable {
+		return dconf.New(&dconf.DconfPersister{})
+	}, false, probeDconf},
 	{"kitty", func() Konfable {
 		return kitty.New(pkg.NewFilePersister(pkg.XDGConfigPath("kitty", "kitty.conf")))
 	}, false, nil},
@@ -78,11 +83,20 @@ var allKonfables = []konfableEntry{
 	{"ssh", func() Konfable {
 		return ssh.New(pkg.NewFilePersister(ssh.DefaultConfigPath()))
 	}, false, nil},
+	{"pacman", func() Konfable {
+		return pacman.New(pkg.NewFilePersister("/etc/pacman.conf"))
+	}, false, nil},
 }
 
 // probeGsettings checks whether the gnome desktop interface schema is available.
 func probeGsettings() bool {
 	out, err := exec.Command("gsettings", "list-keys", "org.gnome.desktop.interface").Output()
+	return err == nil && len(out) > 0
+}
+
+// probeDconf checks whether the wm.preferences schema is available via dconf.
+func probeDconf() bool {
+	out, err := exec.Command("dconf", "read", "/org/gnome/desktop/wm/preferences/button-layout").Output()
 	return err == nil && len(out) > 0
 }
 

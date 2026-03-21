@@ -13,6 +13,8 @@ var Logos = map[string]pkg.PixelArt{
 	"git":          gitLogo,
 	"tmux":         tmuxLogo,
 	"ssh":          sshLogo,
+	"pacman":       pacmanLogo,
+	"dconf":        dconfLogo,
 }
 
 // color aliases for readability
@@ -140,6 +142,32 @@ var LogoAnims = map[string]pkg.AnimConfig{
 		Kind: pkg.AnimWave, Frames: 33, TickMs: 60,
 		WaveBright: []uint8{255, 195, 153, 111},
 	},
+	"pacman": {
+		Kind: pkg.AnimChomp, Frames: 25, TickMs: 100,
+		ChompColor: yl,
+		ChompLayers: [][]pkg.Pixel{
+			// layer 0: col 13 (outermost edge)
+			{{Row: 2, Col: 13}, {Row: 3, Col: 13}, {Row: 4, Col: 13}, {Row: 5, Col: 13}, {Row: 6, Col: 13}, {Row: 7, Col: 13}, {Row: 8, Col: 13}, {Row: 9, Col: 13}},
+			// layer 1: col 12
+			{{Row: 2, Col: 12}, {Row: 3, Col: 12}, {Row: 4, Col: 12}, {Row: 5, Col: 12}, {Row: 6, Col: 12}, {Row: 7, Col: 12}, {Row: 8, Col: 12}, {Row: 9, Col: 12}},
+			// layer 2: col 11
+			{{Row: 3, Col: 11}, {Row: 4, Col: 11}, {Row: 5, Col: 11}, {Row: 6, Col: 11}, {Row: 7, Col: 11}, {Row: 8, Col: 11}},
+			// layer 3: col 10
+			{{Row: 4, Col: 10}, {Row: 5, Col: 10}, {Row: 6, Col: 10}, {Row: 7, Col: 10}},
+			// layer 4: col 9
+			{{Row: 5, Col: 9}, {Row: 6, Col: 9}, {Row: 7, Col: 9}},
+			// layer 5: col 8 (innermost tip)
+			{{Row: 6, Col: 8}},
+		},
+		// open → straight-close → hold → straight-open
+		ChompSeq: []int{
+			0, 0, 0, 0, 0,
+			1, 2, 3, 4, 5, 6,
+			6, 6, 6,
+			5, 4, 3, 2, 1, 0,
+			0, 0, 0, 0, 0,
+		},
+	},
 }
 
 // hyprland — abstract flowing wave/swirl
@@ -199,6 +227,25 @@ var tmuxLogo = pkg.PixelArt{
 	},
 }
 
+// pacman — open mouth pac-man shape in yellow
+var pacmanLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, __, __, __, yl, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __},
+		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, yl, yl, yl, dk, dk, yl, yl, yl, __, __, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __},
+		{__, __, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __},
+		{__, __, __, __, __, __, yl, yl, yl, yl, yl, __, __, __, __, __},
+	},
+}
+
 // ssh — key shape in yellow
 var sshLogo = pkg.PixelArt{
 	Width: 16, Height: 12,
@@ -214,6 +261,25 @@ var sshLogo = pkg.PixelArt{
 		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, yl, yl, yl, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+	},
+}
+
+// dconf — GNOME foot silhouette in light blue
+var dconfLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, __, lb, lb, __, __, lb, lb, __, lb, lb, __, __, __},
+		{__, __, __, __, lb, lb, __, __, lb, lb, __, lb, lb, __, __, __},
+		{__, __, __, __, __, lb, lb, __, __, lb, lb, lb, __, __, __, __},
+		{__, __, __, __, __, __, lb, lb, lb, lb, lb, __, __, __, __, __},
+		{__, __, __, __, __, lb, lb, lb, lb, lb, lb, lb, __, __, __, __},
+		{__, __, __, __, lb, lb, lb, lb, lb, lb, lb, lb, __, __, __, __},
+		{__, __, __, lb, lb, lb, lb, lb, lb, lb, lb, __, __, __, __, __},
+		{__, __, __, lb, lb, lb, lb, lb, lb, lb, __, __, __, __, __, __},
+		{__, __, __, __, lb, lb, lb, lb, lb, lb, __, __, __, __, __, __},
+		{__, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }

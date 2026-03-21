@@ -74,6 +74,7 @@ const (
 	AnimFlame          // starship exhaust fire
 	AnimFade           // alacritty radial fade-in
 	AnimWave           // hyprland color wave
+	AnimChomp          // pacman progressive jaw close/open
 )
 
 // Pixel identifies a single pixel coordinate.
@@ -98,6 +99,11 @@ type AnimConfig struct {
 
 	// wave-specific
 	WaveBright []uint8 // brightness color ramp (bright→base)
+
+	// chomp-specific
+	ChompLayers [][]Pixel // pixel groups filled in order (layer 0 first)
+	ChompSeq    []int     // per-frame: number of layers filled (0 = open, len = closed)
+	ChompColor  uint8     // fill color for mouth pixels
 }
 
 // Particle is a short-lived colored pixel for the flame effect.
@@ -163,6 +169,8 @@ func (s *AnimState) CurrentFrame() PixelArt {
 		s.applyFade(&frame)
 	case AnimWave:
 		s.applyWave(&frame)
+	case AnimChomp:
+		s.applyChomp(&frame)
 	}
 	return frame
 }
@@ -293,6 +301,22 @@ func (s *AnimState) applyWave(frame *PixelArt) {
 					ci = len(s.Config.WaveBright) - 1
 				}
 				frame.Pixels[y][x] = s.Config.WaveBright[ci]
+			}
+		}
+	}
+}
+
+// applyChomp progressively fills pixel layers based on ChompSeq.
+func (s *AnimState) applyChomp(frame *PixelArt) {
+	idx := s.Frame
+	if idx >= len(s.Config.ChompSeq) {
+		return
+	}
+	nLayers := s.Config.ChompSeq[idx]
+	for i := 0; i < nLayers && i < len(s.Config.ChompLayers); i++ {
+		for _, p := range s.Config.ChompLayers[i] {
+			if p.Row >= 0 && p.Row < frame.Height && p.Col >= 0 && p.Col < frame.Width {
+				frame.Pixels[p.Row][p.Col] = s.Config.ChompColor
 			}
 		}
 	}
