@@ -7,7 +7,9 @@ docs_url: "https://sw.kovidgoyal.net/kitty/conf/"
 hints:
   - "key-value config — one setting per line, space-separated"
   - "live reload with ctrl+shift+f5 or kill -SIGUSR1"
-  - "include other configs with include directive"
+  - "kitty +list-fonts — list available font families"
+  - "kitty --debug-config — dump resolved config"
+  - "kitty +kitten themes — interactive theme picker"
 sections:
   # -- Font -------------------------------------------------------------
   - name: Font
@@ -19,33 +21,39 @@ sections:
         widget: font
         default: monospace
         description: primary font family
+        example: "font_family JetBrains Mono"
+        hint: "kitty +list-fonts | grep -i <name>"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.font_family"
       - key: bold_font
         label: Bold Font
         type: string
         widget: font
         default: auto
-        description: bold font family
+        description: bold variant — auto derives from font_family
+        example: "bold_font JetBrains Mono Bold"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.bold_font"
       - key: italic_font
         label: Italic Font
         type: string
         widget: font
         default: auto
-        description: italic font family
+        description: italic variant — auto derives from font_family
+        example: "italic_font JetBrains Mono Italic"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.italic_font"
       - key: bold_italic_font
         label: Bold Italic Font
         type: string
         widget: font
         default: auto
-        description: bold italic font family
+        description: bold italic variant — auto derives from font_family
+        example: "bold_italic_font auto"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.bold_italic_font"
       - key: font_size
         label: Font Size
         type: number
         default: "11.0"
         description: font size in points
+        example: "font_size 13.0"
         min: 1
         max: 72
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.font_size"
@@ -59,13 +67,15 @@ sections:
         type: enum
         default: block
         description: cursor shape
+        example: "cursor_shape beam"
         options: [block, beam, underline]
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.cursor_shape"
       - key: cursor_blink_interval
         label: Blink Interval
         type: number
         default: "-1"
-        description: blink interval in seconds (negative = system default, 0 = off)
+        description: blink interval in seconds (-1 = system default, 0 = off)
+        example: "cursor_blink_interval 0.5"
         min: -1
         max: 5
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.cursor_blink_interval"
@@ -73,7 +83,8 @@ sections:
         label: Stop Blinking After
         type: number
         default: "15.0"
-        description: stop blinking after N seconds of idle (0 = never)
+        description: idle seconds before cursor stops blinking (0 = never)
+        example: "cursor_stop_blinking_after 0"
         min: 0
         max: 60
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.cursor_stop_blinking_after"
@@ -86,7 +97,8 @@ sections:
         label: Scrollback Lines
         type: number
         default: "2000"
-        description: max lines in scrollback buffer
+        description: max lines kept in scrollback buffer
+        example: "scrollback_lines 10000"
         min: 0
         max: 1000000
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.scrollback_lines"
@@ -94,7 +106,8 @@ sections:
         label: Scroll Multiplier
         type: number
         default: "5.0"
-        description: lines per mouse wheel scroll
+        description: lines per mouse wheel tick
+        example: "wheel_scroll_multiplier 3.0"
         min: 0
         max: 50
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.wheel_scroll_multiplier"
@@ -107,7 +120,8 @@ sections:
         label: Padding
         type: number
         default: "0"
-        description: window padding in points
+        description: inner padding in points (single value or top right bottom left)
+        example: "window_padding_width 8"
         min: 0
         max: 200
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.window_padding_width"
@@ -115,7 +129,8 @@ sections:
         label: Hide Decorations
         type: enum
         default: "no"
-        description: window decoration visibility
+        description: hide title bar and/or window borders
+        example: "hide_window_decorations titlebar-only"
         options: ["no", "yes", titlebar-only, titlebar-and-corners]
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.hide_window_decorations"
       - key: background_opacity
@@ -123,7 +138,8 @@ sections:
         type: number
         widget: slider
         default: "1.0"
-        description: background opacity
+        description: background opacity (needs compositor support)
+        example: "background_opacity 0.9"
         min: 0
         max: 1
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.background_opacity"
@@ -131,7 +147,8 @@ sections:
         label: BG Blur
         type: number
         default: "0"
-        description: blur radius for transparent background
+        description: blur radius for transparent backgrounds (needs compositor)
+        example: "background_blur 12"
         min: 0
         max: 64
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.background_blur"
@@ -139,7 +156,8 @@ sections:
         label: Confirm Close
         type: number
         default: "-1"
-        description: confirm before closing window (-1 = if processes running, 0 = never)
+        description: confirm before closing (-1 = if processes running, 0 = never)
+        example: "confirm_os_window_close 0"
         min: -1
         max: 100
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.confirm_os_window_close"
@@ -152,25 +170,29 @@ sections:
         label: Foreground
         type: color
         default: "#dddddd"
-        description: foreground color
+        description: default text color
+        example: "foreground #c0caf5"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.foreground"
       - key: background
         label: Background
         type: color
         default: "#000000"
-        description: background color
+        description: terminal background color
+        example: "background #1a1b26"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.background"
       - key: selection_foreground
         label: Selection FG
         type: color
         default: "#000000"
-        description: selection foreground
+        description: text color in selections
+        example: "selection_foreground #1a1b26"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.selection_foreground"
       - key: selection_background
         label: Selection BG
         type: color
         default: "#fffacd"
-        description: selection background
+        description: background color in selections
+        example: "selection_background #33467c"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.selection_background"
 
   # -- Tab Bar ----------------------------------------------------------
@@ -182,6 +204,7 @@ sections:
         type: enum
         default: fade
         description: tab bar rendering style
+        example: "tab_bar_style powerline"
         options: [fade, slant, separator, powerline, custom, hidden]
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.tab_bar_style"
       - key: tab_bar_edge
@@ -189,6 +212,7 @@ sections:
         type: enum
         default: bottom
         description: tab bar position
+        example: "tab_bar_edge top"
         options: [top, bottom]
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.tab_bar_edge"
 
@@ -202,6 +226,7 @@ sections:
         widget: path
         default: "."
         description: shell program (. = default login shell)
+        example: "shell /usr/bin/zsh"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.shell"
       - key: editor
         label: Editor
@@ -209,6 +234,7 @@ sections:
         widget: path
         default: "."
         description: text editor (. = $VISUAL or $EDITOR)
+        example: "editor /usr/bin/hx"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.editor"
 
   # -- Advanced ---------------------------------------------------------
@@ -219,20 +245,24 @@ sections:
         label: Remote Control
         type: enum
         default: "no"
-        description: remote control permission
+        description: allow other processes to control kitty via IPC
+        example: "allow_remote_control socket-only"
+        hint: "required for kitty @ commands and kitten broadcast"
         options: ["no", "yes", socket-only, password]
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.allow_remote_control"
       - key: enable_audio_bell
         label: Audio Bell
         type: bool
         default: "true"
-        description: play sound on bell
+        description: play sound on bell character
+        example: "enable_audio_bell no"
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.enable_audio_bell"
       - key: visual_bell_duration
         label: Visual Bell
         type: number
         default: "0.0"
-        description: visual bell flash duration in seconds (0 = off)
+        description: flash duration in seconds on bell (0 = off)
+        example: "visual_bell_duration 0.3"
         min: 0
         max: 5
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.visual_bell_duration"

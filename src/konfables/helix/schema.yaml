@@ -5,9 +5,11 @@ min_app_version: "24.7.0"
 max_app_version: "25.1.0"
 docs_url: "https://docs.helix-editor.com/configuration.html"
 hints:
-  - "TOML config — sections are [tables]"
-  - "config at ~/.config/helix/config.toml"
-  - "language-specific settings in languages.toml"
+  - "TOML config at ~/.config/helix/config.toml"
+  - "hx --health — check LSP/formatter/DAP status per language"
+  - "hx --tutor — interactive tutorial"
+  - ":config-open — edit config from within helix"
+  - "language-specific overrides go in languages.toml"
 sections:
   # -- Theme ------------------------------------------------------------
   - name: Theme
@@ -18,7 +20,8 @@ sections:
         type: string
         default: ""
         description: color theme name
-        hint: use :theme command to preview
+        example: 'theme = "catppuccin_mocha"'
+        hint: ":theme <name> — preview in-editor"
         doc_url: "https://docs.helix-editor.com/themes.html"
 
   # -- Editor -----------------------------------------------------------
@@ -29,7 +32,8 @@ sections:
         label: Scroll Off
         type: number
         default: "5"
-        description: min lines above/below cursor
+        description: min lines kept above/below cursor
+        example: "[editor]\nscrolloff = 8"
         min: 0
         max: 50
         doc_url: "https://docs.helix-editor.com/configuration.html#editorscrolloff"
@@ -38,55 +42,65 @@ sections:
         type: bool
         default: "true"
         description: enable mouse support
+        example: "[editor]\nmouse = false"
         doc_url: "https://docs.helix-editor.com/configuration.html#editormouse"
       - key: editor.middle-click-paste
         label: Middle Click Paste
         type: bool
         default: "true"
         description: middle mouse button pastes primary clipboard
+        example: "[editor]\nmiddle-click-paste = false"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.line-number
         label: Line Numbers
         type: enum
         default: absolute
-        description: line number display
+        description: line number display mode
+        example: "[editor]\nline-number = \"relative\""
         options: [absolute, relative]
         doc_url: "https://docs.helix-editor.com/configuration.html#editorline-number"
       - key: editor.cursorline
         label: Cursor Line
         type: bool
         default: "false"
-        description: highlight the cursor line
+        description: highlight the line under cursor
+        example: "[editor]\ncursorline = true"
         doc_url: "https://docs.helix-editor.com/configuration.html#editorcursorline"
       - key: editor.cursorcolumn
         label: Cursor Column
         type: bool
         default: "false"
-        description: highlight the cursor column
+        description: highlight the column under cursor
+        example: "[editor]\ncursorcolumn = true"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.auto-completion
         label: Auto Completion
         type: bool
         default: "true"
-        description: enable auto-completion popup
+        description: show completion popup automatically
+        example: "[editor]\nauto-completion = true"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.auto-format
         label: Auto Format
         type: bool
         default: "true"
-        description: format on save
+        description: run formatter on save
+        example: "[editor]\nauto-format = false"
+        hint: "requires a formatter configured per language in languages.toml"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.auto-save
         label: Auto Save
         type: bool
         default: "false"
-        description: auto-save after idle timeout
+        description: write buffer after idle timeout
+        example: "[editor]\nauto-save = true"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.idle-timeout
         label: Idle Timeout
         type: number
         default: "250"
-        description: idle timeout in ms before auto-actions
+        description: ms before idle triggers (completion, auto-save)
+        example: "[editor]\nidle-timeout = 400"
         min: 0
         max: 10000
         doc_url: "https://docs.helix-editor.com/configuration.html"
@@ -94,33 +108,37 @@ sections:
         label: True Color
         type: bool
         default: "false"
-        description: force true color support
+        description: force 24-bit color (override terminal detection)
+        example: "[editor]\ntrue-color = true"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.color-modes
         label: Color Modes
         type: bool
         default: "false"
-        description: color mode indicator in statusline
+        description: color the mode indicator in statusline
+        example: "[editor]\ncolor-modes = true"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.rulers
         label: Rulers
-        type: string
-        default: "[]"
-        description: column ruler positions (e.g. [80, 120])
+        type: list
+        default: ""
+        description: vertical ruler columns
+        example: "[editor]\nrulers = [80, 120]"
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.bufferline
         label: Buffer Line
         type: enum
         default: never
-        description: buffer/tab line display
+        description: show open buffers as tabs
+        example: "[editor]\nbufferline = \"multiple\""
         options: [never, always, multiple]
         doc_url: "https://docs.helix-editor.com/configuration.html"
       - key: editor.shell
         label: Shell
-        type: string
+        type: list
         default: ""
-        description: shell for :sh and pipe commands
-        hint: 'default: ["sh", "-c"] on unix'
+        description: shell used for :sh and pipe commands
+        example: "[editor]\nshell = [\"zsh\", \"-c\"]"
         doc_url: "https://docs.helix-editor.com/configuration.html"
 
   # -- Cursor -----------------------------------------------------------
@@ -131,21 +149,24 @@ sections:
         label: Normal Mode
         type: enum
         default: block
-        description: cursor shape in normal mode
+        description: cursor in normal mode
+        example: "[editor.cursor-shape]\nnormal = \"block\""
         options: [block, bar, underline, hidden]
         doc_url: "https://docs.helix-editor.com/configuration.html#editorcursor-shape"
       - key: editor.cursor-shape.insert
         label: Insert Mode
         type: enum
         default: block
-        description: cursor shape in insert mode
+        description: cursor in insert mode
+        example: "[editor.cursor-shape]\ninsert = \"bar\""
         options: [block, bar, underline, hidden]
         doc_url: "https://docs.helix-editor.com/configuration.html#editorcursor-shape"
       - key: editor.cursor-shape.select
         label: Select Mode
         type: enum
         default: block
-        description: cursor shape in select mode
+        description: cursor in select mode
+        example: "[editor.cursor-shape]\nselect = \"underline\""
         options: [block, bar, underline, hidden]
         doc_url: "https://docs.helix-editor.com/configuration.html#editorcursor-shape"
 
@@ -157,7 +178,8 @@ sections:
         label: Separator
         type: string
         default: "│"
-        description: separator character between elements
+        description: separator between statusline elements
+        example: "[editor.statusline]\nseparator = \"│\""
         doc_url: "https://docs.helix-editor.com/configuration.html#editorstatusline"
 
   # -- LSP --------------------------------------------------------------
@@ -169,18 +191,22 @@ sections:
         type: bool
         default: "true"
         description: enable language server protocol
+        example: "[editor.lsp]\nenable = true"
+        hint: "hx --health <lang> — check LSP status"
         doc_url: "https://docs.helix-editor.com/configuration.html#editorlsp"
       - key: editor.lsp.display-messages
         label: Display Messages
         type: bool
-        default: "false"
-        description: show LSP progress messages
+        default: "true"
+        description: show LSP progress in statusline
+        example: "[editor.lsp]\ndisplay-messages = true"
         doc_url: "https://docs.helix-editor.com/configuration.html#editorlsp"
       - key: editor.lsp.display-inlay-hints
         label: Inlay Hints
         type: bool
         default: "false"
-        description: show inlay hints from LSP
+        description: render inlay hints from LSP
+        example: "[editor.lsp]\ndisplay-inlay-hints = true"
         doc_url: "https://docs.helix-editor.com/configuration.html#editorlsp"
 
   # -- File Picker ------------------------------------------------------
@@ -191,7 +217,8 @@ sections:
         label: Show Hidden
         type: bool
         default: "true"
-        description: show hidden files in picker
+        description: include dotfiles in file picker
+        example: "[editor.file-picker]\nhidden = false"
         doc_url: "https://docs.helix-editor.com/configuration.html#editorfile-picker"
 
   # -- Indent -----------------------------------------------------------
@@ -202,11 +229,13 @@ sections:
         label: Render Guides
         type: bool
         default: "false"
-        description: render indent guides
+        description: draw indent guide lines
+        example: "[editor.indent-guides]\nrender = true"
         doc_url: "https://docs.helix-editor.com/configuration.html#editorindent-guides"
       - key: editor.indent-guides.character
         label: Guide Character
         type: string
         default: "│"
-        description: character for indent guides
+        description: character used for indent guides
+        example: "[editor.indent-guides]\ncharacter = \"▏\""
         doc_url: "https://docs.helix-editor.com/configuration.html#editorindent-guides"

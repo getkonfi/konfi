@@ -7,7 +7,8 @@ docs_url: "https://alacritty.org/config-alacritty.html"
 hints:
   - "TOML config — sections are [tables], nested via dots"
   - "live reload on save — no restart needed"
-  - "import other config files with import = [paths]"
+  - "debug: alacritty --print-events, alacritty -v / -vv / -vvv"
+  - "config path: $XDG_CONFIG_HOME/alacritty/alacritty.toml"
 sections:
   # ── Font ────────────────────────────────────────────────────────────
   - name: Font
@@ -20,20 +21,22 @@ sections:
         default: monospace
         description: primary font family
         example: '[font.normal]\nfamily = "JetBrains Mono"'
-        hint: linux/bsd=monospace, macos=Menlo, windows=Consolas
+        hint: "fc-list : family | sort — platform defaults: linux=monospace, macos=Menlo"
         doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.normal.style
         label: Font Style
         type: string
         default: Regular
         description: normal font style
+        example: '[font.normal]\nstyle = "Medium"'
+        hint: "fc-list \"JetBrains Mono\" : style — lists available styles"
         doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.bold.family
         label: Bold Font
         type: string
         widget: font
         default: ""
-        description: bold font family
+        description: bold font override (empty = same as normal)
         doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.bold.style
         label: Bold Style
@@ -46,7 +49,7 @@ sections:
         type: string
         widget: font
         default: ""
-        description: italic font family
+        description: italic font override (empty = same as normal)
         doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.italic.style
         label: Italic Style
@@ -59,7 +62,7 @@ sections:
         type: string
         widget: font
         default: ""
-        description: bold-italic font family
+        description: bold-italic font override (empty = same as normal)
         doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.bold_italic.style
         label: Bold Italic Style
@@ -72,6 +75,7 @@ sections:
         type: number
         default: "11.25"
         description: font size in points
+        example: '[font]\nsize = 14.0'
         min: 1
         max: 72
         doc_url: "https://alacritty.org/config-alacritty.html#font"
@@ -80,6 +84,7 @@ sections:
         type: number
         default: "0"
         description: extra horizontal spacing (px)
+        example: '[font.offset]\nx = 1'
         min: -10
         max: 20
         doc_url: "https://alacritty.org/config-alacritty.html#font"
@@ -88,14 +93,32 @@ sections:
         type: number
         default: "0"
         description: extra vertical spacing (px)
+        example: '[font.offset]\ny = 2'
         min: -10
         max: 20
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.glyph_offset.x
+        label: Glyph Offset X
+        type: number
+        default: "0"
+        description: glyph horizontal offset (px)
+        min: -10
+        max: 10
+        doc_url: "https://alacritty.org/config-alacritty.html#font"
+      - key: font.glyph_offset.y
+        label: Glyph Offset Y
+        type: number
+        default: "0"
+        description: glyph vertical offset (px)
+        min: -10
+        max: 10
         doc_url: "https://alacritty.org/config-alacritty.html#font"
       - key: font.builtin_box_drawing
         label: Builtin Box Drawing
         type: bool
         default: "true"
         description: use built-in box drawing and powerline glyphs
+        hint: "disable if your nerd font has better box-drawing glyphs"
         doc_url: "https://alacritty.org/config-alacritty.html#font"
 
   # ── Colors ────────────────────────────────────────────────────────────
@@ -107,6 +130,7 @@ sections:
         type: color
         default: "#181818"
         description: default background color
+        example: '[colors.primary]\nbackground = "#1d2021"'
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
         palette:
           - "#181818"
@@ -124,6 +148,7 @@ sections:
         type: color
         default: "#d8d8d8"
         description: foreground color
+        example: '[colors.primary]\nforeground = "#ebdbb2"'
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
         palette:
           - "#d8d8d8"
@@ -147,6 +172,7 @@ sections:
         type: bool
         default: "false"
         description: bold text uses bright color variants
+        hint: "maps SGR bold (\\e[1m) to bright ANSI palette"
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.transparent_background_colors
         label: Transparent BG Colors
@@ -156,35 +182,33 @@ sections:
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.cursor.text
         label: Cursor Text
-        type: enum
+        type: string
         default: CellBackground
         description: text color under cursor
-        options: [CellForeground, CellBackground]
-        hint: or a hex color
+        example: '[colors.cursor]\ntext = CellBackground\ncursor = "#f0c674"'
+        hint: "CellForeground | CellBackground | #hex"
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.cursor.cursor
         label: Cursor Color
-        type: enum
+        type: string
         default: CellForeground
         description: cursor color
-        options: [CellForeground, CellBackground]
-        hint: or a hex color
+        hint: "CellForeground | CellBackground | #hex"
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.selection.text
         label: Selection Text
-        type: enum
+        type: string
         default: CellBackground
         description: selection text color
-        options: [CellForeground, CellBackground]
-        hint: or a hex color
+        example: '[colors.selection]\ntext = CellBackground\nbackground = "#44475a"'
+        hint: "CellForeground | CellBackground | #hex"
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.selection.background
         label: Selection BG
-        type: enum
+        type: string
         default: CellForeground
         description: selection background color
-        options: [CellForeground, CellBackground]
-        hint: or a hex color
+        hint: "CellForeground | CellBackground | #hex"
         doc_url: "https://alacritty.org/config-alacritty.html#colors"
       - key: colors.normal.black
         label: Black
@@ -293,9 +317,10 @@ sections:
         widget: slider
         default: "1.0"
         description: background opacity
+        example: '[window]\nopacity = 0.9'
         min: 0
         max: 1
-        hint: requires compositing
+        hint: "requires compositor (picom, hyprland, sway) — no effect on bare X11"
         doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.blur
         label: Blur
@@ -309,6 +334,7 @@ sections:
         type: number
         default: "0"
         description: horizontal padding (px, DPI-scaled)
+        example: '[window.padding]\nx = 8\ny = 4'
         min: 0
         max: 200
         doc_url: "https://alacritty.org/config-alacritty.html#window"
@@ -331,8 +357,9 @@ sections:
         type: enum
         default: Full
         description: window decoration style
+        example: '[window]\ndecorations = "None"'
         options: [Full, None, Transparent, Buttonless]
-        hint: Transparent and Buttonless are macOS only
+        hint: "None for tiling WMs — Transparent/Buttonless are macOS only"
         doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.startup_mode
         label: Startup Mode
@@ -346,13 +373,14 @@ sections:
         label: Title
         type: string
         default: Alacritty
-        description: window title text
+        description: default window title
+        example: '[window]\ntitle = "term"'
         doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.dynamic_title
         label: Dynamic Title
         type: bool
         default: "true"
-        description: programs can change window title
+        description: programs can change window title via OSC escape
         doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: window.resize_increments
         label: Resize Increments
@@ -368,19 +396,46 @@ sections:
         description: theme variant for window decorations
         options: [Dark, Light, None]
         doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.dimensions.columns
+        label: Columns
+        type: number
+        default: "0"
+        description: initial window width in columns (0 = auto)
+        example: '[window.dimensions]\ncolumns = 120\nlines = 40'
+        min: 0
+        max: 1000
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.dimensions.lines
+        label: Lines
+        type: number
+        default: "0"
+        description: initial window height in lines (0 = auto)
+        min: 0
+        max: 1000
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
+      - key: window.option_as_alt
+        label: Option as Alt
+        type: enum
+        default: None
+        description: treat macOS Option key as Alt
+        options: [OnlyLeft, OnlyRight, Both, None]
+        hint: macOS only
+        doc_url: "https://alacritty.org/config-alacritty.html#window"
       - key: scrolling.history
         label: History
         type: number
         default: "10000"
-        description: max scrollback lines
+        description: max scrollback lines (0 = disabled)
+        example: '[scrolling]\nhistory = 50000'
         min: 0
         max: 100000
+        hint: "high values increase memory — set 0 when using tmux scrollback"
         doc_url: "https://alacritty.org/config-alacritty.html#scrolling"
       - key: scrolling.multiplier
         label: Multiplier
         type: number
         default: "3"
-        description: lines per scroll
+        description: lines per scroll event
         min: 1
         max: 50
         doc_url: "https://alacritty.org/config-alacritty.html#scrolling"
@@ -394,6 +449,7 @@ sections:
         type: enum
         default: Block
         description: cursor shape
+        example: '[cursor.style]\nshape = "Beam"\nblinking = "On"'
         options: [Block, Underline, Beam]
         doc_url: "https://alacritty.org/config-alacritty.html#cursor"
       - key: cursor.style.blinking
@@ -402,7 +458,7 @@ sections:
         default: "Off"
         description: cursor blink behavior
         options: [Never, "Off", "On", Always]
-        hint: "Off/On=togglable, Never/Always=locked"
+        hint: "Off/On respect DECSCUSR from shell — Never/Always override it"
         doc_url: "https://alacritty.org/config-alacritty.html#cursor"
       - key: cursor.blink_interval
         label: Blink Interval
@@ -451,15 +507,24 @@ sections:
         type: string
         widget: path
         default: ""
-        description: shell executable path
-        hint: empty = $SHELL or login shell
+        description: shell executable (empty = $SHELL)
+        example: '[terminal.shell]\nprogram = "/usr/bin/zsh"\nargs = ["-l"]'
+        hint: "echo $SHELL — or use /usr/bin/fish, /usr/bin/nu, etc."
+        doc_url: "https://alacritty.org/config-alacritty.html#terminal"
+      - key: terminal.shell.args
+        label: Shell Args
+        type: list
+        default: ""
+        description: arguments passed to shell on launch
+        example: '[terminal.shell]\nargs = ["--login"]'
         doc_url: "https://alacritty.org/config-alacritty.html#terminal"
       - key: terminal.osc52
         label: OSC 52
         type: enum
         default: OnlyCopy
-        description: OSC 52 clipboard access
+        description: clipboard access via OSC 52 escape
         options: [Disabled, OnlyCopy, OnlyPaste, CopyPaste]
+        hint: "needed for remote clipboard (ssh + neovim/tmux)"
         doc_url: "https://alacritty.org/config-alacritty.html#terminal"
 
   # ── General ───────────────────────────────────────────────────────────
@@ -477,12 +542,66 @@ sections:
         type: bool
         default: "true"
         description: enable IPC socket (unix only)
+        hint: "alacritty msg -s $ALACRITTY_SOCKET config -w 0 \"font.size=16\""
         doc_url: "https://alacritty.org/config-alacritty.html#general"
       - key: general.working_directory
         label: Working Directory
         type: string
         widget: path
         default: None
-        description: shell working directory
-        hint: set to "None" or an absolute path
+        description: shell working directory (None = inherit)
+        example: '[general]\nworking_directory = "/home/user/projects"'
         doc_url: "https://alacritty.org/config-alacritty.html#general"
+      - key: general.import
+        label: Import
+        type: list
+        default: ""
+        description: import additional config files
+        example: '[general]\nimport = [\n  "~/.config/alacritty/themes/gruvbox_dark.toml",\n]'
+        hint: "theme files: github.com/alacritty/alacritty-theme"
+        doc_url: "https://alacritty.org/config-alacritty.html#general"
+
+  - name: Selection
+    key: selection
+    fields:
+      - key: selection.save_to_clipboard
+        label: Save to Clipboard
+        type: bool
+        default: "false"
+        description: auto-copy selection to clipboard
+        hint: "like X11 PRIMARY selection — select text to copy, middle-click to paste"
+        doc_url: "https://alacritty.org/config-alacritty.html#selection"
+      - key: selection.semantic_escape_chars
+        label: Word Boundary
+        type: string
+        default: ",│`|:\"' ()[]{}<>\\t"
+        description: word boundary chars for double-click selection
+        example: '[selection]\nsemantic_escape_chars = ",│`|:\"''()[]{}<>\\t/"'
+        doc_url: "https://alacritty.org/config-alacritty.html#selection"
+
+  - name: Bell
+    key: bell
+    fields:
+      - key: bell.animation
+        label: Animation
+        type: enum
+        default: Linear
+        description: visual bell flash easing
+        options: [Ease, EaseOut, EaseOutSine, EaseOutQuad, EaseOutCubic, EaseOutQuart, EaseOutQuint, EaseOutExpo, EaseOutCirc, Linear]
+        doc_url: "https://alacritty.org/config-alacritty.html#bell"
+      - key: bell.duration
+        label: Duration
+        type: number
+        default: "0"
+        description: visual bell flash duration (ms, 0 = disabled)
+        example: '[bell]\nduration = 100\nanimation = "EaseOutQuad"'
+        min: 0
+        max: 5000
+        hint: "test with: printf '\\a'"
+        doc_url: "https://alacritty.org/config-alacritty.html#bell"
+      - key: bell.color
+        label: Color
+        type: color
+        default: "#ffffff"
+        description: visual bell flash color
+        doc_url: "https://alacritty.org/config-alacritty.html#bell"

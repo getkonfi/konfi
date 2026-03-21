@@ -4,8 +4,9 @@ schema_version: 1.0.0
 docs_url: "https://man7.org/linux/man-pages/man1/tmux.1.html"
 coverage: partial
 hints:
-  - "set -g option value"
-  - "reload with: tmux source ~/.tmux.conf"
+  - "`tmux show -g <option>` to read a global option"
+  - "`tmux set -g <option> <value>` to write"
+  - "`tmux source ~/.tmux.conf` to reload config"
 
 sections:
   - name: General
@@ -15,14 +16,16 @@ sections:
         type: string
         default: screen
         description: default terminal type for new windows
-        hint: "recommended: tmux-256color or screen-256color"
+        example: "set -g default-terminal tmux-256color"
+        hint: "`tmux-256color` or `screen-256color` for proper color support"
       - key: escape-time
         label: Escape Time
         type: number
-        default: "500"
+        default: "10"
         min: 0
         max: 2000
-        description: time in ms to wait after escape key press
+        description: ms to wait after escape key before passing through
+        example: "set -g escape-time 0"
         hint: "set to 0 for vim/neovim responsiveness"
       - key: history-limit
         label: History Limit
@@ -30,34 +33,42 @@ sections:
         default: "2000"
         min: 0
         max: 100000
-        description: maximum number of lines in scrollback buffer
+        description: max scrollback lines per pane
+        example: "set -g history-limit 50000"
       - key: mouse
         label: Mouse
         type: enum
         default: "off"
         options: ["on", "off"]
-        description: enable mouse support for selection and scrolling
+        description: mouse support for selection, scroll, and pane resize
+        example: "set -g mouse on"
       - key: focus-events
         label: Focus Events
         type: enum
         default: "off"
         options: ["on", "off"]
-        description: pass focus events to programs running inside tmux
+        description: pass focus in/out events to programs inside tmux
+        example: "set -g focus-events on"
+        hint: "needed for vim autoread and gitgutter to work properly"
       - key: set-clipboard
         label: Set Clipboard
         type: enum
-        default: external
+        default: "on"
         options: ["on", "off", "external"]
-        description: clipboard integration mode
+        description: clipboard integration via OSC 52
+        example: "set -g set-clipboard on"
+        hint: "`external` lets outer terminal handle clipboard, `on` does both"
       - key: default-command
         label: Default Command
         type: string
-        description: default command for new windows
+        description: command to run in new windows instead of the shell
+        example: "set -g default-command \"reattach-to-user-namespace -l $SHELL\""
       - key: default-shell
         label: Default Shell
         type: string
-        description: default shell for new windows
+        description: shell for new windows
         widget: path
+        example: "set -g default-shell /usr/bin/zsh"
 
   - name: Display
     fields:
@@ -68,6 +79,8 @@ sections:
         min: 0
         max: 9
         description: starting index for window numbering
+        example: "set -g base-index 1"
+        hint: "use with `pane-base-index 1` so numbering is consistent"
       - key: pane-base-index
         label: Pane Base Index
         type: number
@@ -75,38 +88,44 @@ sections:
         min: 0
         max: 9
         description: starting index for pane numbering
+        example: "set -g pane-base-index 1"
       - key: renumber-windows
         label: Renumber Windows
         type: enum
         default: "off"
         options: ["on", "off"]
-        description: renumber windows sequentially after closing
+        description: re-number windows sequentially when one is closed
+        example: "set -g renumber-windows on"
       - key: display-time
         label: Display Time
         type: number
         default: "750"
         min: 0
         max: 10000
-        description: time in ms to display status messages
+        description: ms to display status line messages
+        example: "set -g display-time 2000"
       - key: display-panes-time
         label: Display Panes Time
         type: number
         default: "1000"
         min: 0
         max: 10000
-        description: time in ms to display pane numbers
+        description: ms to show pane number overlay
+        example: "set -g display-panes-time 1500"
       - key: status
         label: Status Bar
         type: enum
         default: "on"
         options: ["on", "off", "2", "3", "4", "5"]
-        description: show or hide the status bar (number = multi-line)
+        description: show status bar (number = multi-line count)
+        example: "set -g status on"
       - key: status-position
         label: Status Position
         type: enum
         default: bottom
         options: [top, bottom]
         description: status bar position
+        example: "set -g status-position top"
       - key: status-interval
         label: Status Interval
         type: number
@@ -114,39 +133,124 @@ sections:
         min: 0
         max: 300
         description: seconds between status bar refreshes
+        example: "set -g status-interval 5"
+        hint: "lower values for live-updating segments (e.g. clock, git branch)"
       - key: status-justify
         label: Status Justify
         type: enum
         default: left
-        options: [left, centre, right]
+        options: [left, centre, right, absolute-centre]
         description: window list alignment in status bar
+        example: "set -g status-justify centre"
+      - key: status-left
+        label: Status Left
+        type: string
+        default: "[#S] "
+        description: format string for status bar left side
+        example: "set -g status-left \" #S | \""
+        hint: "#S = session, #H = hostname, #I = window index"
+      - key: status-right
+        label: Status Right
+        type: string
+        default: "\"#22T\" %H:%M %d-%b-%y"
+        description: format string for status bar right side
+        example: "set -g status-right \" %H:%M %d-%b \""
+        hint: "#T = pane title, strftime format codes for date/time"
+      - key: status-left-length
+        label: Status Left Length
+        type: number
+        default: "10"
+        min: 0
+        max: 200
+        description: max character width of status-left
+        example: "set -g status-left-length 40"
+      - key: status-right-length
+        label: Status Right Length
+        type: number
+        default: "40"
+        min: 0
+        max: 200
+        description: max character width of status-right
+        example: "set -g status-right-length 60"
+      - key: set-titles
+        label: Set Titles
+        type: enum
+        default: "off"
+        options: ["on", "off"]
+        description: set the terminal emulator title from tmux
+        example: "set -g set-titles on"
+      - key: set-titles-string
+        label: Titles String
+        type: string
+        default: "#S:#I:#W - \"#T\" #{session_alerts}"
+        description: format string for terminal title
+        example: "set -g set-titles-string \"#S - #W\""
+      - key: automatic-rename
+        label: Auto Rename
+        type: enum
+        default: "on"
+        options: ["on", "off"]
+        description: auto-rename windows to the running command
+        example: "set -g automatic-rename on"
+      - key: allow-rename
+        label: Allow Rename
+        type: enum
+        default: "off"
+        options: ["on", "off"]
+        description: allow programs to rename windows via escape sequences
+        example: "set -g allow-rename off"
+        hint: "disable to stop processes from overriding your window names"
+      - key: monitor-activity
+        label: Monitor Activity
+        type: enum
+        default: "off"
+        options: ["on", "off"]
+        description: highlight windows with new activity in status bar
+        example: "set -g monitor-activity on"
+      - key: visual-activity
+        label: Visual Activity
+        type: enum
+        default: "off"
+        options: ["off", "on", "both"]
+        description: how to signal window activity
+        example: "set -g visual-activity off"
+        hint: "`both` shows a message and highlights the status bar entry"
+      - key: visual-bell
+        label: Visual Bell
+        type: enum
+        default: "off"
+        options: ["off", "on", "both"]
+        description: how to signal bells
+        example: "set -g visual-bell off"
 
   - name: Style
     fields:
       - key: status-style
         label: Status Style
         type: string
-        description: status bar style
-        hint: "e.g. bg=black,fg=white"
+        description: status bar default style
+        example: "set -g status-style bg=#1e1e2e,fg=#cdd6f4"
+        hint: "format: `fg=<color>,bg=<color>[,bold|dim|underscore]`"
       - key: window-status-current-style
         label: Current Window Style
         type: string
-        description: style for the active window in status bar
-        hint: "e.g. bg=blue,fg=white,bold"
+        description: style for the active window tab in status bar
+        example: "set -g window-status-current-style bg=#45475a,fg=#cdd6f4,bold"
       - key: pane-border-style
         label: Pane Border
         type: string
         description: inactive pane border style
-        hint: "e.g. fg=colour238"
+        example: "set -g pane-border-style fg=#313244"
       - key: pane-active-border-style
         label: Active Pane Border
         type: string
         description: active pane border style
-        hint: "e.g. fg=blue"
+        example: "set -g pane-active-border-style fg=#89b4fa"
       - key: message-style
         label: Message Style
         type: string
-        description: command prompt and message style
+        description: command prompt and message bar style
+        example: "set -g message-style bg=#1e1e2e,fg=#cdd6f4"
 
   - name: Keys
     fields:
@@ -154,17 +258,35 @@ sections:
         label: Prefix Key
         type: string
         default: C-b
-        description: key combination to enter command mode
-        hint: "common alternative: C-a"
+        description: key combo to enter command mode
+        example: "set -g prefix C-a"
+        hint: "`C-a` is the screen-style alternative; unbind `C-b` if switching"
+      - key: prefix2
+        label: Secondary Prefix
+        type: string
+        default: ""
+        description: secondary prefix key
+        example: "set -g prefix2 C-Space"
+      - key: repeat-time
+        label: Repeat Time
+        type: number
+        default: "500"
+        min: 0
+        max: 5000
+        description: ms window for repeated key presses after prefix
+        example: "set -g repeat-time 300"
       - key: mode-keys
         label: Mode Keys
         type: enum
         default: emacs
         options: [vi, emacs]
         description: key bindings style for copy mode
+        example: "set -g mode-keys vi"
+        hint: "`tmux list-keys -T copy-mode-vi` to see vi copy-mode bindings"
       - key: status-keys
         label: Status Keys
         type: enum
         default: emacs
         options: [vi, emacs]
         description: key bindings style for command prompt
+        example: "set -g status-keys vi"

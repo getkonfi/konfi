@@ -5,44 +5,47 @@ min_app_version: 1.0.0
 max_app_version: 1.1.0
 docs_url: https://ghostty.org/docs/config
 hints:
-  - gpu-accelerated terminal with zero-config defaults
-  - supports ligatures and font features via font-feature
-  - use keybind to customize shortcuts
+  - ghostty +show-config --default --docs — full config reference
+  - ghostty +validate-config — check config for errors
+  - ghostty +list-keybinds — show active keybinds
 sections:
   - name: Font
     key: ""
     fields:
       - key: font-family
         label: Font Family
-        type: string
-        widget: font
+        type: list
         default: ""
-        description: primary font family
+        description: primary font family (repeatable for fallback chain)
         example: font-family = JetBrains Mono
+        hint: "repeated key — one per line | ghostty +list-fonts, fc-list : family"
         doc_url: https://ghostty.org/docs/config/reference#font-family
         since: 1.0.0
       - key: font-family-bold
         label: Bold Font
-        type: string
-        widget: font
+        type: list
         default: ""
-        description: overrides primary font for bold
+        description: overrides primary font for bold (repeatable for fallback)
+        example: font-family-bold = JetBrains Mono Bold
+        hint: "repeated key — one per line | ghostty +list-fonts"
         doc_url: https://ghostty.org/docs/config/reference#font-family-bold
         since: 1.0.0
       - key: font-family-italic
         label: Italic Font
-        type: string
-        widget: font
+        type: list
         default: ""
-        description: overrides primary font for italic
+        description: overrides primary font for italic (repeatable for fallback)
+        example: font-family-italic = JetBrains Mono Italic
+        hint: "repeated key — one per line | ghostty +list-fonts"
         doc_url: https://ghostty.org/docs/config/reference#font-family-italic
         since: 1.0.0
       - key: font-family-bold-italic
         label: Bold Italic Font
-        type: string
-        widget: font
+        type: list
         default: ""
-        description: overrides primary font for bold italic
+        description: overrides primary font for bold italic (repeatable for fallback)
+        example: font-family-bold-italic = JetBrains Mono Bold Italic
+        hint: "repeated key — one per line | ghostty +list-fonts"
         doc_url: https://ghostty.org/docs/config/reference#font-family-bold-italic
         since: 1.0.0
       - key: font-size
@@ -50,6 +53,7 @@ sections:
         type: number
         default: "13"
         description: font size in points
+        example: font-size = 14
         min: 6
         max: 72
         doc_url: https://ghostty.org/docs/config/reference#font-size
@@ -59,6 +63,8 @@ sections:
         type: string
         default: ""
         description: named style variant (e.g. regular, medium, light)
+        example: font-style = medium
+        hint: "ghostty +show-face — see resolved face names"
         doc_url: https://ghostty.org/docs/config/reference#font-style
         since: 1.0.0
       - key: font-style-bold
@@ -66,6 +72,8 @@ sections:
         type: string
         default: ""
         description: named style variant for bold weight
+        example: font-style-bold = bold
+        hint: "ghostty +show-face — see resolved face names"
         doc_url: https://ghostty.org/docs/config/reference#font-style-bold
         since: 1.0.0
       - key: font-style-italic
@@ -73,21 +81,33 @@ sections:
         type: string
         default: ""
         description: named style variant for italic
+        example: font-style-italic = italic
         doc_url: https://ghostty.org/docs/config/reference#font-style-italic
+        since: 1.0.0
+      - key: font-style-bold-italic
+        label: Bold Italic Style
+        type: string
+        default: ""
+        description: named style variant for bold italic
+        example: font-style-bold-italic = bold italic
+        doc_url: https://ghostty.org/docs/config/reference#font-style-bold-italic
         since: 1.0.0
       - key: font-feature
         label: Font Feature
         type: list
         default: ""
-        description: OpenType font features to enable (e.g., ss01, calt)
-        hint: repeated key — one feature per line
+        description: OpenType font features to enable/disable
+        example: font-feature = ss01
+        hint: "repeated key — one per line | common: calt, liga, ss01-ss20"
         doc_url: https://ghostty.org/docs/config/reference#font-feature
         since: 1.0.0
       - key: font-variation
         label: Font Variation
         type: list
         default: ""
-        description: font variation axis settings (e.g., wght=400)
+        description: variable font axis settings
+        example: font-variation = wght=400
+        hint: "repeated key — one per line | common axes: wght, wdth, slnt"
         doc_url: https://ghostty.org/docs/config/reference#font-variation
         since: 1.0.0
       - key: font-thicken
@@ -95,8 +115,58 @@ sections:
         type: bool
         default: "false"
         description: thicken glyphs for HiDPI
-        hint: adds weight to thin fonts on high-resolution displays
+        example: font-thicken = true
         doc_url: https://ghostty.org/docs/config/reference#font-thicken
+        since: 1.0.0
+      - key: font-synthetic-style
+        label: Synthetic Style
+        type: enum
+        default: "true"
+        description: controls synthetic bold/italic when font lacks them
+        example: font-synthetic-style = no-bold
+        options:
+          - "true"
+          - "false"
+          - no-bold
+          - no-italic
+          - no-bold-italic
+        doc_url: https://ghostty.org/docs/config/reference#font-synthetic-style
+        since: 1.1.0
+      - key: font-codepoint-map
+        label: Codepoint Map
+        type: list
+        default: ""
+        description: map codepoint ranges to specific font families
+        example: font-codepoint-map = U+E000-U+F8FF=Symbols Nerd Font
+        hint: "repeated key — one per line | format: U+XXXX-U+YYYY=Font Name"
+        doc_url: https://ghostty.org/docs/config/reference#font-codepoint-map
+        since: 1.0.0
+      - key: font-variation-bold
+        label: Bold Variation
+        type: list
+        default: ""
+        description: variable font axis settings for bold
+        example: font-variation-bold = wght=700
+        hint: repeated key — one per line
+        doc_url: https://ghostty.org/docs/config/reference#font-variation-bold
+        since: 1.0.0
+      - key: font-variation-italic
+        label: Italic Variation
+        type: list
+        default: ""
+        description: variable font axis settings for italic
+        example: font-variation-italic = slnt=-12
+        hint: repeated key — one per line
+        doc_url: https://ghostty.org/docs/config/reference#font-variation-italic
+        since: 1.0.0
+      - key: font-variation-bold-italic
+        label: Bold Italic Variation
+        type: list
+        default: ""
+        description: variable font axis settings for bold italic
+        example: font-variation-bold-italic = wght=700
+        hint: repeated key — one per line
+        doc_url: https://ghostty.org/docs/config/reference#font-variation-bold-italic
         since: 1.0.0
   - name: Colors
     key: ""
@@ -106,13 +176,15 @@ sections:
         type: string
         default: ""
         description: color theme name (overrides individual colors)
-        hint: use 'ghostty +list-themes' to see available themes
+        example: theme = GruvboxDark
+        hint: "ghostty +list-themes | ghostty +list-colors — preview active palette"
         doc_url: https://ghostty.org/docs/config/reference#theme
       - key: background
         label: Background
         type: color
         default: "282828"
         description: terminal background color
+        example: background = 1d2021
         palette:
           - "282828"
           - 1d2021
@@ -130,6 +202,7 @@ sections:
         type: color
         default: ebdbb2
         description: terminal text color
+        example: foreground = ebdbb2
         palette:
           - ebdbb2
           - fbf1c7
@@ -219,8 +292,8 @@ sections:
         type: number
         widget: slider
         default: "1.0"
-        description: window transparency level
-        hint: requires a compositor; 0 = fully transparent, 1 = opaque
+        description: window transparency (requires compositor)
+        example: background-opacity = 0.9
         min: 0
         max: 1
         doc_url: https://ghostty.org/docs/config/reference#background-opacity
@@ -230,7 +303,8 @@ sections:
         widget: slider
         default: "0.7"
         description: dimming level for unfocused splits
-        hint: "1.0 disables dimming; min 0.15"
+        example: unfocused-split-opacity = 0.85
+        hint: "1.0 = no dimming"
         min: 0.15
         max: 1
         doc_url: https://ghostty.org/docs/config/reference#unfocused-split-opacity
@@ -243,6 +317,26 @@ sections:
         min: 1
         max: 21
         doc_url: https://ghostty.org/docs/config/reference#minimum-contrast
+      - key: palette
+        label: Palette Override
+        type: list
+        default: ""
+        description: override individual ANSI palette colors (0-255)
+        example: palette = 0=282828
+        hint: "repeated key — one per line | ghostty +list-colors"
+        doc_url: https://ghostty.org/docs/config/reference#palette
+        since: 1.0.0
+      - key: background-blur-radius
+        label: BG Blur
+        type: number
+        default: "0"
+        description: background blur radius (requires compositor)
+        example: background-blur-radius = 20
+        hint: combine with background-opacity < 1
+        min: 0
+        max: 100
+        doc_url: https://ghostty.org/docs/config/reference#background-blur-radius
+        since: 1.1.0
   - name: Cursor
     key: ""
     fields:
@@ -250,9 +344,11 @@ sections:
         label: Cursor Style
         type: enum
         default: block
-        description: "cursor shape: █ block, │ bar, ▁ underline"
+        description: "cursor shape: block, bar, or underline"
+        example: cursor-style = bar
         options:
           - block
+          - block_hollow
           - bar
           - underline
         doc_url: https://ghostty.org/docs/config/reference#cursor-style
@@ -268,8 +364,8 @@ sections:
         type: number
         widget: slider
         default: "1.0"
-        description: transparency of the cursor itself
-        hint: only affects block cursor; 0 = invisible, 1 = solid
+        description: cursor transparency (block cursor only)
+        example: cursor-opacity = 0.8
         min: 0
         max: 1
         doc_url: https://ghostty.org/docs/config/reference#cursor-opacity
@@ -293,20 +389,22 @@ sections:
         label: Window Decoration
         type: enum
         default: auto
-        description: "title bar and border style: none = borderless, client = app-drawn (CSD), server = WM-drawn (SSD)"
+        description: title bar style (none/client=CSD/server=SSD)
+        example: window-decoration = none
         options:
           - none
           - auto
           - client
           - server
-        hint: auto follows your desktop environment's preference
         doc_url: https://ghostty.org/docs/config/reference#window-decoration
       - key: window-title-font-family
         label: Title Font
         type: string
         widget: font
         default: ""
-        description: title bar font family (macOS)
+        description: title bar font family (macOS only)
+        example: window-title-font-family = SF Pro
+        hint: "ghostty +list-fonts"
         doc_url: https://ghostty.org/docs/config/reference#window-title-font-family
       - key: window-inherit-font-size
         label: Inherit Font Size
@@ -322,19 +420,19 @@ sections:
         doc_url: https://ghostty.org/docs/config/reference#title
       - key: window-padding-x
         label: Padding X
-        type: number
+        type: string
         default: "0"
-        description: horizontal padding (px)
-        min: 0
-        max: 200
+        description: horizontal padding in pixels
+        example: window-padding-x = 8,8
+        hint: "single value or left,right"
         doc_url: https://ghostty.org/docs/config/reference#window-padding-x
       - key: window-padding-y
         label: Padding Y
-        type: number
+        type: string
         default: "0"
-        description: vertical padding (px)
-        min: 0
-        max: 200
+        description: vertical padding in pixels
+        example: window-padding-y = 4,4
+        hint: "single value or top,bottom"
         doc_url: https://ghostty.org/docs/config/reference#window-padding-y
       - key: window-padding-balance
         label: Pad Balance
@@ -347,22 +445,23 @@ sections:
         type: enum
         default: background
         description: how padding area is colored
+        example: window-padding-color = extend
         options:
           - background
           - extend
           - extend-always
-        hint: "background = bg color; extend = stretches nearest cell color into padding"
+        hint: "extend = stretches nearest cell color into padding"
         doc_url: https://ghostty.org/docs/config/reference#window-padding-color
       - key: window-save-state
         label: Save State
         type: enum
         default: default
-        description: remember window position, size, and splits between sessions
+        description: persist window geometry and splits across restarts
+        example: window-save-state = always
         options:
           - default
           - never
           - always
-        hint: default follows OS convention
         doc_url: https://ghostty.org/docs/config/reference#window-save-state
       - key: fullscreen
         label: Fullscreen
@@ -376,6 +475,59 @@ sections:
         default: "false"
         description: start in maximized mode
         doc_url: https://ghostty.org/docs/config/reference#maximize
+      - key: window-theme
+        label: Window Theme
+        type: enum
+        default: auto
+        description: window chrome (title bar/borders) color scheme
+        example: window-theme = dark
+        options:
+          - auto
+          - system
+          - dark
+          - light
+          - ghostty
+        hint: "ghostty = derive from background color"
+        doc_url: https://ghostty.org/docs/config/reference#window-theme
+        since: 1.0.0
+      - key: window-height
+        label: Window Height
+        type: number
+        default: ""
+        description: initial window height in cells
+        example: window-height = 40
+        min: 4
+        max: 1000
+        doc_url: https://ghostty.org/docs/config/reference#window-height
+        since: 1.0.0
+      - key: window-width
+        label: Window Width
+        type: number
+        default: ""
+        description: initial window width in cells
+        example: window-width = 120
+        min: 10
+        max: 1000
+        doc_url: https://ghostty.org/docs/config/reference#window-width
+        since: 1.0.0
+      - key: window-step-resize
+        label: Step Resize
+        type: bool
+        default: "false"
+        description: resize window in cell-size increments
+        doc_url: https://ghostty.org/docs/config/reference#window-step-resize
+        since: 1.0.0
+      - key: resize-overlay
+        label: Resize Overlay
+        type: enum
+        default: after-first
+        description: show size indicator during resize
+        options:
+          - always
+          - never
+          - after-first
+        doc_url: https://ghostty.org/docs/config/reference#resize-overlay
+        since: 1.0.0
   - name: Cell Adjustment
     key: ""
     fields:
@@ -383,39 +535,95 @@ sections:
         label: Cell Width
         type: string
         default: ""
-        description: cell width adjustment (e.g., +1, -1, 10%)
-        hint: can be absolute (+1) or percentage (10%)
+        description: cell width adjustment (absolute or percentage)
+        example: adjust-cell-width = -1
+        hint: "accepts +N, -N, or N%"
         doc_url: https://ghostty.org/docs/config/reference#adjust-cell-width
       - key: adjust-cell-height
         label: Cell Height
         type: string
         default: ""
-        description: cell height adjustment (e.g., +1, -1, 10%)
+        description: cell height adjustment (absolute or percentage)
+        example: adjust-cell-height = 10%
+        hint: "accepts +N, -N, or N%"
         doc_url: https://ghostty.org/docs/config/reference#adjust-cell-height
       - key: adjust-font-baseline
         label: Font Baseline
         type: string
         default: ""
-        description: font baseline adjustment (e.g., +1, -1)
+        description: font baseline offset
+        example: adjust-font-baseline = +1
         doc_url: https://ghostty.org/docs/config/reference#adjust-font-baseline
       - key: adjust-underline-position
         label: Underline Pos
         type: string
         default: ""
-        description: underline position adjustment
+        description: underline position offset
+        example: adjust-underline-position = +2
         doc_url: https://ghostty.org/docs/config/reference#adjust-underline-position
       - key: adjust-underline-thickness
         label: Underline Thick
         type: string
         default: ""
-        description: underline thickness adjustment
+        description: underline thickness offset
+        example: adjust-underline-thickness = +1
         doc_url: https://ghostty.org/docs/config/reference#adjust-underline-thickness
       - key: adjust-cursor-thickness
         label: Cursor Thick
         type: string
         default: ""
-        description: cursor bar │ and underline ▁ thickness adjustment
+        description: bar/underline cursor thickness offset
+        example: adjust-cursor-thickness = +1
         doc_url: https://ghostty.org/docs/config/reference#adjust-cursor-thickness
+      - key: adjust-cursor-height
+        label: Cursor Height
+        type: string
+        default: ""
+        description: cursor height offset
+        example: adjust-cursor-height = +2
+        hint: "accepts +N, -N, or N%"
+        doc_url: https://ghostty.org/docs/config/reference#adjust-cursor-height
+        since: 1.0.0
+      - key: adjust-strikethrough-position
+        label: Strikethrough Pos
+        type: string
+        default: ""
+        description: strikethrough position offset
+        example: adjust-strikethrough-position = +1
+        doc_url: https://ghostty.org/docs/config/reference#adjust-strikethrough-position
+        since: 1.0.0
+      - key: adjust-strikethrough-thickness
+        label: Strikethrough Thick
+        type: string
+        default: ""
+        description: strikethrough thickness offset
+        example: adjust-strikethrough-thickness = +1
+        doc_url: https://ghostty.org/docs/config/reference#adjust-strikethrough-thickness
+        since: 1.0.0
+      - key: adjust-overline-position
+        label: Overline Pos
+        type: string
+        default: ""
+        description: overline position offset
+        example: adjust-overline-position = -1
+        doc_url: https://ghostty.org/docs/config/reference#adjust-overline-position
+        since: 1.0.0
+      - key: adjust-overline-thickness
+        label: Overline Thick
+        type: string
+        default: ""
+        description: overline thickness offset
+        example: adjust-overline-thickness = +1
+        doc_url: https://ghostty.org/docs/config/reference#adjust-overline-thickness
+        since: 1.0.0
+      - key: adjust-box-thickness
+        label: Box Drawing Thick
+        type: string
+        default: ""
+        description: box-drawing character thickness offset
+        example: adjust-box-thickness = +1
+        doc_url: https://ghostty.org/docs/config/reference#adjust-box-thickness
+        since: 1.0.0
   - name: Input
     key: ""
     fields:
@@ -423,14 +631,16 @@ sections:
         label: Key Bindings
         type: list
         default: ""
-        description: custom key bindings (repeated key)
-        hint: 'format: trigger=action (e.g., ctrl+c=copy_to_clipboard)'
+        description: custom key bindings
+        example: keybind = ctrl+shift+c=copy_to_clipboard
+        hint: "repeated key — one per line | ghostty +list-keybinds, ghostty +list-actions --docs"
         doc_url: https://ghostty.org/docs/config/reference#keybind
       - key: mouse-scroll-multiplier
         label: Scroll Multiplier
         type: number
         default: "1"
         description: mouse scroll speed multiplier
+        example: mouse-scroll-multiplier = 3
         min: 0
         max: 50
         doc_url: https://ghostty.org/docs/config/reference#mouse-scroll-multiplier
@@ -444,13 +654,13 @@ sections:
         label: Option as Alt
         type: enum
         default: "false"
-        description: treat macOS Option key as Alt for key combos (e.g. Alt+B word-jump)
+        description: treat macOS Option as Alt (e.g. Alt+B word-jump)
+        example: macos-option-as-alt = left
         options:
           - "false"
           - "true"
           - left
           - right
-        hint: left/right applies only to that Option key
         doc_url: https://ghostty.org/docs/config/reference#macos-option-as-alt
       - key: link-url
         label: Clickable URLs
@@ -462,13 +672,14 @@ sections:
         label: Shift+Click
         type: enum
         default: "false"
-        description: whether Shift bypasses mouse capture in full-screen TUI apps
+        description: Shift bypasses mouse capture in TUI apps
+        example: mouse-shift-capture = true
         options:
           - "false"
           - "true"
           - always
           - never
-        hint: "true/false = app-togglable; always/never = locked"
+        hint: "always/never = locked, ignores app toggle"
         doc_url: https://ghostty.org/docs/config/reference#mouse-shift-capture
   - name: Shell
     key: ""
@@ -478,13 +689,15 @@ sections:
         type: string
         widget: path
         default: ""
-        description: override default shell command
+        description: override default shell
+        example: command = /usr/bin/zsh
         doc_url: https://ghostty.org/docs/config/reference#command
       - key: shell-integration
         label: Shell Integration
         type: enum
         default: detect
-        description: inject ghostty hooks into your shell for prompt marking and sudo pass-through
+        description: inject ghostty hooks for prompt marking and sudo pass-through
+        example: shell-integration = detect
         options:
           - none
           - detect
@@ -492,13 +705,14 @@ sections:
           - zsh
           - fish
           - elvish
-        hint: detect auto-identifies your shell; none disables all integration
+        hint: "none = disable all hooks"
         doc_url: https://ghostty.org/docs/config/reference#shell-integration
       - key: shell-integration-features
         label: Integration Features
         type: multi
         default: ""
-        description: pick which shell hooks to enable
+        description: toggle individual shell integration hooks
+        example: shell-integration-features = no-cursor,sudo,title
         options:
           - cursor
           - sudo
@@ -506,13 +720,14 @@ sections:
           - no-cursor
           - no-sudo
           - no-title
-        hint: "cursor = change shape at prompt; sudo = pass-through; title = set window title"
+        hint: "prefix no- to disable a specific hook"
         doc_url: https://ghostty.org/docs/config/reference#shell-integration-features
       - key: scrollback-limit
         label: Scrollback Limit
         type: number
         default: "10000"
-        description: max scrollback lines
+        description: max scrollback lines (0 = unlimited)
+        example: scrollback-limit = 50000
         min: 0
         max: 1e+06
         doc_url: https://ghostty.org/docs/config/reference#scrollback-limit
@@ -531,6 +746,33 @@ sections:
         min: 0
         max: 60000
         doc_url: https://ghostty.org/docs/config/reference#abnormal-command-exit-runtime
+      - key: working-directory
+        label: Working Directory
+        type: string
+        widget: path
+        default: ""
+        description: initial working directory
+        example: working-directory = ~/projects
+        hint: "inherit = use parent process cwd"
+        doc_url: https://ghostty.org/docs/config/reference#working-directory
+        since: 1.0.0
+      - key: initial-command
+        label: Initial Command
+        type: string
+        default: ""
+        description: one-time command on first surface only
+        example: initial-command = tmux attach || tmux
+        doc_url: https://ghostty.org/docs/config/reference#initial-command
+        since: 1.0.0
+      - key: env
+        label: Environment
+        type: list
+        default: ""
+        description: set environment variables for child processes
+        example: env = EDITOR=nvim
+        hint: "repeated key — one per line | format: KEY=VALUE"
+        doc_url: https://ghostty.org/docs/config/reference#env
+        since: 1.0.0
   - name: Clipboard
     key: ""
     fields:
@@ -538,19 +780,21 @@ sections:
         label: Copy on Select
         type: enum
         default: "false"
-        description: auto-copy text when you select it
+        description: auto-copy text on selection
+        example: copy-on-select = clipboard
         options:
           - "false"
           - "true"
           - clipboard
           - primary
-        hint: "clipboard = Ctrl+V paste; primary = middle-click paste (X11)"
+        hint: "clipboard = Ctrl+V; primary = middle-click (X11)"
         doc_url: https://ghostty.org/docs/config/reference#copy-on-select
       - key: clipboard-read
         label: Clipboard Read
         type: enum
         default: ask
-        description: whether programs (via OSC 52) can read your clipboard
+        description: allow programs to read clipboard (OSC 52)
+        example: clipboard-read = ask
         options:
           - allow
           - deny
@@ -560,7 +804,8 @@ sections:
         label: Clipboard Write
         type: enum
         default: allow
-        description: whether programs (via OSC 52) can write to your clipboard
+        description: allow programs to write clipboard (OSC 52)
+        example: clipboard-write = allow
         options:
           - allow
           - deny
@@ -576,7 +821,8 @@ sections:
         label: Paste Protection
         type: bool
         default: "true"
-        description: show confirmation dialog when pasting text containing newlines or control chars
+        description: confirm before pasting text with newlines or control chars
+        example: clipboard-paste-protection = true
         doc_url: https://ghostty.org/docs/config/reference#clipboard-paste-protection
   - name: Advanced
     key: ""
@@ -585,7 +831,9 @@ sections:
         label: Extra Config
         type: list
         default: ""
-        description: extra config files to load
+        description: additional config files to source
+        example: config-file = ~/.config/ghostty/theme
+        hint: "repeated key — one per line | ghostty +validate-config --config-file=PATH"
         doc_url: https://ghostty.org/docs/config/reference#config-file
       - key: confirm-close-surface
         label: Confirm Close
@@ -598,6 +846,8 @@ sections:
         type: number
         default: "320000000"
         description: max in-memory image storage (bytes)
+        example: image-storage-limit = 320000000
+        hint: "~320MB default; 0 = unlimited (kitty graphics protocol)"
         min: 0
         doc_url: https://ghostty.org/docs/config/reference#image-storage-limit
       - key: class
@@ -605,12 +855,16 @@ sections:
         type: string
         default: ""
         description: X11/Wayland window class override
+        example: class = ghostty-dev
+        hint: "useful for WM rules: hyprctl keyword windowrulev2 ..."
         doc_url: https://ghostty.org/docs/config/reference#class
       - key: custom-shader
         label: Custom Shader
         type: list
         default: ""
         description: custom GLSL post-processing shaders
+        example: custom-shader = ~/.config/ghostty/shaders/crt.glsl
+        hint: repeated key — one per line
         doc_url: https://ghostty.org/docs/config/reference#custom-shader
       - key: bold-is-bright
         label: Bold is Bright
@@ -629,3 +883,69 @@ sections:
           - legacy
         hint: "unicode = UAX #11; wcswidth = libc; legacy = older compat"
         doc_url: https://ghostty.org/docs/config/reference#grapheme-width-method
+      - key: desktop-notifications
+        label: Notifications
+        type: enum
+        default: allow
+        description: whether apps can trigger desktop notifications (via OSC 9/777)
+        options:
+          - allow
+          - deny
+          - no-clipboard
+        doc_url: https://ghostty.org/docs/config/reference#desktop-notifications
+        since: 1.0.0
+      - key: term
+        label: TERM
+        type: string
+        default: xterm-ghostty
+        description: $TERM value set for child processes
+        example: term = xterm-256color
+        hint: "use xterm-256color if remote hosts lack ghostty terminfo"
+        doc_url: https://ghostty.org/docs/config/reference#term
+        since: 1.0.0
+  - name: Linux/GTK
+    key: ""
+    fields:
+      - key: gtk-single-instance
+        label: Single Instance
+        type: enum
+        default: desktop
+        description: reuse running ghostty instance for new windows
+        example: gtk-single-instance = true
+        options:
+          - desktop
+          - "false"
+          - "true"
+        hint: "false = always spawn new process"
+        doc_url: https://ghostty.org/docs/config/reference#gtk-single-instance
+        since: 1.0.0
+      - key: gtk-tabs-location
+        label: Tabs Location
+        type: enum
+        default: top
+        description: tab bar position
+        example: gtk-tabs-location = bottom
+        options:
+          - top
+          - bottom
+          - left
+          - right
+          - hidden
+        doc_url: https://ghostty.org/docs/config/reference#gtk-tabs-location
+        since: 1.0.0
+      - key: gtk-wide-tabs
+        label: Wide Tabs
+        type: bool
+        default: "true"
+        description: tabs expand to fill the tab bar width
+        doc_url: https://ghostty.org/docs/config/reference#gtk-wide-tabs
+        since: 1.0.0
+      - key: gtk-adwaita
+        label: Adwaita Theme
+        type: bool
+        default: "true"
+        description: use libadwaita for window styling
+        example: gtk-adwaita = false
+        hint: "false = use raw GTK4 (no rounded corners, no CSD)"
+        doc_url: https://ghostty.org/docs/config/reference#gtk-adwaita
+        since: 1.0.0

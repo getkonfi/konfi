@@ -2,9 +2,9 @@ app: starship
 format: toml
 docs_url: "https://starship.rs/config/"
 hints:
-  - "module variables like $git_branch compose the prompt"
-  - "disable_modules to hide individual prompt segments"
-  - "palette lets you define reusable color aliases"
+  - "starship explain — show active modules and render time"
+  - "starship timings — profile slow modules"
+  - "starship module <name> — test a single module in isolation"
 sections:
   - name: Prompt
     key: ""
@@ -13,9 +13,9 @@ sections:
         label: Prompt Format
         type: string
         default: "$all"
-        description: prompt format string
-        example: 'format = "$git_branch$character"'
-        hint: use module variables like $git_branch to compose the prompt
+        description: prompt format string — compose with $module variables
+        example: 'format = "$directory$git_branch$character"'
+        hint: "starship explain — see which modules are active"
         doc_url: "https://starship.rs/config/#prompt"
         since: "0.1.0"
       - key: right_format
@@ -23,18 +23,21 @@ sections:
         type: string
         default: ""
         description: right-side prompt format
+        example: 'right_format = "$time$cmd_duration"'
         doc_url: "https://starship.rs/config/#prompt"
       - key: continuation_prompt
         label: Continuation Prompt
         type: string
         default: "[∙](bright-black) "
         description: multi-line continuation prompt
+        example: 'continuation_prompt = "[▸](dimmed white) "'
         doc_url: "https://starship.rs/config/#prompt"
       - key: scan_timeout
         label: Scan Timeout
         type: number
         default: "30"
         description: file scan timeout (ms)
+        hint: "starship timings — identify slow module scans"
         min: 1
         max: 5000
         doc_url: "https://starship.rs/config/#prompt"
@@ -42,7 +45,8 @@ sections:
         label: Command Timeout
         type: number
         default: "500"
-        description: command timeout (ms)
+        description: external command execution timeout (ms)
+        hint: "increase if git modules timeout on large repos"
         min: 100
         max: 30000
         doc_url: "https://starship.rs/config/#prompt"
@@ -59,6 +63,8 @@ sections:
         type: string
         default: ""
         description: active color palette name
+        example: "palette = \"catppuccin_mocha\""
+        hint: "define [palettes.name] blocks to map color aliases"
         doc_url: "https://starship.rs/config/#prompt"
       - key: character.success_symbol
         label: Success Symbol
@@ -66,8 +72,8 @@ sections:
         widget: stylestring
         default: "[❯](bold green)"
         description: success prompt symbol
-        example: 'success_symbol = "[➜](bold green)"'
-        hint: supports starship style strings like [text](style)
+        example: "[character]\nsuccess_symbol = \"[➜](bold green)\""
+        hint: "starship module character — preview in isolation"
         doc_url: "https://starship.rs/config/#character"
         since: "0.1.0"
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
@@ -78,6 +84,7 @@ sections:
         widget: stylestring
         default: "[❯](bold red)"
         description: error prompt symbol
+        example: "[character]\nerror_symbol = \"[✖](bold red)\""
         doc_url: "https://starship.rs/config/#character"
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
         alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
@@ -87,6 +94,7 @@ sections:
         widget: stylestring
         default: "[❮](bold green)"
         description: vim normal mode symbol
+        example: "[character]\nvimcmd_symbol = \"[N](bold cyan)\""
         doc_url: "https://starship.rs/config/#character"
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
         alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
@@ -96,6 +104,7 @@ sections:
         widget: stylestring
         default: "[❮](bold purple)"
         description: vim replace-one mode symbol
+        example: "vimcmd_replace_one_symbol = \"[r](bold purple)\""
         doc_url: "https://starship.rs/config/#character"
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
         alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
@@ -105,6 +114,7 @@ sections:
         widget: stylestring
         default: "[❮](bold purple)"
         description: vim replace mode symbol
+        example: "vimcmd_replace_symbol = \"[R](bold purple)\""
         doc_url: "https://starship.rs/config/#character"
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
         alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
@@ -114,6 +124,7 @@ sections:
         widget: stylestring
         default: "[❮](bold yellow)"
         description: vim visual mode symbol
+        example: "vimcmd_visual_symbol = \"[V](bold yellow)\""
         doc_url: "https://starship.rs/config/#character"
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
         alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
@@ -133,13 +144,15 @@ sections:
         label: Symbol
         type: string
         default: "."
-        description: fill character
+        description: fill character between left/right prompt
+        example: "[fill]\nsymbol = \"─\""
         doc_url: "https://starship.rs/config/#fill"
       - key: fill.style
         label: Style
         type: string
         default: "bold black"
         description: fill style
+        example: "style = \"dimmed white\""
         doc_url: "https://starship.rs/config/#fill"
       - key: fill.disabled
         label: Disabled
@@ -155,7 +168,8 @@ sections:
         label: Truncation Length
         type: number
         default: "3"
-        description: parent directories shown
+        description: max parent directories shown before truncation
+        example: "[directory]\ntruncation_length = 5"
         min: 0
         max: 20
         doc_url: "https://starship.rs/config/#directory"
@@ -163,37 +177,42 @@ sections:
         label: Truncate to Repo
         type: bool
         default: "true"
-        description: truncate at repo root
+        description: truncate path at git repo root
         doc_url: "https://starship.rs/config/#directory"
       - key: directory.style
         label: Style
         type: string
         default: "bold cyan"
-        description: directory style
+        description: directory path style
+        example: "style = \"bold 39\""
         doc_url: "https://starship.rs/config/#directory"
       - key: directory.format
         label: Format
         type: string
         default: "[$path]($style)[$read_only]($read_only_style) "
         description: directory format string
+        example: "format = \"[$path]($style) \""
+        hint: "starship module directory — preview format output"
         doc_url: "https://starship.rs/config/#directory"
       - key: directory.read_only
         label: Read Only Symbol
         type: string
         default: "🔒"
         description: read-only indicator
+        example: "read_only = \" \""
         doc_url: "https://starship.rs/config/#directory"
       - key: directory.read_only_style
         label: Read Only Style
         type: string
         default: "red"
-        description: read-only style
+        description: read-only indicator style
         doc_url: "https://starship.rs/config/#directory"
       - key: directory.home_symbol
         label: Home Symbol
         type: string
         default: "~"
-        description: home directory symbol
+        description: home directory replacement symbol
+        example: "home_symbol = \"⌂\""
         doc_url: "https://starship.rs/config/#directory"
       - key: directory.disabled
         label: Disabled
@@ -209,44 +228,50 @@ sections:
         label: Format
         type: string
         default: "on [$symbol$branch(:$remote_branch)]($style) "
-        description: git branch format
+        description: git branch format string
+        example: "[git_branch]\nformat = \"[$symbol$branch]($style) \""
+        hint: "starship module git_branch — preview current branch rendering"
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.symbol
         label: Symbol
         type: string
         default: " "
-        description: branch symbol
+        description: branch prefix symbol
+        example: "symbol = \" \""
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.style
         label: Style
         type: string
         default: "bold purple"
-        description: branch style
+        description: branch name style
+        example: "style = \"bold 135\""
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.truncation_length
         label: Truncation Length
         type: number
         default: ""
         description: max branch name length (empty = no limit)
+        example: "truncation_length = 20"
         min: 1
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.truncation_symbol
         label: Truncation Symbol
         type: string
         default: "…"
-        description: truncation suffix
+        description: appended when branch name is truncated
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.only_attached
         label: Only Attached
         type: bool
         default: "false"
-        description: hide when in detached HEAD
+        description: hide module in detached HEAD state
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.always_show_remote
         label: Always Show Remote
         type: bool
         default: "false"
-        description: always show remote branch
+        description: always display remote tracking branch
+        example: "always_show_remote = true"
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.disabled
         label: Disabled
@@ -258,13 +283,16 @@ sections:
         label: Format
         type: string
         default: '([\[$all_status$ahead_behind\]]($style) )'
-        description: git status format
+        description: git status format string
+        example: "[git_status]\nformat = \"[$all_status$ahead_behind]($style) \""
+        hint: "starship module git_status — preview dirty/clean state"
         doc_url: "https://starship.rs/config/#git-status"
       - key: git_status.style
         label: Style
         type: string
         default: "bold red"
         description: git status style
+        example: "style = \"bold 208\""
         doc_url: "https://starship.rs/config/#git-status"
       - key: git_status.stashed
         label: Stashed Symbol
@@ -336,13 +364,15 @@ sections:
         label: Format
         type: string
         default: '[\\($hash$tag\\)]($style) '
-        description: git commit format
+        description: git commit hash format string
+        example: "[git_commit]\nformat = \"[$hash]($style) \""
         doc_url: "https://starship.rs/config/#git-commit"
       - key: git_commit.commit_hash_length
         label: Hash Length
         type: number
         default: "7"
         description: commit hash display length
+        example: "commit_hash_length = 8"
         min: 1
         max: 40
         doc_url: "https://starship.rs/config/#git-commit"
@@ -356,19 +386,21 @@ sections:
         label: Only Detached
         type: bool
         default: "true"
-        description: show only in detached HEAD
+        description: only show hash in detached HEAD state
+        hint: "set false to always display commit hash"
         doc_url: "https://starship.rs/config/#git-commit"
       - key: git_commit.tag_disabled
         label: Tag Disabled
         type: bool
         default: "true"
-        description: hide tag info
+        description: hide tag info in commit module
         doc_url: "https://starship.rs/config/#git-commit"
       - key: git_commit.tag_symbol
         label: Tag Symbol
         type: string
         default: " 🏷 "
-        description: tag symbol
+        description: tag prefix symbol
+        example: "tag_symbol = \" 🔖 \""
         doc_url: "https://starship.rs/config/#git-commit"
       - key: git_commit.disabled
         label: Disabled
@@ -384,25 +416,28 @@ sections:
         label: Format
         type: string
         default: "is [$symbol$version]($style) "
-        description: package format
+        description: package version format string
+        example: "[package]\nformat = \"[$symbol$version]($style) \""
+        hint: "starship module package — reads package.json, Cargo.toml, etc."
         doc_url: "https://starship.rs/config/#package-version"
       - key: package.symbol
         label: Symbol
         type: string
         default: "📦 "
-        description: package symbol
+        description: package prefix symbol
+        example: "symbol = \"pkg \""
         doc_url: "https://starship.rs/config/#package-version"
       - key: package.style
         label: Style
         type: string
         default: "bold 208"
-        description: package style
+        description: package version style
         doc_url: "https://starship.rs/config/#package-version"
       - key: package.display_private
         label: Display Private
         type: bool
         default: "false"
-        description: show private package version
+        description: show version for private packages
         doc_url: "https://starship.rs/config/#package-version"
       - key: package.disabled
         label: Disabled
@@ -414,25 +449,30 @@ sections:
         label: Format
         type: string
         default: "[$symbol$percentage]($style) "
-        description: battery format
+        description: battery format string
+        example: "[battery]\nformat = \"[$symbol$percentage]($style) \""
+        hint: "pair with [[battery.display]] to set threshold styles"
         doc_url: "https://starship.rs/config/#battery"
       - key: battery.full_symbol
         label: Full Symbol
         type: string
         default: "🔋 "
         description: full battery symbol
+        example: "full_symbol = \"󰁹 \""
         doc_url: "https://starship.rs/config/#battery"
       - key: battery.charging_symbol
         label: Charging Symbol
         type: string
         default: "⚡ "
         description: charging symbol
+        example: "charging_symbol = \"󰂄 \""
         doc_url: "https://starship.rs/config/#battery"
       - key: battery.discharging_symbol
         label: Discharging Symbol
         type: string
         default: "💀 "
         description: discharging symbol
+        example: "discharging_symbol = \"󰂃 \""
         doc_url: "https://starship.rs/config/#battery"
       - key: battery.unknown_symbol
         label: Unknown Symbol
@@ -456,7 +496,8 @@ sections:
         label: Min Time
         type: number
         default: "2000"
-        description: show after this duration (ms)
+        description: minimum duration before showing (ms)
+        example: "[cmd_duration]\nmin_time = 500"
         min: 0
         max: 60000
         doc_url: "https://starship.rs/config/#command-duration"
@@ -464,31 +505,33 @@ sections:
         label: Format
         type: string
         default: "took [$duration]($style) "
-        description: duration format
+        description: duration display format
+        example: "format = \"⏱ [$duration]($style) \""
         doc_url: "https://starship.rs/config/#command-duration"
       - key: cmd_duration.style
         label: Style
         type: string
         default: "bold yellow"
-        description: duration style
+        description: duration text style
         doc_url: "https://starship.rs/config/#command-duration"
       - key: cmd_duration.show_milliseconds
         label: Show Milliseconds
         type: bool
         default: "false"
-        description: include milliseconds
+        description: include milliseconds in duration
         doc_url: "https://starship.rs/config/#command-duration"
       - key: cmd_duration.show_notifications
         label: Show Notifications
         type: bool
         default: "false"
         description: desktop notification for long commands
+        hint: "requires notify-send or equivalent on your system"
         doc_url: "https://starship.rs/config/#command-duration"
       - key: cmd_duration.min_time_to_notify
         label: Notify Min Time
         type: number
         default: "45000"
-        description: notification threshold (ms)
+        description: desktop notification threshold (ms)
         min: 0
         max: 600000
         doc_url: "https://starship.rs/config/#command-duration"
@@ -502,49 +545,51 @@ sections:
         label: Format
         type: string
         default: "[$symbol$status]($style) "
-        description: status format
+        description: exit status format string
+        example: "[status]\nformat = \"[$symbol$status]($style) \"\ndisabled = false"
         doc_url: "https://starship.rs/config/#status"
       - key: status.symbol
         label: Symbol
         type: string
         default: "✖"
-        description: error exit symbol
+        description: non-zero exit code symbol
         doc_url: "https://starship.rs/config/#status"
       - key: status.success_symbol
         label: Success Symbol
         type: string
         default: ""
-        description: success exit symbol
+        description: exit code 0 symbol (empty = hidden)
         doc_url: "https://starship.rs/config/#status"
       - key: status.not_found_symbol
         label: Not Found Symbol
         type: string
         default: "🔍"
-        description: command-not-found symbol
+        description: command-not-found (127) symbol
         doc_url: "https://starship.rs/config/#status"
       - key: status.style
         label: Style
         type: string
         default: "bold red"
-        description: status style
+        description: status module style
         doc_url: "https://starship.rs/config/#status"
       - key: status.recognize_signal_code
         label: Recognize Signals
         type: bool
         default: "true"
-        description: map exit codes to signal names
+        description: translate exit codes to signal names (e.g. SIGKILL)
         doc_url: "https://starship.rs/config/#status"
       - key: status.map_symbol
         label: Map Symbol
         type: bool
         default: "false"
-        description: map exit codes to symbols
+        description: use per-exit-code symbols
         doc_url: "https://starship.rs/config/#status"
       - key: status.disabled
         label: Disabled
         type: bool
         default: "true"
-        description: disable status module
+        description: disable status module (disabled by default)
+        hint: "set false to show exit codes in prompt"
         doc_url: "https://starship.rs/config/#status"
 
   - name: Identity
@@ -554,19 +599,22 @@ sections:
         label: SSH Only
         type: bool
         default: "true"
-        description: show only in SSH sessions
+        description: only show hostname during SSH sessions
+        example: "[hostname]\nssh_only = false"
         doc_url: "https://starship.rs/config/#hostname"
       - key: hostname.ssh_symbol
         label: SSH Symbol
         type: string
         default: "🌐 "
-        description: SSH indicator symbol
+        description: SSH session indicator
+        example: "ssh_symbol = \"🔑 \""
         doc_url: "https://starship.rs/config/#hostname"
       - key: hostname.format
         label: Format
         type: string
         default: "[$ssh_symbol$hostname]($style) in "
-        description: hostname format
+        description: hostname format string
+        example: "format = \"[$hostname]($style) \""
         doc_url: "https://starship.rs/config/#hostname"
       - key: hostname.style
         label: Style
@@ -578,7 +626,7 @@ sections:
         label: Trim At
         type: string
         default: "."
-        description: trim hostname at this delimiter
+        description: trim hostname at delimiter (e.g. dev.local -> dev)
         doc_url: "https://starship.rs/config/#hostname"
       - key: hostname.disabled
         label: Disabled
@@ -590,25 +638,26 @@ sections:
         label: Root Style
         type: string
         default: "bold red"
-        description: root user style
+        description: style when logged in as root
         doc_url: "https://starship.rs/config/#username"
       - key: username.style_user
         label: User Style
         type: string
         default: "bold yellow"
-        description: normal user style
+        description: style for normal user
         doc_url: "https://starship.rs/config/#username"
       - key: username.format
         label: Format
         type: string
         default: "[$user]($style) in "
-        description: username format
+        description: username format string
+        example: "[username]\nformat = \"[$user]($style)@\""
         doc_url: "https://starship.rs/config/#username"
       - key: username.show_always
         label: Show Always
         type: bool
         default: "false"
-        description: always show username
+        description: show username even in local non-root sessions
         doc_url: "https://starship.rs/config/#username"
       - key: username.disabled
         label: Disabled
@@ -624,42 +673,47 @@ sections:
         label: Format
         type: string
         default: "at [$time]($style) "
-        description: time format
+        description: time module format string
+        example: "[time]\nformat = \"🕐 [$time]($style) \"\ndisabled = false"
         doc_url: "https://starship.rs/config/#time"
       - key: time.style
         label: Style
         type: string
         default: "bold yellow"
-        description: time style
+        description: time display style
         doc_url: "https://starship.rs/config/#time"
       - key: time.time_format
         label: Time Format
         type: string
         default: ""
-        description: chrono strftime format
-        hint: uses chrono strftime syntax — %T for 24h, %r for 12h
+        description: chrono strftime time format
+        example: "time_format = \"%H:%M:%S\""
+        hint: "chrono strftime — %T = 24h, %r = 12h, %H:%M = hours:mins"
         doc_url: "https://starship.rs/config/#time"
       - key: time.use_12hr
         label: Use 12hr
         type: bool
         default: "false"
-        description: 12-hour format
+        description: use 12-hour clock format
         doc_url: "https://starship.rs/config/#time"
       - key: time.utc_time_offset
         label: UTC Offset
         type: string
         default: local
-        description: UTC offset (e.g. +5, -3, local)
+        description: UTC offset override
+        example: "utc_time_offset = \"+9\""
         doc_url: "https://starship.rs/config/#time"
       - key: time.time_range
         label: Time Range
         type: string
         default: "-"
-        description: visible time range (e.g. 09:00:00-17:00:00)
+        description: only show time within this range
+        example: "time_range = \"09:00:00-17:00:00\""
         doc_url: "https://starship.rs/config/#time"
       - key: time.disabled
         label: Disabled
         type: bool
         default: "true"
-        description: disable time module
+        description: disable time module (disabled by default)
+        hint: "set false to show clock in prompt"
         doc_url: "https://starship.rs/config/#time"

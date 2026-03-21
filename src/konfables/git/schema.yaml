@@ -4,8 +4,9 @@ schema_version: 1.0.0
 docs_url: "https://git-scm.com/docs/git-config"
 coverage: partial
 hints:
-  - "INI format — sections are [headers]"
-  - "run `git config --list` to see all settings"
+  - "`git config --list` to dump all active settings"
+  - "`git config --get <section.key>` to read a single value"
+  - "`git config --global <section.key> <value>` to write"
 
 sections:
   - name: User
@@ -15,16 +16,20 @@ sections:
         label: Name
         type: string
         description: full name for commit authorship
+        example: "[user]\n  name = Jane Doe"
         doc_url: "https://git-scm.com/docs/git-config#Documentation/git-config.txt-username"
       - key: user.email
         label: Email
         type: string
         description: email address for commit authorship
+        example: "[user]\n  email = jane@example.com"
         doc_url: "https://git-scm.com/docs/git-config#Documentation/git-config.txt-useremail"
       - key: user.signingkey
         label: Signing Key
         type: string
         description: default GPG/SSH signing key
+        example: "[user]\n  signingkey = ~/.ssh/id_ed25519.pub"
+        hint: "`gpg --list-secret-keys --keyid-format=long` to find GPG key IDs"
 
   - name: Core
     key: core
@@ -34,12 +39,16 @@ sections:
         type: string
         default: vim
         description: text editor for commit messages and interactive commands
+        example: "[core]\n  editor = nvim"
+        hint: "also settable via $EDITOR or $GIT_EDITOR"
       - key: core.autocrlf
         label: Auto CRLF
         type: enum
         default: "false"
         options: ["true", "false", "input"]
         description: automatic line ending conversion
+        example: "[core]\n  autocrlf = input"
+        hint: "use `input` on Linux/macOS, `true` on Windows"
       - key: core.ignorecase
         label: Ignore Case
         type: bool
@@ -50,20 +59,25 @@ sections:
         type: bool
         default: "true"
         description: track file permission changes
+        hint: "set false on filesystems that report bogus perms (e.g. NTFS)"
       - key: core.pager
         label: Pager
         type: string
         default: less
         description: pager for command output
+        example: "[core]\n  pager = delta"
+        hint: "delta, diff-so-fancy, and bat are popular alternatives"
       - key: core.excludesfile
         label: Excludes File
         type: string
         description: global gitignore file path
         widget: path
+        example: "[core]\n  excludesfile = ~/.config/git/ignore"
       - key: core.whitespace
         label: Whitespace
         type: string
         description: comma-separated whitespace error detection rules
+        example: "[core]\n  whitespace = trailing-space,space-before-tab"
 
   - name: Init
     key: init
@@ -73,6 +87,7 @@ sections:
         type: string
         default: master
         description: default branch name for new repositories
+        example: "[init]\n  defaultBranch = main"
 
   - name: Pull
     key: pull
@@ -83,12 +98,16 @@ sections:
         default: "false"
         options: ["true", "false", "merges", "interactive"]
         description: rebase branches on pull instead of merging
+        example: "[pull]\n  rebase = true"
+        hint: "`merges` preserves local merge commits during rebase"
       - key: pull.ff
         label: Fast-Forward
         type: enum
         default: "true"
         options: ["true", "false", "only"]
         description: fast-forward strategy for pull
+        example: "[pull]\n  ff = only"
+        hint: "`only` refuses to pull when fast-forward isn't possible"
 
   - name: Push
     key: push
@@ -99,16 +118,21 @@ sections:
         default: simple
         options: [nothing, current, upstream, tracking, simple, matching]
         description: default push behavior
+        example: "[push]\n  default = current"
+        hint: "`current` pushes to same-named remote branch without tracking setup"
       - key: push.autoSetupRemote
         label: Auto Setup Remote
         type: bool
         default: "false"
-        description: automatically set up remote tracking on first push
+        description: auto-create remote tracking on first push
+        example: "[push]\n  autoSetupRemote = true"
+        hint: "eliminates the need for `git push -u origin <branch>`"
       - key: push.followTags
         label: Follow Tags
         type: bool
         default: "false"
         description: push annotated tags alongside commits
+        example: "[push]\n  followTags = true"
 
   - name: Merge
     key: merge
@@ -117,12 +141,16 @@ sections:
         label: Tool
         type: string
         description: merge tool for resolving conflicts
+        example: "[merge]\n  tool = nvimdiff"
+        hint: "`git mergetool --tool-help` to list available tools"
       - key: merge.conflictstyle
         label: Conflict Style
         type: enum
         default: merge
         options: [merge, diff3, zdiff3]
         description: conflict marker style
+        example: "[merge]\n  conflictstyle = zdiff3"
+        hint: "`zdiff3` adds common ancestor context and compacts markers"
       - key: merge.ff
         label: Fast-Forward
         type: enum
@@ -137,18 +165,23 @@ sections:
         label: Tool
         type: string
         description: external diff tool
+        example: "[diff]\n  tool = nvimdiff"
+        hint: "`git difftool --tool-help` to list available tools"
       - key: diff.colorMoved
         label: Color Moved
         type: enum
         default: "no"
         options: ["no", "default", "plain", "blocks", "zebra", "dimmed-zebra"]
         description: highlight moved lines in diff output
+        example: "[diff]\n  colorMoved = dimmed-zebra"
       - key: diff.algorithm
         label: Algorithm
         type: enum
         default: myers
         options: [myers, minimal, patience, histogram]
         description: diff algorithm
+        example: "[diff]\n  algorithm = histogram"
+        hint: "`histogram` generally produces cleaner diffs on large changes"
 
   - name: Rebase
     key: rebase
@@ -157,12 +190,15 @@ sections:
         label: Auto Stash
         type: bool
         default: "false"
-        description: automatically stash and unstash during rebase
+        description: auto stash/unstash dirty worktree during rebase
+        example: "[rebase]\n  autoStash = true"
       - key: rebase.autoSquash
         label: Auto Squash
         type: bool
         default: "false"
-        description: automatically reorder fixup/squash commits
+        description: auto-reorder fixup!/squash! commits in interactive rebase
+        example: "[rebase]\n  autoSquash = true"
+        hint: "pairs with `git commit --fixup=<sha>`"
 
   - name: Fetch
     key: fetch
@@ -171,12 +207,14 @@ sections:
         label: Prune
         type: bool
         default: "false"
-        description: remove remote-tracking branches that no longer exist
+        description: remove stale remote-tracking branches on fetch
+        example: "[fetch]\n  prune = true"
       - key: fetch.pruneTags
         label: Prune Tags
         type: bool
         default: "false"
         description: remove tags that no longer exist on remote
+        example: "[fetch]\n  pruneTags = true"
 
   - name: Color
     key: color
@@ -185,8 +223,45 @@ sections:
         label: UI
         type: enum
         default: auto
-        options: ["true", "false", "auto", "always"]
+        options: ["true", "false", "auto", "always", "never"]
         description: colorize git output
+        example: "[color]\n  ui = auto"
+      - key: color.diff.meta
+        label: Diff Meta
+        type: string
+        default: ""
+        description: style for diff metadata lines
+        example: "[color \"diff\"]\n  meta = yellow bold"
+      - key: color.diff.frag
+        label: Diff Frag
+        type: string
+        default: ""
+        description: style for diff hunk headers
+        example: "[color \"diff\"]\n  frag = magenta bold"
+
+  - name: Commit
+    key: commit
+    fields:
+      - key: commit.gpgSign
+        label: GPG Sign
+        type: bool
+        default: "false"
+        description: auto-sign all commits with GPG/SSH
+        example: "[commit]\n  gpgSign = true"
+        hint: "requires user.signingkey and gpg.format to be set"
+      - key: commit.template
+        label: Template
+        type: string
+        widget: path
+        default: ""
+        description: path to default commit message template
+        example: "[commit]\n  template = ~/.config/git/commit-template"
+      - key: commit.verbose
+        label: Verbose
+        type: bool
+        default: "false"
+        description: show diff in commit message editor
+        example: "[commit]\n  verbose = true"
 
   - name: Credential
     key: credential
@@ -195,4 +270,40 @@ sections:
         label: Helper
         type: string
         description: credential storage helper
-        hint: "common values: cache, store, osxkeychain, manager"
+        example: "[credential]\n  helper = store"
+        hint: "`git credential-cache`, `store`, `osxkeychain`, or `manager` (GCM)"
+
+  - name: GPG
+    key: gpg
+    fields:
+      - key: gpg.format
+        label: Format
+        type: enum
+        default: openpgp
+        options: [openpgp, x509, ssh]
+        description: signing key format
+        example: "[gpg]\n  format = ssh"
+        hint: "`ssh` is simplest for GitHub verified commits without GPG tooling"
+      - key: gpg.program
+        label: Program
+        type: string
+        default: ""
+        description: path to GPG executable
+        example: "[gpg]\n  program = /usr/bin/gpg2"
+
+  - name: Rerere
+    key: rerere
+    fields:
+      - key: rerere.enabled
+        label: Enabled
+        type: bool
+        default: "false"
+        description: record and reuse conflict resolutions
+        example: "[rerere]\n  enabled = true"
+        hint: "saves time on long-lived topic branches with repeated rebases"
+      - key: rerere.autoUpdate
+        label: Auto Update
+        type: bool
+        default: "false"
+        description: auto-stage rerere-resolved files
+        example: "[rerere]\n  autoUpdate = true"

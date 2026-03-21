@@ -4,47 +4,102 @@ schema_version: 1.0.0
 docs_url: "https://man.openbsd.org/ssh_config.5"
 coverage: partial
 hints:
-  - "Keyword Value (space-separated)"
-  - "settings apply to Host * (all hosts)"
+  - "`ssh -G <host>` to dump resolved config for a host"
+  - "`ssh-keygen -t ed25519` to generate a modern key pair"
+  - "`ssh-add -l` to list keys loaded in the agent"
 
 sections:
   - name: Connection
     fields:
+      - key: Hostname
+        label: Hostname
+        type: string
+        default: ""
+        description: real hostname (allows aliasing via Host block)
+        example: "Host dev\n  Hostname 10.0.1.50"
+      - key: Port
+        label: Port
+        type: number
+        default: "22"
+        min: 1
+        max: 65535
+        description: remote port to connect to
+        example: "Host dev\n  Port 2222"
+      - key: User
+        label: User
+        type: string
+        default: ""
+        description: remote login username
+        example: "Host github.com\n  User git"
       - key: ServerAliveInterval
         label: Server Alive Interval
         type: number
         default: "0"
         min: 0
         max: 3600
-        description: seconds between keepalive messages to server
-        hint: "set to 60 to prevent idle disconnects"
+        description: seconds between keepalive messages
+        example: "Host *\n  ServerAliveInterval 60"
+        hint: "prevents idle disconnects from NATs and firewalls"
       - key: ServerAliveCountMax
         label: Server Alive Count Max
         type: number
         default: "3"
         min: 0
         max: 100
-        description: number of keepalive failures before disconnecting
+        description: keepalive failures before disconnecting
+        example: "Host *\n  ServerAliveCountMax 3"
       - key: ConnectTimeout
         label: Connect Timeout
         type: number
         default: "0"
         min: 0
         max: 300
-        description: connection timeout in seconds (0 = system default)
+        description: connection timeout in seconds (0 = system TCP default)
+        example: "Host slow-vpn\n  ConnectTimeout 30"
       - key: ConnectionAttempts
         label: Connection Attempts
         type: number
         default: "1"
         min: 1
         max: 100
-        description: number of connection attempts before giving up
+        description: retry count before giving up
+        example: "Host *\n  ConnectionAttempts 3"
       - key: TCPKeepAlive
         label: TCP Keep Alive
         type: enum
         default: "yes"
         options: ["yes", "no"]
-        description: send TCP keepalive messages to detect broken connections
+        description: send TCP keepalives to detect broken connections
+        example: "Host *\n  TCPKeepAlive yes"
+      - key: ProxyJump
+        label: Proxy Jump
+        type: string
+        default: ""
+        description: jump host for bastion/gateway access
+        example: "Host internal\n  ProxyJump bastion.example.com"
+        hint: "chain multiple: `bastion1,bastion2`; equivalent to `ssh -J`"
+      - key: ProxyCommand
+        label: Proxy Command
+        type: string
+        default: ""
+        description: custom command to establish the connection
+        example: "Host *.internal\n  ProxyCommand ssh bastion -W %h:%p"
+        hint: "`%h` and `%p` expand to target host and port"
+      - key: RequestTTY
+        label: Request TTY
+        type: enum
+        default: auto
+        options: ["no", "yes", "force", "auto"]
+        description: control pseudo-TTY allocation
+        example: "Host ci-runner\n  RequestTTY no"
+      - key: BatchMode
+        label: Batch Mode
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: disable interactive prompts (for scripts/CI)
+        example: "Host ci-*\n  BatchMode yes"
+        hint: "fails immediately instead of prompting for passwords or confirmations"
 
   - name: Authentication
     fields:
@@ -52,37 +107,59 @@ sections:
         label: Pubkey Authentication
         type: enum
         default: "yes"
-        options: ["yes", "no"]
+        options: ["yes", "no", "unbound", "host-bound"]
         description: try public key authentication
+        example: "Host *\n  PubkeyAuthentication yes"
+        hint: "`host-bound` binds key proof to a specific host (OpenSSH 8.9+)"
       - key: PasswordAuthentication
         label: Password Authentication
         type: enum
         default: "yes"
         options: ["yes", "no"]
         description: allow password authentication
+        example: "Host github.com\n  PasswordAuthentication no"
       - key: PreferredAuthentications
         label: Preferred Authentications
         type: string
-        default: "publickey,keyboard-interactive,password"
-        description: comma-separated authentication methods in priority order
+        default: "gssapi-with-mic,hostbased,publickey,keyboard-interactive,password"
+        description: auth methods in priority order
+        example: "Host *\n  PreferredAuthentications publickey,keyboard-interactive"
       - key: IdentitiesOnly
         label: Identities Only
         type: enum
         default: "no"
         options: ["yes", "no"]
-        description: only use explicitly configured identity files
+        description: only offer explicitly configured identity files
+        example: "Host github.com\n  IdentitiesOnly yes"
+        hint: "prevents agent from trying every loaded key against the server"
       - key: AddKeysToAgent
         label: Add Keys to Agent
-        type: enum
+        type: string
         default: "no"
-        options: ["yes", "no", "ask", "confirm"]
-        description: automatically add keys to ssh-agent on first use
+        description: auto-add keys to ssh-agent on first use
+        example: "Host *\n  AddKeysToAgent yes"
+        hint: "accepts `yes`, `no`, `ask`, `confirm`, or a TTL like `1h`"
       - key: IdentityFile
         label: Identity File
-        type: string
+        type: list
         default: "~/.ssh/id_rsa"
-        description: path to private key file
+        description: path to private key file (repeatable)
+        example: "Host github.com\n  IdentityFile ~/.ssh/gh_ed25519"
+        hint: "`ssh-add -l` to verify which keys are loaded in the agent"
+      - key: IdentityAgent
+        label: Identity Agent
+        type: string
+        default: ""
+        description: path to ssh-agent socket or 'none'
+        example: "Host *\n  IdentityAgent ~/.1password/agent.sock"
+        hint: "use with 1Password, Secretive, or other agent-backed key stores"
+      - key: CertificateFile
+        label: Certificate File
+        type: string
+        default: ""
+        description: user certificate file for CA-based auth
         widget: path
+        example: "Host *.corp.example.com\n  CertificateFile ~/.ssh/id_ed25519-cert.pub"
 
   - name: Security
     fields:
@@ -90,48 +167,99 @@ sections:
         label: Strict Host Key Checking
         type: enum
         default: ask
-        options: ["yes", "no", "ask", "accept-new"]
+        options: ["yes", "no", "off", "ask", "accept-new"]
         description: how to handle unknown or changed host keys
+        example: "Host *\n  StrictHostKeyChecking accept-new"
+        hint: "`accept-new` auto-accepts first-time hosts, rejects changes"
       - key: VerifyHostKeyDNS
         label: Verify Host Key DNS
         type: enum
         default: "no"
         options: ["yes", "no", "ask"]
         description: verify host keys using DNS SSHFP records
+        example: "Host *\n  VerifyHostKeyDNS ask"
       - key: HashKnownHosts
         label: Hash Known Hosts
         type: enum
         default: "no"
         options: ["yes", "no"]
-        description: hash host names in known_hosts file
+        description: hash hostnames in known_hosts for privacy
+        example: "Host *\n  HashKnownHosts yes"
       - key: UpdateHostKeys
         label: Update Host Keys
         type: enum
         default: "no"
         options: ["yes", "no", "ask"]
-        description: accept updated host keys from server
+        description: accept rotated host keys from server
+        example: "Host *\n  UpdateHostKeys yes"
+        hint: "allows servers to rotate keys without triggering MITM warnings"
+      - key: Ciphers
+        label: Ciphers
+        type: string
+        default: ""
+        description: cipher preference list for encryption
+        example: "Host *\n  Ciphers +aes256-gcm@openssh.com"
+        hint: "prefix with `+` to append, `-` to remove from defaults"
+      - key: KexAlgorithms
+        label: Key Exchange
+        type: string
+        default: ""
+        description: key exchange algorithm preference list
+        example: "Host legacy\n  KexAlgorithms +diffie-hellman-group14-sha256"
+        hint: "prefix with `+` to append, `-` to remove from defaults"
+      - key: MACs
+        label: MACs
+        type: string
+        default: ""
+        description: MAC algorithm preference list
+        example: "Host *\n  MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com"
+        hint: "prefer `-etm` (encrypt-then-MAC) variants for better security"
 
   - name: Forwarding
     fields:
       - key: ForwardAgent
         label: Forward Agent
-        type: enum
+        type: string
         default: "no"
-        options: ["yes", "no"]
         description: forward SSH agent to remote machine
-        hint: "security risk — only enable for trusted hosts"
+        example: "Host trusted-server\n  ForwardAgent yes"
+        hint: "security risk on untrusted hosts; prefer `ProxyJump` when possible"
       - key: ForwardX11
         label: Forward X11
         type: enum
         default: "no"
         options: ["yes", "no"]
         description: forward X11 display to remote machine
+        example: "Host workstation\n  ForwardX11 yes"
       - key: ForwardX11Trusted
         label: Forward X11 Trusted
         type: enum
         default: "no"
         options: ["yes", "no"]
         description: use trusted X11 forwarding (full display access)
+        example: "Host workstation\n  ForwardX11Trusted yes"
+        hint: "untrusted (default) restricts X11 client access via xauth"
+      - key: LocalForward
+        label: Local Forward
+        type: string
+        default: ""
+        description: forward a local port to a remote destination
+        example: "Host db-tunnel\n  LocalForward 5432 db.internal:5432"
+        hint: "format: `[bind_addr:]port host:hostport`"
+      - key: RemoteForward
+        label: Remote Forward
+        type: string
+        default: ""
+        description: forward a remote port back to local
+        example: "Host dev\n  RemoteForward 8080 localhost:3000"
+        hint: "format: `[bind_addr:]port host:hostport`"
+      - key: DynamicForward
+        label: Dynamic Forward
+        type: string
+        default: ""
+        description: SOCKS proxy via SSH tunnel
+        example: "Host proxy\n  DynamicForward 1080"
+        hint: "creates a SOCKS5 proxy on `[bind_addr:]port`"
 
   - name: General
     fields:
@@ -140,16 +268,21 @@ sections:
         type: enum
         default: "no"
         options: ["yes", "no"]
-        description: enable compression over the connection
+        description: enable zlib compression over the connection
+        example: "Host slow-link\n  Compression yes"
+        hint: "helpful on slow/high-latency links, marginal on fast networks"
       - key: LogLevel
         label: Log Level
         type: enum
         default: INFO
         options: [QUIET, FATAL, ERROR, INFO, VERBOSE, DEBUG, DEBUG1, DEBUG2, DEBUG3]
-        description: verbosity of SSH logging
+        description: SSH client log verbosity
+        example: "Host *\n  LogLevel ERROR"
+        hint: "`ssh -vvv` is equivalent to DEBUG3 for one-off debugging"
       - key: VisualHostKey
         label: Visual Host Key
         type: enum
         default: "no"
         options: ["yes", "no"]
-        description: display ASCII art of host key fingerprint
+        description: display ASCII art fingerprint on connect
+        example: "Host *\n  VisualHostKey yes"
