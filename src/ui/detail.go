@@ -179,23 +179,7 @@ func (d detail) viewBrowse(width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	// value — single line, git-diff style
 	curVal, hasCur := d.values[f.Key]
-	if f.Type != "color" {
-		if hasCur {
-			// configured — show in red (git "existing line" style)
-			b.WriteString(d.theme.Error.Render(curVal))
-			if f.Default != "" && curVal != f.Default {
-				b.WriteString(d.theme.Muted.Render("  ← default " + f.Default))
-			}
-			b.WriteByte('\n')
-		} else if f.Default != "" {
-			// not configured — show default in gray
-			b.WriteString(d.theme.Muted.Render(f.Default))
-			b.WriteByte('\n')
-		}
-		b.WriteByte('\n')
-	}
 
 	// description
 	if f.Description != "" {
@@ -258,22 +242,28 @@ func (d detail) viewBrowse(width, height int) string {
 	// apply scroll + viewport clipping
 	full := b.String()
 	lines := strings.Split(full, "\n")
-	if d.scrollY > len(lines)-height {
-		d.scrollY = max(0, len(lines)-height)
+	totalLines := len(lines)
+	scrollable := totalLines > height
+
+	// reserve one line for the scroll indicator when content overflows
+	clipH := height
+	if scrollable {
+		clipH = height - 1
+	}
+
+	if d.scrollY > totalLines-clipH {
+		d.scrollY = max(0, totalLines-clipH)
 	}
 	if d.scrollY > 0 {
 		lines = lines[d.scrollY:]
 	}
-	if len(lines) > height {
-		lines = lines[:height]
+	if len(lines) > clipH {
+		lines = lines[:clipH]
 	}
 
-	// scroll indicator
-	if d.scrollY > 0 || len(strings.Split(full, "\n")) > height {
-		indicator := d.theme.Muted.Render("↕ scroll")
-		if len(lines) > 0 {
-			lines[len(lines)-1] = indicator
-		}
+	// append scroll indicator on its own line
+	if scrollable {
+		lines = append(lines, d.theme.Muted.Render("↕ scroll"))
 	}
 
 	return strings.Join(lines, "\n")

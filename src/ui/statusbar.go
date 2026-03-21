@@ -15,13 +15,14 @@ type keyHint struct {
 }
 
 type statusbar struct {
-	themeName string
-	status    string
-	hints     []keyHint
-	width     int
-	theme     *theme.Theme
-	mode      string // e.g. "NORMAL", "EDIT", "SEARCH"
-	undoCount int    // number of undoable operations
+	themeName   string
+	status      string
+	hints       []keyHint
+	width       int
+	theme       *theme.Theme
+	mode        string // e.g. "NORMAL", "EDIT", "SEARCH"
+	undoCount   int    // number of undoable operations
+	changeCount int    // number of unsaved field changes
 }
 
 func newStatusbar(th *theme.Theme) statusbar {
@@ -40,7 +41,20 @@ func (s *statusbar) View() string {
 	// left side: mode badge + transient status
 	var leftParts []string
 	if s.mode != "" {
-		modeBadge := s.theme.KeyCap.Render("[" + s.mode + "]")
+		badgeStyle := s.theme.KeyCap
+		switch s.mode {
+		case "EDIT":
+			badgeStyle = lipgloss.NewStyle().
+				Background(s.theme.Palette.Warning).
+				Foreground(s.theme.Palette.Base).
+				Bold(true).Padding(0, 1)
+		case "SEARCH":
+			badgeStyle = lipgloss.NewStyle().
+				Background(s.theme.Palette.Secondary).
+				Foreground(s.theme.Palette.Base).
+				Bold(true).Padding(0, 1)
+		}
+		modeBadge := badgeStyle.Render("[" + s.mode + "]")
 		leftParts = append(leftParts, modeBadge)
 	}
 	if s.status != "" {
@@ -51,6 +65,10 @@ func (s *statusbar) View() string {
 	if s.undoCount > 0 {
 		undoBadge := s.theme.Muted.Render(fmt.Sprintf("↩ %d", s.undoCount))
 		leftParts = append(leftParts, undoBadge)
+	}
+	if s.changeCount > 0 {
+		changeBadge := s.theme.Warning.Render(fmt.Sprintf("%d unsaved", s.changeCount))
+		leftParts = append(leftParts, changeBadge)
 	}
 	left := strings.Join(leftParts, "  ")
 
@@ -72,13 +90,13 @@ func (s *statusbar) View() string {
 		budget = lipgloss.Width(themeBadge)
 	}
 
-	// drop hints from the beginning until the right side fits
+	// drop hints from the end until the right side fits
 	for len(hintParts) > 0 {
 		candidate := strings.Join(hintParts, "  ") + "  " + themeBadge
 		if lipgloss.Width(candidate) <= budget {
 			break
 		}
-		hintParts = hintParts[1:]
+		hintParts = hintParts[:len(hintParts)-1]
 	}
 
 	var right string

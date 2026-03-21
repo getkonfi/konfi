@@ -111,7 +111,7 @@ func (t *Theme) recompute() {
 		Padding(0, 1)
 
 	t.Detail = lipgloss.NewStyle().
-		BorderStyle(lipgloss.Border{Left: "│"}).
+		BorderStyle(lipgloss.Border{Left: "┃"}).
 		BorderLeft(true).
 		BorderForeground(p.Border).
 		Padding(0, 1)

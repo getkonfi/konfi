@@ -76,3 +76,21 @@ type RedoMsg struct{}
 
 // EditorExitMsg is sent when the external $EDITOR process exits.
 type EditorExitMsg struct{ Err error }
+
+// confirmQuitClearMsg auto-clears the quit confirmation after a timeout.
+type confirmQuitClearMsg struct{}
+
+// ToggleFilterMsg toggles the "configured only" filter from the palette.
+type ToggleFilterMsg struct{}
+
+// CycleThemeMsg cycles to the next theme from the palette.
+type CycleThemeMsg struct{}
+
+// ToggleNewMsg toggles the "what's new" filter from the palette.
+type ToggleNewMsg struct{}
+
+// OpenEditorMsg opens the config in $EDITOR from the palette.
+type OpenEditorMsg struct{}
+
+// ToggleHelpMsg toggles the help overlay from the palette.
+type ToggleHelpMsg struct{}

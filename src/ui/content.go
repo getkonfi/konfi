@@ -167,14 +167,14 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.searching = false
 				c.search.Blur()
 				return c, nil
-			case "j", "down":
+			case "down":
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
 					c.skipSectionHeaders(1)
 				}
 				c.syncDetail()
 				return c, nil
-			case "k", "up":
+			case "up":
 				if c.cursor > 0 {
 					c.cursor--
 					c.skipSectionHeaders(-1)
@@ -303,18 +303,19 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				}
 			}
 		case "backspace", "delete":
+			// revert to original value (if added this session, revert = delete)
 			if f := c.currentField(); f != nil && c.konfable != nil && c.config != nil {
-				curVal, hasCur := c.values[f.Key]
 				origVal, hasOrig := c.origValues[f.Key]
-				if hasCur && curVal != origVal {
-					// changed — revert to original
-					if hasOrig {
-						c.revertField(*f, origVal)
-					} else {
-						c.deleteField(*f)
-					}
-				} else if hasCur {
-					// unchanged — delete from config
+				if hasOrig {
+					c.revertField(*f, origVal)
+				} else if _, hasCur := c.values[f.Key]; hasCur {
+					c.deleteField(*f)
+				}
+			}
+		case "d":
+			// delete key from config entirely
+			if f := c.currentField(); f != nil && c.konfable != nil && c.config != nil {
+				if _, hasCur := c.values[f.Key]; hasCur {
 					c.deleteField(*f)
 				}
 			}
@@ -905,7 +906,14 @@ func (c *content) refreshValues() {
 			f := &sec.Fields[i]
 			if f.Type == "list" && hasMVP {
 				if vals, ok := mvp.FindValues(data, f.Key); ok {
-					c.values[f.Key] = fmt.Sprintf("%d values", len(vals))
+					switch len(vals) {
+					case 0:
+						// no values — skip
+					case 1:
+						c.values[f.Key] = vals[0]
+					default:
+						c.values[f.Key] = strings.Join(vals, ", ")
+					}
 				}
 			} else if v, ok := p.FindValue(data, f.Key); ok {
 				c.values[f.Key] = v
@@ -1012,7 +1020,14 @@ func (c *content) syncDetail() {
 	if f := c.currentField(); f != nil {
 		field = f.Key
 	}
-	c.breadcrumb.SetPath(app, "", field)
+	section := ""
+	if c.cursor >= 0 && c.cursor < len(c.visible) {
+		r := c.visible[c.cursor]
+		if !r.isSection && c.schema != nil && r.sectionIdx < len(c.schema.Sections) {
+			section = c.schema.Sections[r.sectionIdx].Name
+		}
+	}
+	c.breadcrumb.SetPath(app, section, field)
 }
 
 // Editing returns whether the detail panel is in edit mode.
@@ -1082,7 +1097,15 @@ func (c content) fieldAreaOverhead() int {
 	if c.searching || len(c.searchMatches) > 0 {
 		h++ // search bar line
 	}
+	if c.filterIndicatorVisible() {
+		h++ // filter indicator line
+	}
 	return h
+}
+
+// filterIndicatorVisible returns true when a filter indicator line should be shown.
+func (c content) filterIndicatorVisible() bool {
+	return !c.searching && (c.configuredOnly || c.showNewOnly)
 }
 
 // cursorLine returns the rendered line number for the current cursor position
@@ -1608,8 +1631,21 @@ func (c content) renderDashboard(width int) string {
 		}
 	}
 
+	ruleW := width / 2
+	if ruleW < 20 {
+		ruleW = 20
+	}
+	if ruleW > width {
+		ruleW = width
+	}
+
 	if len(installed) > 0 {
-		header := c.theme.Muted.Render("── installed ──────────────────")
+		label := "── installed "
+		pad := ruleW - len(label)
+		if pad < 0 {
+			pad = 0
+		}
+		header := c.theme.Muted.Render(label + strings.Repeat("─", pad))
 		b.WriteString(centerLine(header, width))
 		b.WriteByte('\n')
 		for _, a := range installed {
@@ -1626,7 +1662,12 @@ func (c content) renderDashboard(width int) string {
 
 	if len(notInstalled) > 0 {
 		b.WriteByte('\n')
-		header := c.theme.Muted.Render("── not detected ───────────────")
+		label := "── not detected "
+		pad := ruleW - len(label)
+		if pad < 0 {
+			pad = 0
+		}
+		header := c.theme.Muted.Render(label + strings.Repeat("─", pad))
 		b.WriteString(centerLine(header, width))
 		b.WriteByte('\n')
 		for _, a := range notInstalled {
@@ -1694,6 +1735,16 @@ func (c content) renderBody(width int) string {
 		b.WriteByte('\n')
 	}
 
+	// filter indicator (when not searching)
+	if c.filterIndicatorVisible() {
+		label := "configured only"
+		if c.showNewOnly {
+			label = "new only"
+		}
+		b.WriteString(c.theme.Warning.Render("▸ " + label))
+		b.WriteByte('\n')
+	}
+
 	labelW := c.labelColumnWidth()
 
 	// detect inline editing state once before the loop
@@ -1710,7 +1761,7 @@ func (c content) renderBody(width int) string {
 		if r.isSection {
 			name := c.schema.Sections[r.sectionIdx].Name
 			sc := sectionColors[r.sectionIdx%len(sectionColors)]
-			header := sc.Faint(true).Bold(true).Render("── " + name + " ")
+			header := sc.Bold(true).Render("── " + name + " ")
 			remaining := width - lipgloss.Width(header)
 			if remaining > 0 {
 				header += sc.Faint(true).Render(strings.Repeat("─", remaining))
@@ -1729,9 +1780,6 @@ func (c content) renderBody(width int) string {
 
 		// is this row the one being edited?
 		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
-
-		// gutter annotations: [changed][version][type]
-		gutter := c.renderGutter(f)
 
 		// type icon (widget hint takes precedence)
 		icon := fieldTypeIcon[f.Widget]
@@ -1783,15 +1831,15 @@ func (c content) renderBody(width int) string {
 		// inline min/max bounds for number fields (skipped for slider widgets and inline-editing)
 		showBounds := f.Type == "number" && f.Widget != "slider" && (f.Min != nil || f.Max != nil) && !isEditRow
 
-		// build prefix and label (gutter + cursor/icon)
+		// build prefix and label (cursor/icon)
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
 		iconStyle := c.typeIconStyle(f.Type)
 		var prefix, label string
 		if isCursor {
-			prefix = gutter + c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
+			prefix = c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
 			label = c.theme.Text.Bold(true).Render(paddedLabel)
 		} else {
-			prefix = gutter + "  " + iconStyle.Faint(true).Render(icon) + " "
+			prefix = "  " + iconStyle.Faint(true).Render(icon) + " "
 			label = c.theme.FieldLabel.Render(paddedLabel)
 		}
 
@@ -1922,46 +1970,6 @@ func (c content) typeIconStyle(typ string) lipgloss.Style {
 	}
 }
 
-// gutterTypeIcon maps field types to compact ASCII gutter symbols.
-var gutterTypeIcon = map[string]string{
-	"number": "#",
-	"bool":   "◉",
-	"enum":   "▾",
-	"color":  "█",
-	"list":   "⊞",
-}
-
-// renderGutter builds the left-margin annotation column for a field row.
-// format: [changed][version][type] (3 chars + trailing space).
-func (c content) renderGutter(f *pkg.Field) string {
-	var ch, ver, typ string
-
-	// changed from default: value exists and differs from schema default
-	if v, ok := c.values[f.Key]; ok && v != f.Default {
-		ch = c.theme.Warning.Faint(true).Render("*")
-	} else {
-		ch = " "
-	}
-
-	// version annotations: deprecated takes priority over new
-	switch {
-	case f.Until != "":
-		ver = c.theme.Error.Faint(true).Render("!")
-	case f.Since != "":
-		ver = c.theme.Success.Faint(true).Render("+")
-	default:
-		ver = " "
-	}
-
-	// type icon (colored per type, faint for subtlety)
-	if icon, ok := gutterTypeIcon[f.Type]; ok {
-		typ = c.typeIconStyle(f.Type).Faint(true).Render(icon)
-	} else {
-		typ = " "
-	}
-
-	return ch + ver + typ + " "
-}
 
 // centerBlock centers each line of a multi-line string within the given width.
 func centerBlock(block string, width int) string {

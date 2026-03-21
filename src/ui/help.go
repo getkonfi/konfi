@@ -23,8 +23,13 @@ var helpGlobal = helpGroup{
 	Bindings: []helpBinding{
 		{"ctrl+c", "quit"},
 		{"ctrl+s", "save config"},
+		{"ctrl+k", "command palette"},
+		{"ctrl+z / ctrl+y", "undo / redo"},
+		{"ctrl+o / ctrl+]", "nav back / forward"},
+		{"ctrl+n / ctrl+p", "next / prev app"},
 		{"tab / shift+tab", "cycle pane"},
 		{"← →", "switch pane"},
+		{"1-9", "jump to app"},
 		{"t", "cycle theme"},
 		{"?", "toggle help"},
 		{"q", "quit"},
@@ -48,7 +53,15 @@ var helpContent = helpGroup{
 		{"j/k ↑↓", "navigate fields"},
 		{"⏎", "edit in detail panel"},
 		{"/", "search fields"},
+		{"n / N", "next / prev match"},
 		{"f", "toggle configured"},
+		{"w", "what's new filter"},
+		{"y / p", "copy / paste value"},
+		{"d", "delete field"},
+		{"⌫", "revert to original"},
+		{"J / K", "scroll detail"},
+		{"pgup / pgdn", "page up / down"},
+		{"home / end", "first / last"},
 		{"o", "open docs"},
 		{"e", "open in $EDITOR"},
 		{"esc", "back to sidebar"},
@@ -120,12 +133,17 @@ func renderHelpCard(width, height int, focus pane, editing bool, th *theme.Theme
 		b.WriteString(header)
 		b.WriteByte('\n')
 
+		// compute max key width for this group
+		keyW := 0
 		for _, bind := range g.Bindings {
-			keyW := 20
-			key := bind.Key
-			if len(key) > keyW {
-				key = key[:keyW]
+			if len(bind.Key) > keyW {
+				keyW = len(bind.Key)
 			}
+		}
+		keyW += 2 // padding after key
+
+		for _, bind := range g.Bindings {
+			key := bind.Key
 
 			var line string
 			if isActive {

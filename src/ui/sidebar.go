@@ -127,9 +127,9 @@ func (s sidebar) updateSearching(msg tea.KeyPressMsg) (sidebar, tea.Cmd) {
 		s.searching = false
 		s.search.Blur()
 		return s.selectCurrent(true)
-	case "j", "down":
+	case "down":
 		return s.moveDown()
-	case "k", "up":
+	case "up":
 		return s.moveUp()
 	default:
 		var cmd tea.Cmd
@@ -248,13 +248,13 @@ func (s sidebar) viewCollapsed() string {
 		isCursor := fi == s.cursor
 
 		var glyph string
-		if item.home {
+		if item.icon != "" {
 			glyph = item.icon
 		} else {
 			glyph = string([]rune(item.name)[0])
-			if s.dirtyApps[item.name] {
-				glyph += "*"
-			}
+		}
+		if s.dirtyApps[item.name] {
+			glyph = s.theme.Warning.Render("●")
 		}
 
 		var styled string
@@ -278,6 +278,9 @@ func (s sidebar) viewCollapsed() string {
 		}
 		item := s.items[origIdx]
 		glyph := string([]rune(item.name)[0])
+		if item.icon != "" {
+			glyph = item.icon
+		}
 		isCursor := fi == s.cursor
 		if isCursor {
 			sysLabels = append(sysLabels, s.theme.Primary.Render(glyph))
@@ -380,8 +383,11 @@ func (s sidebar) viewExpanded() string {
 
 func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	name := item.name
+
+	// dirty indicator: themed dot instead of plain *
+	dirty := ""
 	if s.dirtyApps[item.name] {
-		name += " *"
+		dirty = " " + s.theme.Warning.Render("●")
 	}
 
 	// "what's new" badge
@@ -390,14 +396,20 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		badge = fmt.Sprintf(" %d new", n)
 	}
 
-	// when sidebar is unfocused, dim all items but keep cursor arrow
+	// icon glyph (shown before name)
+	icon := ""
+	if item.icon != "" {
+		icon = item.icon + " "
+	}
+
+	// when sidebar is unfocused, dim all items but keep cursor
 	if !s.focused {
 		nameStyle := s.theme.Muted.Faint(true)
 		prefix := "  "
 		if isCursor {
-			prefix = nameStyle.Render("> ")
+			prefix = nameStyle.Render("▎ ")
 		}
-		body := nameStyle.Render(name)
+		body := nameStyle.Render(icon+name) + dirty
 		if badge != "" {
 			body += nameStyle.Render(badge)
 		}
@@ -411,17 +423,20 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		nameStyle = s.theme.Muted
 	}
 
+	iconStyle := nameStyle
 	prefix := "  "
 	if isCursor {
-		prefix = s.theme.Primary.Render("> ")
+		prefix = s.theme.Primary.Render("▎ ")
 		if item.installed {
 			nameStyle = s.theme.Primary
+			iconStyle = s.theme.Primary
 		} else {
 			nameStyle = s.theme.Muted
+			iconStyle = s.theme.Muted
 		}
 	}
 
-	rendered := prefix + nameStyle.Render(name)
+	rendered := prefix + iconStyle.Render(icon) + nameStyle.Render(name) + dirty
 	if badge != "" {
 		rendered += s.theme.Muted.Render(badge)
 	}

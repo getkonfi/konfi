@@ -51,7 +51,8 @@ type root struct {
 	width    int
 	height   int
 	ready    bool
-	showHelp bool
+	showHelp    bool
+	confirmQuit bool
 
 	// all konfables (indexed by sidebar item order)
 	allKonfables []konfables.Konfable
@@ -273,8 +274,26 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// reset confirm-quit on any key that isn't q
+		if msg.String() != "q" {
+			r.confirmQuit = false
+		}
+
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
+			if r.content.config != nil {
+				r.content.stopWatching()
+			}
+			return r, tea.Quit
+
+		case "q":
+			if r.content.config != nil && r.content.config.Dirty() && !r.confirmQuit {
+				r.confirmQuit = true
+				r.status.status = "unsaved changes — q to quit, ctrl+s to save"
+				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+					return confirmQuitClearMsg{}
+				})
+			}
 			if r.content.config != nil {
 				r.content.stopWatching()
 			}
@@ -316,6 +335,31 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil
 
 		case "esc":
+			// layered esc: clear filters before jumping to sidebar
+			if r.content.showNewOnly {
+				r.content.showNewOnly = false
+				r.content.refilter()
+				r.content.syncDetail()
+				r.status.status = ""
+				r.updateHints()
+				return r, nil
+			}
+			if r.content.configuredOnly {
+				r.content.configuredOnly = false
+				r.content.refilter()
+				r.content.syncDetail()
+				r.updateHints()
+				return r, nil
+			}
+			if len(r.content.searchMatches) > 0 {
+				r.content.search.SetValue("")
+				r.content.searchMatches = r.content.searchMatches[:0]
+				r.content.searchIdx = 0
+				r.content.refilter()
+				r.content.syncDetail()
+				r.updateHints()
+				return r, nil
+			}
 			if r.focus != paneSidebar {
 				r.focusPane(paneSidebar)
 			}
@@ -363,7 +407,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.sidebar.cursor = cur + 1
 				idx := r.sidebar.cursor
 				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: idx}
+					return AppSelectedMsg{Index: idx, Confirmed: true}
 				}
 			}
 			return r, nil
@@ -375,7 +419,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.sidebar.cursor = cur - 1
 				idx := r.sidebar.cursor
 				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: idx}
+					return AppSelectedMsg{Index: idx, Confirmed: true}
 				}
 			}
 			return r, nil
@@ -409,7 +453,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "n":
+		case "w":
 			// only toggle "what's new" filter when content focused with no active search matches
 			if r.focus == paneContent && len(r.content.searchMatches) == 0 {
 				r.toggleNewFilter()
@@ -428,6 +472,45 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+y":
 			return r, func() tea.Msg { return RedoMsg{} }
 		}
+
+	case ToggleFilterMsg:
+		if r.content.schema != nil {
+			r.content.configuredOnly = !r.content.configuredOnly
+			r.content.refilter()
+			r.content.syncDetail()
+		}
+		r.updateHints()
+		return r, nil
+
+	case CycleThemeMsg:
+		r.cycleTheme()
+		themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
+		var cmd tea.Cmd
+		r.sidebar, cmd = r.sidebar.Update(themeMsg)
+		cmds = append(cmds, cmd)
+		r.content, cmd = r.content.Update(themeMsg)
+		cmds = append(cmds, cmd)
+		r.status.theme = r.app.Theme
+		r.status.themeName = r.app.Theme.Palette.Name
+		return r, tea.Batch(cmds...)
+
+	case ToggleNewMsg:
+		if r.focus == paneContent && len(r.content.searchMatches) == 0 {
+			r.toggleNewFilter()
+			r.updateHints()
+		}
+		return r, nil
+
+	case OpenEditorMsg:
+		if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
+			return r, r.openInEditor()
+		}
+		return r, nil
+
+	case ToggleHelpMsg:
+		r.showHelp = !r.showHelp
+		r.updateHints()
+		return r, nil
 
 	case SelectAppMsg:
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
@@ -456,20 +539,21 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AppSelectedMsg:
 		if msg.Index == -1 {
-			r.content.showDashboard()
-			r.status.status = ""
+			if msg.Confirmed {
+				r.content.showDashboard()
+				r.status.status = ""
+			}
 			return r, nil
 		}
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
+			if !msg.Confirmed {
+				return r, nil // browse only — don't load
+			}
 			k := r.allKonfables[msg.Index]
 			r.status.status = ""
-
 			cmd := r.content.loadApp(k)
 			cmds = append(cmds, cmd)
-
-			if msg.Confirmed {
-				r.focusPane(paneContent)
-			}
+			r.focusPane(paneContent)
 		}
 		return r, tea.Batch(cmds...)
 
@@ -493,6 +577,13 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.content.fileState = "unsaved"
 		} else {
 			r.content.fileState = ""
+		}
+		return r, nil
+
+	case confirmQuitClearMsg:
+		r.confirmQuit = false
+		if r.status.status == "unsaved changes — q to quit, ctrl+s to save" {
+			r.status.status = ""
 		}
 		return r, nil
 
@@ -610,7 +701,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (r *root) View() tea.View {
 	v := tea.View{
 		AltScreen: true,
-		MouseMode: tea.MouseModeAllMotion,
 	}
 
 	if !r.ready {
@@ -620,10 +710,8 @@ func (r *root) View() tea.View {
 
 	r.layout()
 
-	// compute pending changes for changebar + sidebar dirty indicator
+	// track dirty apps for sidebar indicator
 	changes := r.content.pendingChanges()
-	cbH := changebarHeight(changes)
-
 	if r.sidebar.dirtyApps == nil {
 		r.sidebar.dirtyApps = make(map[string]bool)
 	}
@@ -632,37 +720,14 @@ func (r *root) View() tea.View {
 		r.sidebar.dirtyApps[name] = len(changes) > 0
 	}
 
-	// adjust body height for changebar
-	if cbH > 0 {
-		r.sidebar.height -= cbH
-		r.content.height -= cbH
-	}
+	// pass change count to statusbar
+	r.status.changeCount = len(changes)
 
 	sidebarView := r.sidebar.View()
 	contentView := r.content.View()
 	statusView := r.status.View()
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
-
-	if cbH > 0 {
-		cbView := renderChangebar(changes, r.width, r.app.Theme)
-		cbStyle := r.app.Theme.Statusbar.Width(r.width)
-		content := lipgloss.JoinVertical(lipgloss.Left, body, cbStyle.Render(cbView), statusView)
-
-		if r.showHelp {
-			v.Content = renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
-			return v
-		}
-		if r.palette.Visible() {
-			r.palette.width = r.width
-			r.palette.height = r.height
-			v.Content = r.palette.View()
-			return v
-		}
-		v.Content = content
-		return v
-	}
-
 	content := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
 
 	if r.showHelp {
@@ -730,6 +795,17 @@ func (r *root) cyclePane(dir int) {
 }
 
 func (r *root) updateHints() {
+	// wire mode indicator and undo count into statusbar
+	switch {
+	case r.content.Editing():
+		r.status.SetMode("EDIT")
+	case r.content.searching || r.sidebar.searching:
+		r.status.SetMode("SEARCH")
+	default:
+		r.status.SetMode("")
+	}
+	r.status.SetUndoCount(r.content.undoStack.Len())
+
 	if r.content.Editing() {
 		r.content.hints = []keyHint{
 			{"⏎", "confirm"},
@@ -774,7 +850,8 @@ func (r *root) updateHints() {
 		hints := []keyHint{
 			{"←↑↓", "navigate"},
 			{"⏎", "edit"},
-			{"⌫", "revert/del"},
+			{"⌫", "revert"},
+			{"d", "delete"},
 			{"JK", "scroll detail"},
 			{"/", "search"},
 		}
@@ -785,7 +862,7 @@ func (r *root) updateHints() {
 		if len(r.content.searchMatches) > 0 {
 			hints = append(hints, keyHint{"nN", "next/prev match"})
 		} else if r.newCounts[r.content.title] > 0 {
-			hints = append(hints, keyHint{"n", "what's new"})
+			hints = append(hints, keyHint{"w", "what's new"})
 		}
 		hints = append(hints, keyHint{"f", "filter"})
 		if r.content.currentDocURL() != "" {
@@ -859,6 +936,41 @@ func (r *root) buildPaletteItems() []PaletteItem {
 		Category:   "action",
 		MatchTerms: "redo repeat",
 		Action:     RedoMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "Toggle Configured Filter",
+		Shortcut:   "f",
+		Category:   "action",
+		MatchTerms: "filter configured only",
+		Action:     ToggleFilterMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "Cycle Theme",
+		Shortcut:   "t",
+		Category:   "action",
+		MatchTerms: "theme cycle color palette",
+		Action:     CycleThemeMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "What's New",
+		Shortcut:   "w",
+		Category:   "action",
+		MatchTerms: "new version fields",
+		Action:     ToggleNewMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "Open in $EDITOR",
+		Shortcut:   "e",
+		Category:   "action",
+		MatchTerms: "editor vim nvim external",
+		Action:     OpenEditorMsg{},
+	})
+	items = append(items, PaletteItem{
+		Label:      "Help",
+		Shortcut:   "?",
+		Category:   "action",
+		MatchTerms: "help keybindings shortcuts",
+		Action:     ToggleHelpMsg{},
 	})
 
 	return items

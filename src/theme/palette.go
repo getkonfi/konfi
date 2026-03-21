@@ -166,14 +166,14 @@ var Gruvbox = Palette{
 	Text:        cac(cc("#3c3836", "237", "0"), cc("#ebdbb2", "223", "15")),
 	Subtext:     cac(cc("#504945", "239", "8"), cc("#d5c4a1", "187", "7")),
 	Muted:       cac(cc("#928374", "245", "8"), cc("#928374", "245", "8")),
-	Primary:     cac(cc("#9d0006", "88", "1"), cc("#fb4934", "167", "9")),
+	Primary:     cac(cc("#427b58", "65", "6"), cc("#8ec07c", "108", "14")),
 	Secondary:   cac(cc("#076678", "24", "4"), cc("#83a598", "109", "12")),
-	Accent:      cac(cc("#427b58", "65", "6"), cc("#8ec07c", "108", "14")),
+	Accent:      cac(cc("#b57614", "136", "3"), cc("#fabd2f", "214", "11")),
 	Success:     cac(cc("#79740e", "100", "2"), cc("#b8bb26", "142", "10")),
 	Warning:     cac(cc("#b57614", "136", "3"), cc("#fabd2f", "214", "11")),
 	Error:       cac(cc("#9d0006", "88", "1"), cc("#fb4934", "167", "9")),
 	Border:      cac(cc("#928374", "245", "8"), cc("#665c54", "241", "8")),
-	BorderFocus: cac(cc("#9d0006", "88", "1"), cc("#fb4934", "167", "9")),
+	BorderFocus: cac(cc("#427b58", "65", "6"), cc("#8ec07c", "108", "14")),
 }
 
 var Nord = Palette{
