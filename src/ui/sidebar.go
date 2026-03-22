@@ -125,7 +125,9 @@ func (s sidebar) updateSearching(msg tea.KeyPressMsg) (sidebar, tea.Cmd) {
 		return s, nil
 	case "enter":
 		s.searching = false
+		s.search.SetValue("")
 		s.search.Blur()
+		s.refilter()
 		return s.selectCurrent(true)
 	case "down":
 		return s.moveDown()

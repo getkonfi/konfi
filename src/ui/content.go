@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -51,6 +52,7 @@ type content struct {
 	fields       []pkg.Field // flattened field list across all sections
 	fieldSection []int       // len == len(c.fields), maps field → section index
 	visible      []row       // navigable rows (section headers + fields)
+	searchIndex  *pkg.SearchIndex
 	collapsed map[int]bool // section index → collapsed
 	configuredOnly bool
 	searching      bool
@@ -400,19 +402,28 @@ func (c *content) openEditor() tea.Cmd {
 	c.detail.editField = c.visible[c.cursor].fieldIdx
 	c.detail.editOrigVal = c.values[f.Key]
 
-	// for list fields, pass the actual multi-values (newline-joined)
+	e := editorForField(*f)
+
+	// for list fields, resolve the init value based on which editor was chosen
 	initVal := c.detail.editOrigVal
 	if f.Type == "list" {
 		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
 			if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
-				initVal = strings.Join(vals, "\n")
+				if _, isListEd := e.(*listEditor); isListEd {
+					// list editor: pass all values newline-joined
+					initVal = strings.Join(vals, "\n")
+				} else if len(vals) > 0 {
+					// widget override (e.g. font picker): pass first value only
+					initVal = vals[0]
+				} else {
+					initVal = ""
+				}
 			} else {
 				initVal = ""
 			}
 		}
 	}
 
-	e := editorForField(*f)
 	c.detail.editor = e
 	c.detail.editing = true
 	return e.Init(*f, initVal, c.theme)
@@ -616,6 +627,7 @@ func (c *content) showDashboard() {
 	c.fields = nil
 	c.fieldSection = nil
 	c.visible = nil
+	c.searchIndex = nil
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
 	c.showNewOnly = false
@@ -661,6 +673,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.fields = nil
 	c.fieldSection = nil
 	c.visible = nil
+	c.searchIndex = nil
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
 	c.showNewOnly = false
@@ -754,6 +767,7 @@ func (c *content) buildFieldList() {
 		}
 		c.fields = append(c.fields, sec.Fields...)
 	}
+	c.searchIndex = pkg.NewSearchIndex(c.schema.Sections)
 	c.refilter()
 }
 
@@ -765,7 +779,12 @@ func (c *content) refilter() {
 	}
 
 	query := strings.ToLower(strings.TrimSpace(c.search.Value()))
-	hasSearch := c.searching && query != ""
+
+	// delegate to bm25 ranking when a query is active
+	if query != "" && c.searchIndex != nil {
+		c.refilterRanked(query)
+		return
+	}
 
 	// track which section we last emitted a header for
 	lastHeaderSection := -1
@@ -781,11 +800,6 @@ func (c *content) refilter() {
 		if c.showNewOnly && f.Since == "" {
 			continue
 		}
-		if hasSearch {
-			if !fieldMatchesQuery(f, query) {
-				continue
-			}
-		}
 		// insert section header before first field of each section
 		if si != lastHeaderSection {
 			c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
@@ -794,21 +808,9 @@ func (c *content) refilter() {
 		c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: i})
 	}
 
-	// rebuild search match indices (for n/N navigation after search is locked)
+	// clear search matches (empty-query path, ranked path handles its own)
 	c.searchMatches = c.searchMatches[:0]
-	if query != "" {
-		for vi, r := range c.visible {
-			if r.isSection {
-				continue
-			}
-			if fieldMatchesQuery(&c.fields[r.fieldIdx], query) {
-				c.searchMatches = append(c.searchMatches, vi)
-			}
-		}
-	}
-	if c.searchIdx >= len(c.searchMatches) {
-		c.searchIdx = 0
-	}
+	c.searchIdx = 0
 
 	// clamp cursor
 	if len(c.visible) == 0 {
@@ -826,11 +828,110 @@ func (c *content) refilter() {
 	}
 }
 
-// fieldMatchesQuery checks if a field matches the search query against key, label, and description.
-func fieldMatchesQuery(f *pkg.Field, query string) bool {
-	return strings.Contains(strings.ToLower(f.Key), query) ||
-		strings.Contains(strings.ToLower(f.Label), query) ||
-		strings.Contains(strings.ToLower(f.Description), query)
+// refilterRanked builds the visible row slice using bm25-ranked results.
+func (c *content) refilterRanked(query string) {
+	c.visible = c.visible[:0]
+	c.searchMatches = c.searchMatches[:0]
+
+	results := c.searchIndex.Search(query)
+	if len(results) == 0 {
+		c.searchIdx = 0
+		c.cursor = 0
+		return
+	}
+
+	// apply pre-filters and map to flat field indices
+	type rankedField struct {
+		flatIdx    int
+		sectionIdx int
+		score      float64
+	}
+	var filtered []rankedField
+	for _, r := range results {
+		// compute flat field index from section/field position
+		flatIdx := 0
+		for si := 0; si < r.SectionIdx; si++ {
+			flatIdx += len(c.schema.Sections[si].Fields)
+		}
+		flatIdx += r.FieldIdx
+
+		f := &c.fields[flatIdx]
+		if c.configuredOnly {
+			if _, ok := c.values[f.Key]; !ok {
+				continue
+			}
+		}
+		if c.showNewOnly && f.Since == "" {
+			continue
+		}
+		filtered = append(filtered, rankedField{
+			flatIdx:    flatIdx,
+			sectionIdx: r.SectionIdx,
+			score:      r.Score,
+		})
+	}
+
+	if len(filtered) == 0 {
+		c.searchIdx = 0
+		c.cursor = 0
+		return
+	}
+
+	// group by section, track best score per section
+	type sectionGroup struct {
+		sectionIdx int
+		bestScore  float64
+		fields     []rankedField
+	}
+	sectionMap := make(map[int]*sectionGroup)
+	var sectionOrder []int
+	for _, rf := range filtered {
+		sg, ok := sectionMap[rf.sectionIdx]
+		if !ok {
+			sg = &sectionGroup{sectionIdx: rf.sectionIdx}
+			sectionMap[rf.sectionIdx] = sg
+			sectionOrder = append(sectionOrder, rf.sectionIdx)
+		}
+		sg.fields = append(sg.fields, rf)
+		if rf.score > sg.bestScore {
+			sg.bestScore = rf.score
+		}
+	}
+
+	// sort sections by best score descending
+	sort.Slice(sectionOrder, func(i, j int) bool {
+		return sectionMap[sectionOrder[i]].bestScore > sectionMap[sectionOrder[j]].bestScore
+	})
+
+	// build visible rows: section header + ranked fields
+	for _, si := range sectionOrder {
+		sg := sectionMap[si]
+		c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
+		for _, rf := range sg.fields {
+			c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: rf.flatIdx})
+		}
+	}
+
+	// build search match indices (all field rows are matches)
+	for vi, r := range c.visible {
+		if !r.isSection {
+			c.searchMatches = append(c.searchMatches, vi)
+		}
+	}
+	if c.searchIdx >= len(c.searchMatches) {
+		c.searchIdx = 0
+	}
+
+	// clamp cursor
+	if c.cursor >= len(c.visible) {
+		c.cursor = len(c.visible) - 1
+	}
+	if c.cursor < 0 {
+		c.cursor = 0
+	}
+	if c.visible[c.cursor].isSection {
+		c.skipSectionHeaders(1)
+	}
 }
 
 // skipSectionHeaders advances the cursor past section header rows in the given direction.
