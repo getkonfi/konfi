@@ -77,9 +77,7 @@ func (e *fontEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	s.Focused.Prompt = th.Muted
 	s.Focused.Text = th.Text
 	e.filter.SetStyles(s)
-	if currentValue != "" {
-		e.filter.SetValue(currentValue)
-	}
+	// don't pre-fill filter — show full list, cursor finds current font after load
 
 	return tea.Batch(e.filter.Focus(), loadFontsCmd())
 }
@@ -94,6 +92,17 @@ func (e *fontEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		}
 		e.all = msg.Fonts
 		e.refilter()
+		// position cursor on the current font
+		if e.val != "" {
+			lower := strings.ToLower(e.val)
+			for i, name := range e.filtered {
+				if strings.ToLower(name) == lower {
+					e.cursor = i
+					e.scrollToCursor()
+					break
+				}
+			}
+		}
 		return nil, false, false
 
 	case tea.KeyPressMsg:

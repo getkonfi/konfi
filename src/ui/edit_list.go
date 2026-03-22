@@ -31,14 +31,16 @@ func (e *listEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	e.field = field
 	e.items = nil
 	if currentValue != "" {
-		e.items = strings.Split(currentValue, ", ")
-		// trim whitespace from each item
-		for i := range e.items {
-			e.items[i] = strings.TrimSpace(e.items[i])
+		// split on newline (from MultiValueParser) or comma (from display value)
+		if strings.Contains(currentValue, "\n") {
+			e.items = strings.Split(currentValue, "\n")
+		} else {
+			e.items = strings.Split(currentValue, ", ")
 		}
-		// remove empty items
+		// trim + remove empties
 		clean := e.items[:0]
 		for _, item := range e.items {
+			item = strings.TrimSpace(item)
 			if item != "" {
 				clean = append(clean, item)
 			}
