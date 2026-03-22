@@ -1,6 +1,7 @@
 app: gnome
 format: gnome
-docs_url: https://help.gnome.org/admin/system-admin-guide/stable/appearance.html
+docs_url: https://help.gnome.org/system-admin-guide/appearance.html
+coverage: partial
 hints:
   - settings are applied live via gsettings
   - changes take effect immediately without restart
@@ -17,7 +18,7 @@ sections:
           - prefer-light
         default: default
         description: preferred color scheme
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.interface/gtk-theme
         label: GTK Theme
@@ -25,7 +26,7 @@ sections:
         default: Adwaita
         description: GTK theme name
         example: Adwaita-dark
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.interface/icon-theme
         label: Icon Theme
@@ -33,7 +34,7 @@ sections:
         default: Adwaita
         description: icon theme name
         example: Papirus
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.interface/cursor-theme
         label: Cursor Theme
@@ -41,7 +42,7 @@ sections:
         default: Adwaita
         description: cursor theme name
         example: Bibata-Modern-Classic
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.interface/cursor-size
         label: Cursor Size
@@ -50,14 +51,100 @@ sections:
         min: 16
         max: 96
         description: cursor size (px)
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.interface/enable-animations
         label: Enable Animations
         type: bool
         default: "true"
         description: enable desktop animations
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/accent-color
+        label: Accent Color
+        type: enum
+        options:
+          - blue
+          - teal
+          - green
+          - yellow
+          - orange
+          - red
+          - pink
+          - purple
+          - slate
+        default: blue
+        description: preferred accent color for the UI
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/enable-hot-corners
+        label: Hot Corners
+        type: bool
+        default: "true"
+        description: access activities overview by moving mouse to top-left corner
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/overlay-scrolling
+        label: Overlay Scrolling
+        type: bool
+        default: "true"
+        description: show scrollbars as overlay indicators
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/scaling-factor
+        label: Scaling Factor
+        type: number
+        default: "0"
+        min: 0
+        max: 4
+        description: integer scale factor for HiDPI (0 = auto)
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/cursor-blink
+        label: Cursor Blink
+        type: bool
+        default: "true"
+        description: whether the cursor should blink
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/cursor-blink-time
+        label: Cursor Blink Time
+        type: number
+        default: "1200"
+        min: 100
+        max: 2500
+        description: cursor blink cycle length (ms)
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/cursor-blink-timeout
+        label: Cursor Blink Timeout
+        type: number
+        default: "10"
+        min: 1
+        max: 2147483647
+        description: time after which cursor stops blinking (seconds)
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/gtk-enable-primary-paste
+        label: Primary Paste
+        type: bool
+        default: "true"
+        description: enable middle-click paste from primary selection
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/locate-pointer
+        label: Locate Pointer
+        type: bool
+        default: "false"
+        description: highlight pointer location on keypress
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.interface/toolkit-accessibility
+        label: Toolkit Accessibility
+        type: bool
+        default: "false"
+        description: load accessibility modules in toolkits
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
   - name: Fonts
     fields:
@@ -68,7 +155,7 @@ sections:
         default: Cantarell 11
         description: default interface font
         example: Inter 11
-        doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
 
       - key: org.gnome.desktop.interface/document-font-name
         label: Document Font
@@ -77,7 +164,7 @@ sections:
         default: Cantarell 11
         description: document font
         example: Noto Serif 12
-        doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
 
       - key: org.gnome.desktop.interface/monospace-font-name
         label: Monospace Font
@@ -86,7 +173,7 @@ sections:
         default: Source Code Pro 10
         description: monospace font
         example: JetBrains Mono 11
-        doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
 
       - key: org.gnome.desktop.interface/text-scaling-factor
         label: Text Scaling Factor
@@ -97,7 +184,53 @@ sections:
         max: 3.0
         description: text scaling multiplier
         hint: "1.0 = normal, 1.25 = 125%"
-        doc_url: https://help.gnome.org/admin/system-admin-guide/stable/fonts.html
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
+
+      - key: org.gnome.desktop.interface/font-antialiasing
+        label: Font Antialiasing
+        type: enum
+        options:
+          - none
+          - grayscale
+          - rgba
+        default: grayscale
+        description: font antialiasing method
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
+
+      - key: org.gnome.desktop.interface/font-hinting
+        label: Font Hinting
+        type: enum
+        options:
+          - none
+          - slight
+          - medium
+          - full
+        default: slight
+        description: font hinting level
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
+
+      - key: org.gnome.desktop.interface/font-rendering
+        label: Font Rendering
+        type: enum
+        options:
+          - automatic
+          - manual
+        default: automatic
+        description: automatic rendering or manual low-level control
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
+
+      - key: org.gnome.desktop.interface/font-rgba-order
+        label: Font RGBA Order
+        type: enum
+        options:
+          - rgba
+          - rgb
+          - bgr
+          - vrgb
+          - vbgr
+        default: rgb
+        description: subpixel element order for LCD antialiasing
+        doc_url: https://help.gnome.org/system-admin-guide/fonts.html
 
   - name: Clock
     fields:
@@ -109,28 +242,35 @@ sections:
           - 24h
         default: 24h
         description: clock format in top bar
-        doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
+        doc_url: https://help.gnome.org/gnome-help/clock.html
+
+      - key: org.gnome.desktop.interface/clock-show-date
+        label: Show Date
+        type: bool
+        default: "true"
+        description: show date in clock
+        doc_url: https://help.gnome.org/gnome-help/clock.html
 
       - key: org.gnome.desktop.interface/clock-show-seconds
         label: Show Seconds
         type: bool
         default: "false"
         description: show seconds in clock
-        doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
+        doc_url: https://help.gnome.org/gnome-help/clock.html
 
       - key: org.gnome.desktop.interface/clock-show-weekday
         label: Show Weekday
         type: bool
         default: "false"
         description: show weekday in clock
-        doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
+        doc_url: https://help.gnome.org/gnome-help/clock.html
 
       - key: org.gnome.desktop.interface/show-battery-percentage
         label: Show Battery Percentage
         type: bool
         default: "false"
         description: show battery % in top bar
-        doc_url: https://help.gnome.org/users/gnome-help/stable/clock.html.en
+        doc_url: https://help.gnome.org/gnome-help/clock.html
 
   - name: Background
     fields:
@@ -142,7 +282,17 @@ sections:
         description: wallpaper image URI
         example: file:///usr/share/backgrounds/gnome/blobs-l.svg
         hint: use file:// prefix for local paths
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.background/picture-uri-dark
+        label: Wallpaper (Dark)
+        type: string
+        widget: path
+        default: ""
+        description: wallpaper image URI for dark mode
+        example: file:///usr/share/backgrounds/gnome/adwaita-d.jxl
+        hint: use file:// prefix for local paths
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.background/picture-options
         label: Wallpaper Mode
@@ -157,18 +307,39 @@ sections:
           - spanned
         default: zoom
         description: wallpaper display mode
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.background/primary-color
         label: Primary Color
         type: color
         default: "#023c88"
         description: primary background / gradient start color
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
 
       - key: org.gnome.desktop.background/secondary-color
         label: Secondary Color
         type: color
         default: "#5789ca"
         description: secondary background / gradient end color
-        doc_url: https://help.gnome.org/users/gnome-help/stable/look-background.html.en
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.background/color-shading-type
+        label: Color Shading
+        type: enum
+        options:
+          - solid
+          - vertical
+          - horizontal
+        default: solid
+        description: background color shading type
+        doc_url: https://help.gnome.org/gnome-help/look-background.html
+
+      - key: org.gnome.desktop.background/picture-opacity
+        label: Picture Opacity
+        type: number
+        widget: slider
+        default: "100"
+        min: 0
+        max: 100
+        description: background picture opacity
+        doc_url: https://help.gnome.org/gnome-help/look-background.html

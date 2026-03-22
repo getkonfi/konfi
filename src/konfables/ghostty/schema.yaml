@@ -1,8 +1,8 @@
 app: ghostty
 format: ghostty
-schema_version: 1.1.0
+schema_version: 1.2.0
 min_app_version: 1.0.0
-max_app_version: 1.1.0
+max_app_version: 1.3.0
 docs_url: https://ghostty.org/docs/config
 hints:
   - ghostty +show-config --default --docs — full config reference
@@ -170,6 +170,46 @@ sections:
           - no-bold-italic
         doc_url: https://ghostty.org/docs/config/reference#font-synthetic-style
         since: 1.1.0
+      - key: font-thicken-strength
+        label: Thicken Strength
+        type: number
+        default: "255"
+        description: strength of font thickening (macOS only)
+        min: 0
+        max: 255
+        doc_url: https://ghostty.org/docs/config/reference#font-thicken-strength
+        since: 1.1.0
+      - key: font-shaping-break
+        label: Shaping Break
+        type: multi
+        default: cursor
+        description: locations to break font shaping into multiple runs
+        example: font-shaping-break = cursor
+        options:
+          - cursor
+          - no-cursor
+        doc_url: https://ghostty.org/docs/config/reference#font-shaping-break
+        since: 1.2.0
+      - key: freetype-load-flags
+        label: FreeType Flags
+        type: multi
+        default: ""
+        description: FreeType load flags for glyph rendering (Linux only)
+        example: freetype-load-flags = hinting,no-force-autohint
+        options:
+          - hinting
+          - no-hinting
+          - force-autohint
+          - no-force-autohint
+          - monochrome
+          - no-monochrome
+          - autohint
+          - no-autohint
+          - light
+          - no-light
+        hint: "true/false to toggle all; hinting,autohint,light on by default"
+        doc_url: https://ghostty.org/docs/config/reference#freetype-load-flags
+        since: 1.0.0
       - key: font-codepoint-map
         label: Codepoint Map
         type: list
@@ -364,17 +404,162 @@ sections:
         hint: "repeated key — one per line | ghostty +list-colors"
         doc_url: https://ghostty.org/docs/config/reference#palette
         since: 1.0.0
-      - key: background-blur-radius
-        label: BG Blur
+      - key: bold-color
+        label: Bold Color
+        type: color
+        default: ""
+        description: color override for bold text (hex color or "bright")
+        example: bold-color = bright
+        hint: "bright = use bright palette for bold; or set a hex color"
+        doc_url: https://ghostty.org/docs/config/reference#bold-color
+        since: 1.2.0
+      - key: faint-opacity
+        label: Faint Opacity
         type: number
-        default: "0"
-        description: background blur radius (requires compositor)
-        example: background-blur-radius = 20
-        hint: combine with background-opacity < 1
+        widget: slider
+        default: "0.5"
+        description: opacity of faint text
         min: 0
-        max: 100
-        doc_url: https://ghostty.org/docs/config/reference#background-blur-radius
+        max: 1
+        doc_url: https://ghostty.org/docs/config/reference#faint-opacity
+        since: 1.2.0
+      - key: background-image
+        label: BG Image
+        type: string
+        widget: path
+        default: ""
+        description: background image path (PNG or JPEG)
+        example: background-image = ~/wallpaper.png
+        doc_url: https://ghostty.org/docs/config/reference#background-image
+        since: 1.2.0
+      - key: background-image-opacity
+        label: BG Image Opacity
+        type: number
+        widget: slider
+        default: "1"
+        description: background image opacity relative to background-opacity
+        min: 0
+        max: 2
+        doc_url: https://ghostty.org/docs/config/reference#background-image-opacity
+        since: 1.2.0
+      - key: background-image-position
+        label: BG Image Position
+        type: enum
+        default: center
+        description: background image position
+        options:
+          - top-left
+          - top-center
+          - top-right
+          - center-left
+          - center
+          - center-right
+          - bottom-left
+          - bottom-center
+          - bottom-right
+        doc_url: https://ghostty.org/docs/config/reference#background-image-position
+        since: 1.2.0
+      - key: background-image-fit
+        label: BG Image Fit
+        type: enum
+        default: contain
+        description: background image scaling mode
+        options:
+          - contain
+          - cover
+          - stretch
+          - none
+        doc_url: https://ghostty.org/docs/config/reference#background-image-fit
+        since: 1.2.0
+      - key: background-image-repeat
+        label: BG Image Repeat
+        type: bool
+        default: "false"
+        description: repeat background image to fill terminal area
+        doc_url: https://ghostty.org/docs/config/reference#background-image-repeat
+        since: 1.2.0
+      - key: background-opacity-cells
+        label: BG Opacity Cells
+        type: bool
+        default: "false"
+        description: apply background-opacity to cells with explicit background color
+        doc_url: https://ghostty.org/docs/config/reference#background-opacity-cells
+        since: 1.2.0
+      - key: background-blur
+        label: BG Blur
+        type: string
+        default: "false"
+        description: background blur when opacity < 1 (integer intensity, true/false)
+        example: background-blur = 20
+        hint: "true = intensity 20; false = off; or set integer intensity"
+        doc_url: https://ghostty.org/docs/config/reference#background-blur
         since: 1.1.0
+      - key: palette-generate
+        label: Palette Generate
+        type: bool
+        default: "false"
+        description: auto-generate 256 color palette from base 16 ANSI colors
+        doc_url: https://ghostty.org/docs/config/reference#palette-generate
+        since: 1.3.0
+      - key: palette-harmonious
+        label: Palette Harmonious
+        type: bool
+        default: "false"
+        description: invert generated palette colors for light/dark mode compat
+        hint: only effective when palette-generate is enabled
+        doc_url: https://ghostty.org/docs/config/reference#palette-harmonious
+        since: 1.3.0
+      - key: clipboard-codepoint-map
+        label: Clipboard Codepoint Map
+        type: list
+        default: ""
+        description: map codepoints to replacements when copying to clipboard
+        example: clipboard-codepoint-map = U+2500=U+002D
+        hint: "repeated key — one per line | format: U+XXXX=replacement"
+        doc_url: https://ghostty.org/docs/config/reference#clipboard-codepoint-map
+        since: 1.2.0
+      - key: split-divider-color
+        label: Split Divider Color
+        type: color
+        default: ""
+        description: color of the split divider
+        doc_url: https://ghostty.org/docs/config/reference#split-divider-color
+        since: 1.1.0
+      - key: search-foreground
+        label: Search FG
+        type: color
+        default: "#000000"
+        description: foreground color for non-focused search matches
+        doc_url: https://ghostty.org/docs/config/reference#search-foreground
+        since: 1.1.0
+      - key: search-background
+        label: Search BG
+        type: color
+        default: "#ffe082"
+        description: background color for non-focused search matches
+        doc_url: https://ghostty.org/docs/config/reference#search-background
+        since: 1.1.0
+      - key: search-selected-foreground
+        label: Search Sel FG
+        type: color
+        default: "#000000"
+        description: foreground color for the focused search match
+        doc_url: https://ghostty.org/docs/config/reference#search-selected-foreground
+        since: 1.1.0
+      - key: search-selected-background
+        label: Search Sel BG
+        type: color
+        default: "#f2a57e"
+        description: background color for the focused search match
+        doc_url: https://ghostty.org/docs/config/reference#search-selected-background
+        since: 1.1.0
+      - key: progress-style
+        label: Progress Style
+        type: bool
+        default: "true"
+        description: allow terminal apps to show graphical progress bars (ConEmu OSC 9;4)
+        doc_url: https://ghostty.org/docs/config/reference#progress-style
+        since: 1.2.0
   - name: Cursor
     key: ""
     fields:
@@ -420,6 +605,28 @@ sections:
         default: "false"
         description: hide the mouse cursor while typing
         doc_url: https://ghostty.org/docs/config/reference#mouse-hide-while-typing
+      - key: selection-clear-on-typing
+        label: Clear Select Typing
+        type: bool
+        default: "true"
+        description: clear selected text when typing
+        doc_url: https://ghostty.org/docs/config/reference#selection-clear-on-typing
+        since: 1.2.0
+      - key: selection-clear-on-copy
+        label: Clear Select Copy
+        type: bool
+        default: "false"
+        description: clear selected text after copying
+        doc_url: https://ghostty.org/docs/config/reference#selection-clear-on-copy
+        since: 1.2.0
+      - key: selection-word-chars
+        label: Selection Word Chars
+        type: string
+        default: ""
+        description: characters that mark word boundaries during selection
+        hint: "double-click selects word; these chars act as separators"
+        doc_url: https://ghostty.org/docs/config/reference#selection-word-chars
+        since: 1.3.0
   - name: Window
     key: ""
     fields:
@@ -555,6 +762,89 @@ sections:
         description: resize window in cell-size increments
         doc_url: https://ghostty.org/docs/config/reference#window-step-resize
         since: 1.0.0
+      - key: window-vsync
+        label: Window VSync
+        type: bool
+        default: "true"
+        description: sync rendering with screen refresh rate (macOS only)
+        doc_url: https://ghostty.org/docs/config/reference#window-vsync
+        since: 1.0.0
+      - key: window-inherit-working-directory
+        label: Inherit CWD
+        type: bool
+        default: "true"
+        description: new windows inherit focused window working directory
+        doc_url: https://ghostty.org/docs/config/reference#window-inherit-working-directory
+        since: 1.0.0
+      - key: window-subtitle
+        label: Window Subtitle
+        type: enum
+        default: "false"
+        description: text displayed in window subtitle (GTK only)
+        options:
+          - "false"
+          - working-directory
+        doc_url: https://ghostty.org/docs/config/reference#window-subtitle
+        since: 1.1.0
+      - key: window-colorspace
+        label: Color Space
+        type: enum
+        default: srgb
+        description: color space for interpreting terminal colors (macOS only)
+        options:
+          - srgb
+          - display-p3
+        doc_url: https://ghostty.org/docs/config/reference#window-colorspace
+        since: 1.0.0
+      - key: window-position-x
+        label: Window X
+        type: string
+        default: ""
+        description: initial window X position in pixels (macOS only)
+        doc_url: https://ghostty.org/docs/config/reference#window-position-x
+        since: 1.0.0
+      - key: window-position-y
+        label: Window Y
+        type: string
+        default: ""
+        description: initial window Y position in pixels (macOS only)
+        doc_url: https://ghostty.org/docs/config/reference#window-position-y
+        since: 1.0.0
+      - key: window-new-tab-position
+        label: New Tab Position
+        type: enum
+        default: current
+        description: where new tabs are created
+        options:
+          - current
+          - end
+        doc_url: https://ghostty.org/docs/config/reference#window-new-tab-position
+        since: 1.0.0
+      - key: window-show-tab-bar
+        label: Show Tab Bar
+        type: enum
+        default: auto
+        description: when to show the tab bar (GTK only)
+        options:
+          - always
+          - auto
+          - never
+        doc_url: https://ghostty.org/docs/config/reference#window-show-tab-bar
+        since: 1.2.0
+      - key: window-titlebar-background
+        label: Titlebar BG
+        type: color
+        default: ""
+        description: titlebar background color (GTK, requires window-theme=ghostty)
+        doc_url: https://ghostty.org/docs/config/reference#window-titlebar-background
+        since: 1.1.0
+      - key: window-titlebar-foreground
+        label: Titlebar FG
+        type: color
+        default: ""
+        description: titlebar foreground color (GTK, requires window-theme=ghostty)
+        doc_url: https://ghostty.org/docs/config/reference#window-titlebar-foreground
+        since: 1.1.0
       - key: resize-overlay
         label: Resize Overlay
         type: enum
@@ -565,6 +855,29 @@ sections:
           - never
           - after-first
         doc_url: https://ghostty.org/docs/config/reference#resize-overlay
+        since: 1.0.0
+      - key: resize-overlay-position
+        label: Resize Overlay Pos
+        type: enum
+        default: center
+        description: position of resize overlay
+        options:
+          - center
+          - top-left
+          - top-center
+          - top-right
+          - bottom-left
+          - bottom-center
+          - bottom-right
+        doc_url: https://ghostty.org/docs/config/reference#resize-overlay-position
+        since: 1.0.0
+      - key: resize-overlay-duration
+        label: Resize Overlay Duration
+        type: string
+        default: 750ms
+        description: how long the resize overlay is visible
+        example: resize-overlay-duration = 1s
+        doc_url: https://ghostty.org/docs/config/reference#resize-overlay-duration
         since: 1.0.0
   - name: Cell Adjustment
     key: ""
@@ -662,6 +975,15 @@ sections:
         example: adjust-box-thickness = +1
         doc_url: https://ghostty.org/docs/config/reference#adjust-box-thickness
         since: 1.0.0
+      - key: adjust-icon-height
+        label: Icon Height
+        type: string
+        default: ""
+        description: nerd font icon max height offset
+        example: adjust-icon-height = +2
+        hint: "accepts +N, -N, or N%"
+        doc_url: https://ghostty.org/docs/config/reference#adjust-icon-height
+        since: 1.2.0
   - name: Input
     key: ""
     fields:
@@ -688,18 +1010,6 @@ sections:
         default: "false"
         description: split focus follows mouse pointer
         doc_url: https://ghostty.org/docs/config/reference#focus-follows-mouse
-      - key: macos-option-as-alt
-        label: Option as Alt
-        type: enum
-        default: "false"
-        description: treat macOS Option as Alt (e.g. Alt+B word-jump)
-        example: macos-option-as-alt = left
-        options:
-          - "false"
-          - "true"
-          - left
-          - right
-        doc_url: https://ghostty.org/docs/config/reference#macos-option-as-alt
       - key: link-url
         label: Clickable URLs
         type: bool
@@ -719,6 +1029,83 @@ sections:
           - never
         hint: "always/never = locked, ignores app toggle"
         doc_url: https://ghostty.org/docs/config/reference#mouse-shift-capture
+      - key: mouse-reporting
+        label: Mouse Reporting
+        type: bool
+        default: "true"
+        description: allow terminal apps to receive mouse events
+        doc_url: https://ghostty.org/docs/config/reference#mouse-reporting
+        since: 1.1.0
+      - key: scroll-to-bottom
+        label: Scroll to Bottom
+        type: multi
+        default: ""
+        description: when to auto-scroll to bottom
+        example: scroll-to-bottom = keystroke,no-output
+        options:
+          - keystroke
+          - no-keystroke
+          - output
+          - no-output
+        doc_url: https://ghostty.org/docs/config/reference#scroll-to-bottom
+        since: 1.1.0
+      - key: scrollbar
+        label: Scrollbar
+        type: enum
+        default: system
+        description: when to show the scrollbar
+        options:
+          - system
+          - never
+        doc_url: https://ghostty.org/docs/config/reference#scrollbar
+        since: 1.1.0
+      - key: link-previews
+        label: Link Previews
+        type: enum
+        default: "true"
+        description: show link previews for matched URLs
+        options:
+          - "true"
+          - "false"
+          - osc8
+        doc_url: https://ghostty.org/docs/config/reference#link-previews
+        since: 1.2.0
+      - key: input
+        label: Input
+        type: list
+        default: ""
+        description: data to send as input to the command on startup
+        example: input = raw:Hello
+        hint: "repeated key — one per line | format: raw:<text> or path:<file>"
+        doc_url: https://ghostty.org/docs/config/reference#input
+        since: 1.2.0
+      - key: key-remap
+        label: Key Remap
+        type: list
+        default: ""
+        description: remap modifier keys within ghostty
+        example: key-remap = ctrl=super
+        hint: "repeated key — one per line | format: from=to"
+        doc_url: https://ghostty.org/docs/config/reference#key-remap
+        since: 1.2.0
+      - key: click-repeat-interval
+        label: Click Repeat Interval
+        type: number
+        default: "0"
+        description: ms between clicks for double/triple click (0 = platform default)
+        min: 0
+        max: 5000
+        doc_url: https://ghostty.org/docs/config/reference#click-repeat-interval
+        since: 1.0.0
+      - key: command-palette-entry
+        label: Command Palette
+        type: list
+        default: ""
+        description: custom command palette entries
+        example: "command-palette-entry = title:My Action,action:new_window"
+        hint: "repeated key — one per line | format: title:...,action:..."
+        doc_url: https://ghostty.org/docs/config/reference#command-palette-entry
+        since: 1.2.0
   - name: Shell
     key: ""
     fields:
@@ -818,6 +1205,14 @@ sections:
         hint: "repeated key — one per line | format: KEY=VALUE"
         doc_url: https://ghostty.org/docs/config/reference#env
         since: 1.0.0
+      - key: language
+        label: Language
+        type: string
+        default: ""
+        description: override GUI language (GTK only, requires restart)
+        example: language = de
+        doc_url: https://ghostty.org/docs/config/reference#language
+        since: 1.3.0
   - name: Clipboard
     key: ""
     fields:
@@ -868,6 +1263,13 @@ sections:
         description: confirm before pasting text with newlines or control chars
         example: clipboard-paste-protection = true
         doc_url: https://ghostty.org/docs/config/reference#clipboard-paste-protection
+      - key: clipboard-paste-bracketed-safe
+        label: Bracketed Safe
+        type: bool
+        default: "true"
+        description: consider bracketed pastes safe (skip paste protection)
+        doc_url: https://ghostty.org/docs/config/reference#clipboard-paste-bracketed-safe
+        since: 1.0.0
   - name: Advanced
     key: ""
     fields:
@@ -893,6 +1295,7 @@ sections:
         example: image-storage-limit = 320000000
         hint: "~320MB default; 0 = unlimited (kitty graphics protocol)"
         min: 0
+        max: 4294967295
         doc_url: https://ghostty.org/docs/config/reference#image-storage-limit
       - key: class
         label: Window Class
@@ -910,12 +1313,17 @@ sections:
         example: custom-shader = ~/.config/ghostty/shaders/crt.glsl
         hint: repeated key — one per line
         doc_url: https://ghostty.org/docs/config/reference#custom-shader
-      - key: bold-is-bright
-        label: Bold is Bright
-        type: bool
-        default: "false"
-        description: bold ANSI colors map to their bright variant (e.g. red → bright red)
-        doc_url: https://ghostty.org/docs/config/reference#bold-is-bright
+      - key: custom-shader-animation
+        label: Shader Animation
+        type: enum
+        default: "true"
+        description: run animation loop for custom shaders
+        options:
+          - "true"
+          - "false"
+          - always
+        doc_url: https://ghostty.org/docs/config/reference#custom-shader-animation
+        since: 1.0.0
       - key: grapheme-width-method
         label: Grapheme Width
         type: enum
@@ -941,6 +1349,166 @@ sections:
         example: term = xterm-256color
         hint: "use xterm-256color if remote hosts lack ghostty terminfo"
         doc_url: https://ghostty.org/docs/config/reference#term
+        since: 1.0.0
+      - key: enquiry-response
+        label: Enquiry Response
+        type: string
+        default: ""
+        description: string to send when ENQ (0x05) is received
+        doc_url: https://ghostty.org/docs/config/reference#enquiry-response
+        since: 1.0.0
+      - key: osc-color-report-format
+        label: OSC Color Format
+        type: enum
+        default: 16-bit
+        description: reporting format for OSC color queries
+        options:
+          - none
+          - 8-bit
+          - 16-bit
+        doc_url: https://ghostty.org/docs/config/reference#osc-color-report-format
+        since: 1.0.0
+      - key: vt-kam-allowed
+        label: VT KAM Allowed
+        type: bool
+        default: "false"
+        description: allow KAM mode (ANSI mode 2) to disable keyboard input
+        doc_url: https://ghostty.org/docs/config/reference#vt-kam-allowed
+        since: 1.0.0
+      - key: title-report
+        label: Title Report
+        type: bool
+        default: "false"
+        description: allow programs to query terminal title (CSI 21 t)
+        hint: "security risk — may expose sensitive information"
+        doc_url: https://ghostty.org/docs/config/reference#title-report
+        since: 1.0.1
+      - key: right-click-action
+        label: Right Click Action
+        type: enum
+        default: context-menu
+        description: action when right-clicking on terminal
+        options:
+          - context-menu
+          - paste
+          - copy
+          - copy-or-paste
+          - ignore
+        doc_url: https://ghostty.org/docs/config/reference#right-click-action
+        since: 1.0.0
+      - key: config-default-files
+        label: Default Config Files
+        type: bool
+        default: "true"
+        description: load default config file paths (CLI-only)
+        doc_url: https://ghostty.org/docs/config/reference#config-default-files
+        since: 1.0.0
+      - key: initial-window
+        label: Initial Window
+        type: bool
+        default: "true"
+        description: create an initial window when ghostty starts
+        doc_url: https://ghostty.org/docs/config/reference#initial-window
+        since: 1.1.0
+      - key: undo-timeout
+        label: Undo Timeout
+        type: string
+        default: 5s
+        description: duration undo operations remain available (macOS only)
+        example: undo-timeout = 10s
+        doc_url: https://ghostty.org/docs/config/reference#undo-timeout
+        since: 1.2.0
+      - key: alpha-blending
+        label: Alpha Blending
+        type: enum
+        default: linear-corrected
+        description: color space for alpha blending
+        options:
+          - native
+          - linear
+          - linear-corrected
+        doc_url: https://ghostty.org/docs/config/reference#alpha-blending
+        since: 1.1.0
+      - key: async-backend
+        label: Async Backend
+        type: enum
+        default: auto
+        description: low-level async IO backend (Linux only, requires restart)
+        options:
+          - auto
+          - epoll
+          - io_uring
+        doc_url: https://ghostty.org/docs/config/reference#async-backend
+        since: 1.2.0
+      - key: auto-update
+        label: Auto Update
+        type: enum
+        default: ""
+        description: auto-update behavior (macOS only)
+        options:
+          - ""
+          - "off"
+          - check
+          - download
+        doc_url: https://ghostty.org/docs/config/reference#auto-update
+        since: 1.0.0
+      - key: auto-update-channel
+        label: Update Channel
+        type: enum
+        default: ""
+        description: release channel for auto-updates (macOS only)
+        options:
+          - ""
+          - stable
+          - tip
+        doc_url: https://ghostty.org/docs/config/reference#auto-update-channel
+        since: 1.0.0
+      - key: quit-after-last-window-closed
+        label: Quit After Last Window
+        type: bool
+        default: "true"
+        description: quit after the last window is closed
+        doc_url: https://ghostty.org/docs/config/reference#quit-after-last-window-closed
+        since: 1.0.0
+      - key: quit-after-last-window-closed-delay
+        label: Quit Delay
+        type: string
+        default: ""
+        description: delay before quitting after last window closed (Linux only)
+        example: quit-after-last-window-closed-delay = 5s
+        doc_url: https://ghostty.org/docs/config/reference#quit-after-last-window-closed-delay
+        since: 1.0.0
+      - key: x11-instance-name
+        label: X11 Instance Name
+        type: string
+        default: ""
+        description: WM_CLASS instance name override (X11 only)
+        doc_url: https://ghostty.org/docs/config/reference#x11-instance-name
+        since: 1.0.0
+      - key: split-preserve-zoom
+        label: Preserve Zoom
+        type: multi
+        default: ""
+        description: preserve zoomed split state on focus change
+        example: split-preserve-zoom = navigation
+        options:
+          - navigation
+          - no-navigation
+        doc_url: https://ghostty.org/docs/config/reference#split-preserve-zoom
+        since: 1.3.0
+      - key: split-inherit-working-directory
+        label: Split Inherit CWD
+        type: bool
+        default: "true"
+        description: new splits inherit focused split working directory
+        doc_url: https://ghostty.org/docs/config/reference#split-inherit-working-directory
+        since: 1.0.0
+      - key: tab-inherit-working-directory
+        label: Tab Inherit CWD
+        type: bool
+        default: "true"
+        description: new tabs inherit focused tab working directory
+        doc_url: https://ghostty.org/docs/config/reference#tab-inherit-working-directory
         since: 1.0.0
   - name: Linux/GTK
     key: ""
@@ -978,12 +1546,434 @@ sections:
         description: tabs expand to fill the tab bar width
         doc_url: https://ghostty.org/docs/config/reference#gtk-wide-tabs
         since: 1.0.0
-      - key: gtk-adwaita
-        label: Adwaita Theme
+      - key: gtk-opengl-debug
+        label: OpenGL Debug
+        type: bool
+        default: "false"
+        description: enable GTK OpenGL debugging logs
+        doc_url: https://ghostty.org/docs/config/reference#gtk-opengl-debug
+        since: 1.1.0
+      - key: gtk-titlebar
+        label: GTK Titlebar
         type: bool
         default: "true"
-        description: use libadwaita for window styling
-        example: gtk-adwaita = false
-        hint: "false = use raw GTK4 (no rounded corners, no CSD)"
-        doc_url: https://ghostty.org/docs/config/reference#gtk-adwaita
+        description: display full GTK titlebar instead of WM simple titlebar
+        doc_url: https://ghostty.org/docs/config/reference#gtk-titlebar
         since: 1.0.0
+      - key: gtk-titlebar-hide-when-maximized
+        label: Hide Titlebar Maximized
+        type: bool
+        default: "false"
+        description: hide titlebar when window is maximized
+        doc_url: https://ghostty.org/docs/config/reference#gtk-titlebar-hide-when-maximized
+        since: 1.1.0
+      - key: gtk-toolbar-style
+        label: Toolbar Style
+        type: enum
+        default: raised
+        description: appearance of top and bottom tab bars
+        options:
+          - flat
+          - raised
+          - raised-border
+        doc_url: https://ghostty.org/docs/config/reference#gtk-toolbar-style
+        since: 1.1.0
+      - key: gtk-titlebar-style
+        label: GTK Titlebar Style
+        type: enum
+        default: native
+        description: GTK titlebar style (native or merged tabs)
+        options:
+          - native
+          - tabs
+        doc_url: https://ghostty.org/docs/config/reference#gtk-titlebar-style
+        since: 1.1.0
+      - key: gtk-custom-css
+        label: Custom CSS
+        type: list
+        default: ""
+        description: custom CSS files for GTK styling
+        example: gtk-custom-css = ~/.config/ghostty/style.css
+        hint: "repeated key — one per line | env GTK_DEBUG=interactive ghostty"
+        doc_url: https://ghostty.org/docs/config/reference#gtk-custom-css
+        since: 1.1.0
+      - key: gtk-quick-terminal-layer
+        label: Quick Terminal Layer
+        type: enum
+        default: top
+        description: layer of the quick terminal window (Wayland only)
+        options:
+          - overlay
+          - top
+          - bottom
+          - background
+        doc_url: https://ghostty.org/docs/config/reference#gtk-quick-terminal-layer
+        since: 1.2.0
+      - key: gtk-quick-terminal-namespace
+        label: Quick Terminal NS
+        type: string
+        default: ghostty-quick-terminal
+        description: Wayland namespace for quick terminal window
+        doc_url: https://ghostty.org/docs/config/reference#gtk-quick-terminal-namespace
+        since: 1.2.0
+  - name: Notifications
+    key: ""
+    fields:
+      - key: notify-on-command-finish
+        label: Notify Command Finish
+        type: enum
+        default: never
+        description: when to send command finished notifications
+        options:
+          - never
+          - unfocused
+          - always
+        doc_url: https://ghostty.org/docs/config/reference#notify-on-command-finish
+        since: 1.3.0
+      - key: notify-on-command-finish-action
+        label: Notify Action
+        type: multi
+        default: ""
+        description: how to notify when command finishes
+        example: notify-on-command-finish-action = bell,no-notify
+        options:
+          - bell
+          - no-bell
+          - notify
+          - no-notify
+        doc_url: https://ghostty.org/docs/config/reference#notify-on-command-finish-action
+        since: 1.3.0
+      - key: notify-on-command-finish-after
+        label: Notify After
+        type: string
+        default: 5s
+        description: minimum command runtime before notification is sent
+        example: notify-on-command-finish-after = 10s
+        doc_url: https://ghostty.org/docs/config/reference#notify-on-command-finish-after
+        since: 1.3.0
+      - key: app-notifications
+        label: App Notifications
+        type: multi
+        default: ""
+        description: control in-app notification toasts (GTK only)
+        example: app-notifications = no-clipboard-copy,config-reload
+        options:
+          - clipboard-copy
+          - no-clipboard-copy
+          - config-reload
+          - no-config-reload
+        doc_url: https://ghostty.org/docs/config/reference#app-notifications
+        since: 1.1.0
+  - name: Bell
+    key: ""
+    fields:
+      - key: bell-features
+        label: Bell Features
+        type: multi
+        default: ""
+        description: bell features to enable
+        example: bell-features = attention,title,no-system
+        options:
+          - system
+          - no-system
+          - audio
+          - no-audio
+          - attention
+          - no-attention
+          - title
+          - no-title
+          - border
+          - no-border
+        doc_url: https://ghostty.org/docs/config/reference#bell-features
+        since: 1.2.0
+      - key: bell-audio-path
+        label: Bell Audio Path
+        type: string
+        widget: path
+        default: ""
+        description: path to custom bell audio file
+        doc_url: https://ghostty.org/docs/config/reference#bell-audio-path
+        since: 1.2.0
+      - key: bell-audio-volume
+        label: Bell Audio Volume
+        type: number
+        widget: slider
+        default: "0.5"
+        description: volume for custom bell audio (0.0 to 1.0)
+        min: 0
+        max: 1
+        doc_url: https://ghostty.org/docs/config/reference#bell-audio-volume
+        since: 1.2.0
+  - name: Quick Terminal
+    key: ""
+    fields:
+      - key: quick-terminal-position
+        label: Position
+        type: enum
+        default: top
+        description: quick terminal window position
+        options:
+          - top
+          - bottom
+          - left
+          - right
+          - center
+        doc_url: https://ghostty.org/docs/config/reference#quick-terminal-position
+        since: 1.0.0
+      - key: quick-terminal-screen
+        label: Screen
+        type: enum
+        default: main
+        description: screen for quick terminal (macOS only)
+        options:
+          - main
+          - mouse
+          - macos-menu-bar
+        doc_url: https://ghostty.org/docs/config/reference#quick-terminal-screen
+        since: 1.0.0
+      - key: quick-terminal-animation-duration
+        label: Animation Duration
+        type: number
+        default: "0.2"
+        description: animation duration in seconds (macOS only, 0 = off)
+        min: 0
+        max: 5
+        doc_url: https://ghostty.org/docs/config/reference#quick-terminal-animation-duration
+        since: 1.0.0
+      - key: quick-terminal-autohide
+        label: Autohide
+        type: bool
+        default: "false"
+        description: hide quick terminal when focus shifts away
+        doc_url: https://ghostty.org/docs/config/reference#quick-terminal-autohide
+        since: 1.0.0
+      - key: quick-terminal-space-behavior
+        label: Space Behavior
+        type: enum
+        default: move
+        description: quick terminal behavior when switching macOS spaces
+        options:
+          - move
+          - remain
+        doc_url: https://ghostty.org/docs/config/reference#quick-terminal-space-behavior
+        since: 1.1.0
+      - key: quick-terminal-keyboard-interactivity
+        label: Keyboard Interactivity
+        type: enum
+        default: on-demand
+        description: keyboard input behavior for quick terminal (Wayland only)
+        options:
+          - none
+          - on-demand
+          - exclusive
+        doc_url: https://ghostty.org/docs/config/reference#quick-terminal-keyboard-interactivity
+        since: 1.2.0
+  - name: Linux
+    key: ""
+    fields:
+      - key: linux-cgroup
+        label: CGroup
+        type: enum
+        default: single-instance
+        description: put terminal surfaces into systemd cgroups
+        options:
+          - never
+          - always
+          - single-instance
+        doc_url: https://ghostty.org/docs/config/reference#linux-cgroup
+        since: 1.0.0
+      - key: linux-cgroup-memory-limit
+        label: CGroup Memory Limit
+        type: string
+        default: ""
+        description: memory limit per terminal surface (bytes)
+        hint: sets systemd MemoryHigh (soft limit)
+        doc_url: https://ghostty.org/docs/config/reference#linux-cgroup-memory-limit
+        since: 1.0.0
+      - key: linux-cgroup-processes-limit
+        label: CGroup Process Limit
+        type: string
+        default: ""
+        description: max processes per terminal surface
+        hint: sets systemd TasksMax (hard limit)
+        doc_url: https://ghostty.org/docs/config/reference#linux-cgroup-processes-limit
+        since: 1.0.0
+      - key: linux-cgroup-hard-fail
+        label: CGroup Hard Fail
+        type: bool
+        default: "false"
+        description: fail surface creation if cgroup setup fails
+        doc_url: https://ghostty.org/docs/config/reference#linux-cgroup-hard-fail
+        since: 1.0.0
+  - name: macOS
+    key: ""
+    fields:
+      - key: macos-non-native-fullscreen
+        label: Non-Native Fullscreen
+        type: enum
+        default: "false"
+        description: use non-native fullscreen mode
+        options:
+          - "false"
+          - "true"
+          - visible-menu
+          - padded-notch
+        doc_url: https://ghostty.org/docs/config/reference#macos-non-native-fullscreen
+        since: 1.0.0
+      - key: macos-window-buttons
+        label: Window Buttons
+        type: enum
+        default: visible
+        description: visibility of macOS titlebar traffic lights
+        options:
+          - visible
+          - hidden
+        doc_url: https://ghostty.org/docs/config/reference#macos-window-buttons
+        since: 1.2.0
+      - key: macos-titlebar-style
+        label: Titlebar Style
+        type: enum
+        default: transparent
+        description: macOS titlebar style
+        options:
+          - native
+          - transparent
+          - tabs
+          - hidden
+        doc_url: https://ghostty.org/docs/config/reference#macos-titlebar-style
+        since: 1.0.0
+      - key: macos-titlebar-proxy-icon
+        label: Proxy Icon
+        type: enum
+        default: visible
+        description: visibility of proxy icon in titlebar
+        options:
+          - visible
+          - hidden
+        doc_url: https://ghostty.org/docs/config/reference#macos-titlebar-proxy-icon
+        since: 1.0.0
+      - key: macos-dock-drop-behavior
+        label: Dock Drop Behavior
+        type: enum
+        default: new-tab
+        description: behavior when dropping file on dock icon
+        options:
+          - new-tab
+          - new-window
+        doc_url: https://ghostty.org/docs/config/reference#macos-dock-drop-behavior
+        since: 1.0.0
+      - key: macos-option-as-alt
+        label: Option as Alt
+        type: enum
+        default: ""
+        description: treat macOS Option as Alt
+        options:
+          - ""
+          - "false"
+          - "true"
+          - left
+          - right
+        doc_url: https://ghostty.org/docs/config/reference#macos-option-as-alt
+        since: 1.0.0
+      - key: macos-window-shadow
+        label: Window Shadow
+        type: bool
+        default: "true"
+        description: enable macOS window shadow
+        doc_url: https://ghostty.org/docs/config/reference#macos-window-shadow
+        since: 1.0.0
+      - key: macos-hidden
+        label: Hidden
+        type: enum
+        default: never
+        description: hide macOS app from dock and app switcher
+        options:
+          - never
+          - always
+        doc_url: https://ghostty.org/docs/config/reference#macos-hidden
+        since: 1.2.0
+      - key: macos-auto-secure-input
+        label: Auto Secure Input
+        type: bool
+        default: "true"
+        description: auto-enable secure input on password prompts
+        doc_url: https://ghostty.org/docs/config/reference#macos-auto-secure-input
+        since: 1.0.0
+      - key: macos-secure-input-indication
+        label: Secure Input Indicator
+        type: bool
+        default: "true"
+        description: show visual indicator when secure input is active
+        doc_url: https://ghostty.org/docs/config/reference#macos-secure-input-indication
+        since: 1.0.0
+      - key: macos-applescript
+        label: AppleScript
+        type: bool
+        default: "true"
+        description: enable AppleScript dictionary support
+        doc_url: https://ghostty.org/docs/config/reference#macos-applescript
+        since: 1.0.0
+      - key: macos-icon
+        label: App Icon
+        type: enum
+        default: official
+        description: macOS app icon style
+        options:
+          - official
+          - blueprint
+          - chalkboard
+          - microchip
+          - glass
+          - holographic
+          - paper
+          - retro
+          - xray
+          - custom
+          - custom-style
+        doc_url: https://ghostty.org/docs/config/reference#macos-icon
+        since: 1.0.0
+      - key: macos-custom-icon
+        label: Custom Icon Path
+        type: string
+        widget: path
+        default: ""
+        description: path to custom icon file (PNG, JPEG, ICNS)
+        doc_url: https://ghostty.org/docs/config/reference#macos-custom-icon
+        since: 1.0.0
+      - key: macos-icon-frame
+        label: Icon Frame
+        type: enum
+        default: aluminum
+        description: frame material for macOS app icon
+        options:
+          - aluminum
+          - beige
+          - plastic
+          - chrome
+        doc_url: https://ghostty.org/docs/config/reference#macos-icon-frame
+        since: 1.0.0
+      - key: macos-icon-ghost-color
+        label: Icon Ghost Color
+        type: color
+        default: ""
+        description: ghost color in macOS app icon
+        doc_url: https://ghostty.org/docs/config/reference#macos-icon-ghost-color
+        since: 1.0.0
+      - key: macos-icon-screen-color
+        label: Icon Screen Color
+        type: string
+        default: ""
+        description: screen gradient colors in macOS app icon (comma-separated)
+        doc_url: https://ghostty.org/docs/config/reference#macos-icon-screen-color
+        since: 1.0.0
+      - key: macos-shortcuts
+        label: Shortcuts
+        type: enum
+        default: ask
+        description: allow macOS Shortcuts to control ghostty
+        options:
+          - ask
+          - allow
+          - deny
+        doc_url: https://ghostty.org/docs/config/reference#macos-shortcuts
+        since: 1.2.0

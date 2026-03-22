@@ -253,6 +253,7 @@ sections:
         description: max branch name length (empty = no limit)
         example: "truncation_length = 20"
         min: 1
+        max: 1000
         doc_url: "https://starship.rs/config/#git-branch"
       - key: git_branch.truncation_symbol
         label: Truncation Symbol

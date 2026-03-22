@@ -3,7 +3,7 @@ format: toml
 schema_version: 1.0.0
 min_app_version: "0.1.0"
 max_app_version: "0.2.0"
-docs_url: "https://raphamorim.io/rio/docs/"
+docs_url: "https://rioterm.com/docs/config"
 hints:
   - "TOML config — sections are [tables], nested via dots"
   - "live reload on save — no restart needed"
@@ -20,14 +20,14 @@ sections:
         description: cursor shape
         example: "cursor = \"Beam\""
         options: [Block, Underline, Beam]
-        doc_url: "https://raphamorim.io/rio/docs/#cursor"
+        doc_url: "https://rioterm.com/docs/config#cursor"
       - key: blinking-cursor
         label: Blinking Cursor
         type: bool
         default: "false"
         description: enable cursor blinking
         example: "blinking-cursor = true"
-        doc_url: "https://raphamorim.io/rio/docs/#blinking-cursor"
+        doc_url: "https://rioterm.com/docs/config#blinking-cursor"
 
   # -- Padding ----------------------------------------------------------
   - name: Padding
@@ -41,7 +41,7 @@ sections:
         example: "padding-x = 10"
         min: 0
         max: 200
-        doc_url: "https://raphamorim.io/rio/docs/#padding-x"
+        doc_url: "https://rioterm.com/docs/config#padding-x"
       - key: padding-y
         label: Padding Y
         type: number
@@ -50,7 +50,7 @@ sections:
         example: "padding-y = 5"
         min: 0
         max: 200
-        doc_url: "https://raphamorim.io/rio/docs/#padding-y"
+        doc_url: "https://rioterm.com/docs/config#padding-y"
 
   # -- Window -----------------------------------------------------------
   - name: Window
@@ -63,7 +63,7 @@ sections:
         description: macOS option key behavior
         example: "option-as-alt = \"both\""
         options: [left, right, both]
-        doc_url: "https://raphamorim.io/rio/docs/#option-as-alt"
+        doc_url: "https://rioterm.com/docs/config#option-as-alt"
       - key: window-opacity
         label: Window Opacity
         type: number
@@ -73,7 +73,7 @@ sections:
         example: "window-opacity = 0.95"
         min: 0
         max: 1
-        doc_url: "https://raphamorim.io/rio/docs/#window-opacity"
+        doc_url: "https://rioterm.com/docs/config#window-opacity"
       - key: window-decorations
         label: Window Decorations
         type: enum
@@ -81,14 +81,14 @@ sections:
         description: window decoration style
         example: "window-decorations = \"Transparent\""
         options: [Enabled, Disabled, Transparent, Buttonless]
-        doc_url: "https://raphamorim.io/rio/docs/#window-decorations"
+        doc_url: "https://rioterm.com/docs/config#window-decorations"
       - key: confirm-before-quit
         label: Confirm Before Quit
         type: bool
         default: "true"
         description: prompt before closing terminal
         example: "confirm-before-quit = false"
-        doc_url: "https://raphamorim.io/rio/docs/#confirm-before-quit"
+        doc_url: "https://rioterm.com/docs/config#confirm-before-quit"
 
   # -- Renderer ---------------------------------------------------------
   - name: Renderer
@@ -101,7 +101,7 @@ sections:
         description: GPU performance mode (Low saves battery)
         example: "[renderer]\nperformance = \"High\""
         options: [High, Low]
-        doc_url: "https://raphamorim.io/rio/docs/#renderer"
+        doc_url: "https://rioterm.com/docs/config#renderer"
       - key: renderer.backend
         label: Backend
         type: enum
@@ -110,7 +110,7 @@ sections:
         example: "[renderer]\nbackend = \"Vulkan\""
         hint: "Automatic selects the best for your platform"
         options: [Automatic, Vulkan, GL, DX12, Metal]
-        doc_url: "https://raphamorim.io/rio/docs/#renderer"
+        doc_url: "https://rioterm.com/docs/config#renderer"
 
   # -- Fonts ------------------------------------------------------------
   - name: Fonts
@@ -124,7 +124,7 @@ sections:
         description: primary font family
         example: "[fonts]\nfamily = \"JetBrains Mono\""
         hint: "fc-list : family | sort — list available fonts"
-        doc_url: "https://raphamorim.io/rio/docs/#fonts"
+        doc_url: "https://rioterm.com/docs/config#fonts"
       - key: fonts.size
         label: Font Size
         type: number
@@ -133,14 +133,14 @@ sections:
         example: "[fonts]\nsize = 14"
         min: 6
         max: 72
-        doc_url: "https://raphamorim.io/rio/docs/#fonts"
+        doc_url: "https://rioterm.com/docs/config#fonts"
       - key: fonts.extras
         label: Extra Fonts
         type: string
         default: ""
         description: fallback font families
         example: "[fonts]\nextras = [{family = \"Noto Color Emoji\"}]"
-        doc_url: "https://raphamorim.io/rio/docs/#fonts"
+        doc_url: "https://rioterm.com/docs/config#fonts"
 
   # -- Scroll -----------------------------------------------------------
   - name: Scroll
@@ -154,7 +154,7 @@ sections:
         example: "[scroll]\nmultiplier = 5.0"
         min: 1
         max: 50
-        doc_url: "https://raphamorim.io/rio/docs/#scroll"
+        doc_url: "https://rioterm.com/docs/config#scroll"
       - key: scroll.divider
         label: Scroll Divider
         type: number
@@ -163,7 +163,7 @@ sections:
         example: "[scroll]\ndivider = 2.0"
         min: 1
         max: 50
-        doc_url: "https://raphamorim.io/rio/docs/#scroll"
+        doc_url: "https://rioterm.com/docs/config#scroll"
 
   # -- Navigation -------------------------------------------------------
   - name: Navigation
@@ -176,14 +176,14 @@ sections:
         description: tab navigation style
         example: "[navigation]\nmode = \"Bookmark\""
         options: [Bookmark, NativeTab, TopTab, BottomTab, Plain]
-        doc_url: "https://raphamorim.io/rio/docs/#navigation"
+        doc_url: "https://rioterm.com/docs/config#navigation"
       - key: navigation.clickable
         label: Clickable Tabs
         type: bool
         default: "true"
         description: allow clicking tabs to switch
         example: "[navigation]\nclickable = true"
-        doc_url: "https://raphamorim.io/rio/docs/#navigation"
+        doc_url: "https://rioterm.com/docs/config#navigation"
 
   # -- Colors -----------------------------------------------------------
   - name: Colors
@@ -201,7 +201,7 @@ sections:
           - "#282828"
           - "#1e1e2e"
           - "#002b36"
-        doc_url: "https://raphamorim.io/rio/docs/#colors"
+        doc_url: "https://rioterm.com/docs/config#colors"
       - key: colors.foreground
         label: Foreground
         type: color
@@ -214,35 +214,35 @@ sections:
           - "#c0caf5"
           - "#cdd6f4"
           - "#839496"
-        doc_url: "https://raphamorim.io/rio/docs/#colors"
+        doc_url: "https://rioterm.com/docs/config#colors"
       - key: colors.tabs-active
         label: Active Tab
         type: color
         default: "#F38BA3"
         description: active tab highlight color
         example: "[colors]\ntabs-active = \"#7aa2f7\""
-        doc_url: "https://raphamorim.io/rio/docs/#colors"
+        doc_url: "https://rioterm.com/docs/config#colors"
       - key: colors.cursor
         label: Cursor Color
         type: color
         default: "#F38BA3"
         description: cursor color
         example: "[colors]\ncursor = \"#f7768e\""
-        doc_url: "https://raphamorim.io/rio/docs/#colors"
+        doc_url: "https://rioterm.com/docs/config#colors"
       - key: colors.selection-foreground
         label: Selection FG
         type: color
         default: "#0F0D0E"
         description: text color in selections
         example: "[colors]\nselection-foreground = \"#1a1b26\""
-        doc_url: "https://raphamorim.io/rio/docs/#colors"
+        doc_url: "https://rioterm.com/docs/config#colors"
       - key: colors.selection-background
         label: Selection BG
         type: color
         default: "#F9F4DA"
         description: background color in selections
         example: "[colors]\nselection-background = \"#33467c\""
-        doc_url: "https://raphamorim.io/rio/docs/#colors"
+        doc_url: "https://rioterm.com/docs/config#colors"
 
   # -- Developer --------------------------------------------------------
   - name: Developer
@@ -256,11 +256,11 @@ sections:
         example: "[developer]\nlog-level = \"INFO\""
         hint: "logs go to stderr — redirect with rio 2> rio.log"
         options: ["OFF", ERROR, WARN, INFO, DEBUG, TRACE]
-        doc_url: "https://raphamorim.io/rio/docs/#developer"
+        doc_url: "https://rioterm.com/docs/config#developer"
       - key: developer.enable-fps-counter
         label: FPS Counter
         type: bool
         default: "false"
         description: show FPS overlay (for renderer debugging)
         example: "[developer]\nenable-fps-counter = true"
-        doc_url: "https://raphamorim.io/rio/docs/#developer"
+        doc_url: "https://rioterm.com/docs/config#developer"
