@@ -229,6 +229,12 @@ func (e *listEditor) View(width int) string {
 	return b.String()
 }
 
+// cursorOffset returns the line offset of the active cursor within the editor output.
+// the content uses this to scroll the viewport to keep the active item visible.
+func (e *listEditor) cursorOffset() int {
+	return e.cursor
+}
+
 func (e *listEditor) Value() string {
 	return strings.Join(e.items, "\n")
 }

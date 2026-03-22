@@ -1389,7 +1389,12 @@ func (c content) View() string {
 		cursorBottom := cl
 		if c.detail.editing && c.detail.editor != nil {
 			if _, ok := c.detail.editor.(InlineEditor); !ok {
-				cursorBottom += c.detail.editor.Height() + 1
+				// for list editors, track the active list cursor, not the editor bottom
+				if le, ok := c.detail.editor.(*listEditor); ok {
+					cursorBottom += le.cursorOffset() + 1
+				} else {
+					cursorBottom += c.detail.editor.Height() + 1
+				}
 			}
 		}
 		if cursorBottom >= c.scrollY+bodyH {
@@ -1934,7 +1939,7 @@ func (c content) renderBody(width int) string {
 
 		// build prefix and label (cursor/icon)
 		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
-		iconStyle := c.typeIconStyle(f.Type)
+		iconStyle := c.typeIconStyle(f.Type, val)
 		var prefix, label string
 		if isCursor {
 			prefix = c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
@@ -2054,13 +2059,18 @@ func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) strin
 
 // typeIconStyle returns a per-type color for field type icons.
 // mirrors the type badge colors in detail.go for visual consistency.
-func (c content) typeIconStyle(typ string) lipgloss.Style {
+// for color fields, colorHex tints the icon with the actual field value.
+func (c content) typeIconStyle(typ, colorHex string) lipgloss.Style {
 	switch typ {
 	case "number":
 		return c.theme.Secondary
 	case "enum":
 		return c.theme.Primary
 	case "color":
+		hex := normalizeHex(colorHex)
+		if hex != "" {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
+		}
 		return c.theme.Accent
 	case "bool":
 		return c.theme.Success

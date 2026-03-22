@@ -104,7 +104,8 @@ func (d detail) View(width, height int) string {
 }
 
 // typeBadgeStyle returns a styled badge for the field type with per-type coloring.
-func (d detail) typeBadgeStyle(typ string) lipgloss.Style {
+// for color fields, colorHex tints the badge with the actual field value.
+func (d detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
 	base := lipgloss.NewStyle().Bold(true).Padding(0, 1)
 	switch typ {
 	case "number":
@@ -112,6 +113,10 @@ func (d detail) typeBadgeStyle(typ string) lipgloss.Style {
 	case "enum":
 		return base.Background(d.theme.Palette.Primary).Foreground(d.theme.Palette.Base)
 	case "color":
+		hex := normalizeHex(colorHex)
+		if hex != "" {
+			return base.Background(lipgloss.Color(hex)).Foreground(d.theme.Palette.Base)
+		}
 		return base.Background(d.theme.Palette.Accent).Foreground(d.theme.Palette.Base)
 	case "bool":
 		return base.Background(d.theme.Palette.Success).Foreground(d.theme.Palette.Base)
@@ -147,7 +152,7 @@ func (d detail) viewBrowse(width, height int) string {
 		return b.String()
 	}
 
-	// type badge — color-coded per type
+	// type badge — color-coded per type (color fields use actual value)
 	icon := fieldTypeIcon[f.Widget]
 	if icon == "" {
 		icon = fieldTypeIcon[f.Type]
@@ -155,7 +160,19 @@ func (d detail) viewBrowse(width, height int) string {
 	if icon == "" {
 		icon = " "
 	}
-	badgeStyle := d.typeBadgeStyle(f.Type)
+	colorHex := ""
+	if f.Type == "color" {
+		colorHex = f.Default
+		if v, ok := d.values[f.Key]; ok {
+			colorHex = v
+		}
+		if d.editing {
+			if ce, ok := d.editor.(*colorEditor); ok {
+				colorHex = ce.PreviewValue()
+			}
+		}
+	}
+	badgeStyle := d.typeBadgeStyle(f.Type, colorHex)
 	b.WriteString(badgeStyle.Render(icon + " " + f.Type))
 
 	// version badges (inline with type badge)

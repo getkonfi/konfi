@@ -125,9 +125,23 @@ func (s sidebar) updateSearching(msg tea.KeyPressMsg) (sidebar, tea.Cmd) {
 		return s, nil
 	case "enter":
 		s.searching = false
+		// capture selection before clearing filter (cursor indexes into filtered)
+		selected := -1
+		if len(s.filtered) > 0 && s.cursor < len(s.filtered) {
+			selected = s.filtered[s.cursor]
+		}
 		s.search.SetValue("")
 		s.search.Blur()
 		s.refilter()
+		// restore cursor to the selected item's position in the full list
+		if selected >= 0 {
+			for i, idx := range s.filtered {
+				if idx == selected {
+					s.cursor = i
+					break
+				}
+			}
+		}
 		return s.selectCurrent(true)
 	case "down":
 		return s.moveDown()

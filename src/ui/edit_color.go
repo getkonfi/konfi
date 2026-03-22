@@ -261,11 +261,13 @@ func (e *colorEditor) viewWithPalette(width int) string {
 			label = label[:8]
 		}
 
+		var cell string
 		if i == e.palCursor && e.inPalette {
-			b.WriteString(e.th.Primary.Render("[") + sw + " " + e.th.Text.Bold(true).Render(label) + e.th.Primary.Render("]"))
+			cell = e.th.Primary.Render("[") + sw + " " + e.th.Text.Bold(true).Render(label) + e.th.Primary.Render("]")
 		} else {
-			b.WriteString(" " + sw + " " + e.th.Muted.Render(label) + " ")
+			cell = " " + sw + " " + e.th.Muted.Render(label) + " "
 		}
+		b.WriteString(lipgloss.NewStyle().Width(cellW).MaxWidth(cellW).Render(cell))
 		colPos++
 	}
 	b.WriteByte('\n')
