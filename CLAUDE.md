@@ -32,6 +32,8 @@ main → setup → ui → theme → pkg
 - `make build` — build binary
 - `make test` — run tests
 - `make lint` — golangci-lint
+- `make schema-verify` — full schema verification (network + introspection)
+- `make schema-check` — quick schema check (offline, no exec, strict)
 
 ## conventions
 - comments in lower case, be cheap on comments

@@ -1,6 +1,7 @@
 # build output
 bin/
 /konfigurator
+/src/schemaverify
 
 # IDE
 .idea/

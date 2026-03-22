@@ -54,13 +54,13 @@ test: ## clean cache and run all tests with gotestsum
 lint: ## run golangci-lint
 	@cd src && ../$(LINTER) run ./...
 
-schema-gen: ## generate schema.yaml files from upstream docs
-	@cd src && go run ./cmd/schemagen/
+schema-verify: ## full schema verification (network + introspection)
+	@cd src && go run ./cmd/schemaverify/
 
-schema-check: ## check schemas for drift against generators
-	@cd src && go run ./cmd/schemagen/ --check
+schema-check: ## quick schema check (offline, no exec)
+	@cd src && go run ./cmd/schemaverify/ --offline --no-exec --strict
 
 clean: ## remove build artifacts
 	rm -f konfigurator
 
-.PHONY: help tools run build test lint clean schema-gen schema-check
+.PHONY: help tools run build test lint clean schema-verify schema-check
