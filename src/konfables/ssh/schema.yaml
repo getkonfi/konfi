@@ -134,11 +134,12 @@ sections:
         hint: "prevents agent from trying every loaded key against the server"
       - key: AddKeysToAgent
         label: Add Keys to Agent
-        type: string
+        type: enum
         default: "no"
+        options: ["yes", "no", "ask", "confirm"]
         description: auto-add keys to ssh-agent on first use
         example: "Host *\n  AddKeysToAgent yes"
-        hint: "accepts `yes`, `no`, `ask`, `confirm`, or a TTL like `1h`"
+        hint: "also accepts a TTL like `1h` or `30m` (edit config directly)"
       - key: IdentityFile
         label: Identity File
         type: list
@@ -219,11 +220,12 @@ sections:
     fields:
       - key: ForwardAgent
         label: Forward Agent
-        type: string
+        type: enum
         default: "no"
+        options: ["yes", "no"]
         description: forward SSH agent to remote machine
         example: "Host trusted-server\n  ForwardAgent yes"
-        hint: "security risk on untrusted hosts; prefer `ProxyJump` when possible"
+        hint: "also accepts a socket path; security risk on untrusted hosts"
       - key: ForwardX11
         label: Forward X11
         type: enum

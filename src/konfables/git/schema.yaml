@@ -171,7 +171,7 @@ sections:
         label: Color Moved
         type: enum
         default: "no"
-        options: ["no", "default", "plain", "blocks", "zebra", "dimmed-zebra"]
+        options: ["no", "true", "default", "plain", "blocks", "zebra", "dimmed-zebra"]
         description: highlight moved lines in diff output
         example: "[diff]\n  colorMoved = dimmed-zebra"
       - key: diff.algorithm

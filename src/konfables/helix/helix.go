@@ -28,7 +28,7 @@ func (h *Helix) Info() konfables.AppInfo {
 		ConfigPath: h.Path,
 		Format:     "toml",
 		Icon:       "🧬",
-		NerdIcon:   "\uf893", //  code editor
+		NerdIcon:   "\uf121", // nf-fa-code
 	}
 }
 

@@ -15,6 +15,7 @@ sections:
       - key: font-family
         label: Font Family
         type: list
+        widget: font
         default: ""
         description: primary font family (repeatable for fallback chain)
         example: font-family = JetBrains Mono
@@ -24,6 +25,7 @@ sections:
       - key: font-family-bold
         label: Bold Font
         type: list
+        widget: font
         default: ""
         description: overrides primary font for bold (repeatable for fallback)
         example: font-family-bold = JetBrains Mono Bold
@@ -33,6 +35,7 @@ sections:
       - key: font-family-italic
         label: Italic Font
         type: list
+        widget: font
         default: ""
         description: overrides primary font for italic (repeatable for fallback)
         example: font-family-italic = JetBrains Mono Italic
@@ -42,6 +45,7 @@ sections:
       - key: font-family-bold-italic
         label: Bold Italic Font
         type: list
+        widget: font
         default: ""
         description: overrides primary font for bold italic (repeatable for fallback)
         example: font-family-bold-italic = JetBrains Mono Bold Italic
@@ -60,36 +64,70 @@ sections:
         since: 1.0.0
       - key: font-style
         label: Font Style
-        type: string
+        type: enum
         default: ""
-        description: named style variant (e.g. regular, medium, light)
+        description: style variant for the regular face
         example: font-style = medium
         hint: "ghostty +show-face — see resolved face names"
+        options:
+          - ""
+          - Regular
+          - Medium
+          - Light
+          - Thin
+          - ExtraLight
+          - SemiBold
+          - ExtraBold
+          - Black
+          - Condensed
+          - "false"
         doc_url: https://ghostty.org/docs/config/reference#font-style
         since: 1.0.0
       - key: font-style-bold
         label: Bold Style
-        type: string
+        type: enum
         default: ""
-        description: named style variant for bold weight
+        description: style variant for bold
         example: font-style-bold = bold
         hint: "ghostty +show-face — see resolved face names"
+        options:
+          - ""
+          - Bold
+          - SemiBold
+          - ExtraBold
+          - Black
+          - Medium
+          - "false"
         doc_url: https://ghostty.org/docs/config/reference#font-style-bold
         since: 1.0.0
       - key: font-style-italic
         label: Italic Style
-        type: string
+        type: enum
         default: ""
-        description: named style variant for italic
+        description: style variant for italic
         example: font-style-italic = italic
+        options:
+          - ""
+          - Italic
+          - Oblique
+          - Light Italic
+          - Medium Italic
+          - "false"
         doc_url: https://ghostty.org/docs/config/reference#font-style-italic
         since: 1.0.0
       - key: font-style-bold-italic
         label: Bold Italic Style
-        type: string
+        type: enum
         default: ""
-        description: named style variant for bold italic
+        description: style variant for bold italic
         example: font-style-bold-italic = bold italic
+        options:
+          - ""
+          - Bold Italic
+          - Bold Oblique
+          - SemiBold Italic
+          - ExtraBold Italic
+          - "false"
         doc_url: https://ghostty.org/docs/config/reference#font-style-bold-italic
         since: 1.0.0
       - key: font-feature
@@ -705,6 +743,7 @@ sections:
           - zsh
           - fish
           - elvish
+          - nushell
         hint: "none = disable all hooks"
         doc_url: https://ghostty.org/docs/config/reference#shell-integration
       - key: shell-integration-features
@@ -720,6 +759,12 @@ sections:
           - no-cursor
           - no-sudo
           - no-title
+          - ssh-env
+          - ssh-terminfo
+          - path
+          - no-ssh-env
+          - no-ssh-terminfo
+          - no-path
         hint: "prefix no- to disable a specific hook"
         doc_url: https://ghostty.org/docs/config/reference#shell-integration-features
       - key: scrollback-limit
@@ -786,8 +831,7 @@ sections:
           - "false"
           - "true"
           - clipboard
-          - primary
-        hint: "clipboard = Ctrl+V; primary = middle-click (X11)"
+        hint: "clipboard = Ctrl+V paste target"
         doc_url: https://ghostty.org/docs/config/reference#copy-on-select
       - key: clipboard-read
         label: Clipboard Read
@@ -879,19 +923,14 @@ sections:
         description: how character widths are calculated for layout
         options:
           - unicode
-          - wcswidth
           - legacy
-        hint: "unicode = UAX #11; wcswidth = libc; legacy = older compat"
+        hint: "unicode = UAX #11; legacy = older wcswidth-based compat"
         doc_url: https://ghostty.org/docs/config/reference#grapheme-width-method
       - key: desktop-notifications
         label: Notifications
-        type: enum
-        default: allow
-        description: whether apps can trigger desktop notifications (via OSC 9/777)
-        options:
-          - allow
-          - deny
-          - no-clipboard
+        type: bool
+        default: "true"
+        description: allow apps to trigger desktop notifications (via OSC 9/777)
         doc_url: https://ghostty.org/docs/config/reference#desktop-notifications
         since: 1.0.0
       - key: term
@@ -909,14 +948,15 @@ sections:
       - key: gtk-single-instance
         label: Single Instance
         type: enum
-        default: desktop
+        default: detect
         description: reuse running ghostty instance for new windows
-        example: gtk-single-instance = true
+        example: gtk-single-instance = detect
         options:
+          - detect
           - desktop
           - "false"
           - "true"
-        hint: "false = always spawn new process"
+        hint: "detect = auto; desktop is deprecated since 1.2"
         doc_url: https://ghostty.org/docs/config/reference#gtk-single-instance
         since: 1.0.0
       - key: gtk-tabs-location
@@ -928,8 +968,6 @@ sections:
         options:
           - top
           - bottom
-          - left
-          - right
           - hidden
         doc_url: https://ghostty.org/docs/config/reference#gtk-tabs-location
         since: 1.0.0
