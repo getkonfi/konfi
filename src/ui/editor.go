@@ -42,6 +42,12 @@ func editorForField(f pkg.Field) FieldEditor {
 		return &stringEditor{}
 	case "hook":
 		return &hookEditor{}
+	case "togglemap":
+		return &toggleMapEditor{}
+	case "structlist":
+		return &structListEditor{}
+	case "patternlist":
+		return &listEditor{}
 	}
 	switch f.Type {
 	case "number":

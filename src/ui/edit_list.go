@@ -24,6 +24,12 @@ type listEditor struct {
 
 	// widget-aware sub-editor (e.g. fontEditor for widget: font)
 	subEditor FieldEditor
+
+	// patternlist completion overlay
+	completionOptions  []string
+	completionFiltered []string
+	completionIdx      int
+	completionVisible  bool
 }
 
 func (e *listEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {
@@ -55,6 +61,11 @@ func (e *listEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	s.Focused.Prompt = th.Muted
 	s.Focused.Text = th.Text
 	e.input.SetStyles(s)
+
+	if field.Widget == "patternlist" && len(field.Options) > 0 {
+		e.completionOptions = make([]string, len(field.Options))
+		copy(e.completionOptions, field.Options)
+	}
 	return nil
 }
 
@@ -86,6 +97,30 @@ func (e *listEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	// plain textinput sub-editing mode
 	if e.editing {
 		if km, ok := msg.(tea.KeyPressMsg); ok {
+			// completion overlay navigation
+			if e.completionVisible && len(e.completionFiltered) > 0 {
+				switch km.String() {
+				case "up":
+					if e.completionIdx > 0 {
+						e.completionIdx--
+					}
+					return nil, false, false
+				case "down":
+					if e.completionIdx < len(e.completionFiltered)-1 {
+						e.completionIdx++
+					}
+					return nil, false, false
+				case "tab", "right":
+					e.input.SetValue(e.completionFiltered[e.completionIdx])
+					e.input.CursorEnd()
+					e.completionVisible = false
+					return nil, false, false
+				case "esc":
+					e.completionVisible = false
+					return nil, false, false
+				}
+			}
+
 			switch km.String() {
 			case "enter":
 				val := strings.TrimSpace(e.input.Value())
@@ -97,6 +132,7 @@ func (e *listEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 					}
 				}
 				e.editing = false
+				e.completionVisible = false
 				e.input.Blur()
 				if e.cursor >= len(e.items) && len(e.items) > 0 {
 					e.cursor = len(e.items) - 1
@@ -104,12 +140,14 @@ func (e *listEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 				return nil, false, false
 			case "esc":
 				e.editing = false
+				e.completionVisible = false
 				e.input.Blur()
 				return nil, false, false
 			}
 		}
 		var cmd tea.Cmd
 		e.input, cmd = e.input.Update(msg)
+		e.filterCompletions()
 		return cmd, false, false
 	}
 
@@ -174,6 +212,7 @@ func (e *listEditor) startEdit(idx int, value string) (tea.Cmd, bool, bool) {
 	// default: plain textinput
 	e.input.SetValue(value)
 	e.input.CursorEnd()
+	e.filterCompletions()
 	return e.input.Focus(), false, false
 }
 
@@ -221,12 +260,57 @@ func (e *listEditor) View(width int) string {
 		b.WriteString("    " + e.th.Primary.Render("+ ") + e.input.View())
 	}
 
+	// patternlist completion overlay
+	if e.editing && e.completionVisible && len(e.completionFiltered) > 0 {
+		maxShow := 6
+		end := min(len(e.completionFiltered), maxShow)
+		for i := 0; i < end; i++ {
+			b.WriteByte('\n')
+			display := e.completionFiltered[i]
+			maxW := width - 8
+			if maxW > 0 && len(display) > maxW {
+				display = display[:maxW-1] + "…"
+			}
+			if i == e.completionIdx {
+				b.WriteString("      " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))
+			} else {
+				b.WriteString("        " + e.th.Subtext.Render(display))
+			}
+		}
+		if len(e.completionFiltered) > maxShow {
+			b.WriteByte('\n')
+			b.WriteString("        " + e.th.Muted.Render(fmt.Sprintf("… %d more", len(e.completionFiltered)-maxShow)))
+		}
+	}
+
 	if !e.editing {
 		b.WriteByte('\n')
 		b.WriteString("    " + e.th.Muted.Render("a:add  d:delete  ⏎:edit  ^S:done  esc:cancel"))
 	}
 
 	return b.String()
+}
+
+func (e *listEditor) filterCompletions() {
+	if len(e.completionOptions) == 0 {
+		return
+	}
+	query := strings.ToLower(strings.TrimSpace(e.input.Value()))
+	if query == "" {
+		e.completionFiltered = e.completionOptions
+	} else {
+		var filtered []string
+		for _, opt := range e.completionOptions {
+			if strings.Contains(strings.ToLower(opt), query) {
+				filtered = append(filtered, opt)
+			}
+		}
+		e.completionFiltered = filtered
+	}
+	e.completionVisible = len(e.completionFiltered) > 0
+	if e.completionIdx >= len(e.completionFiltered) {
+		e.completionIdx = 0
+	}
 }
 
 // cursorOffset returns the line offset of the active cursor within the editor output.
@@ -246,6 +330,13 @@ func (e *listEditor) Height() int {
 	h := len(e.items)
 	if e.editing && e.editIdx >= len(e.items) {
 		h++ // new item line
+	}
+	if e.editing && e.completionVisible && len(e.completionFiltered) > 0 {
+		n := min(len(e.completionFiltered), 6)
+		h += n
+		if len(e.completionFiltered) > 6 {
+			h++ // "… N more" line
+		}
 	}
 	if !e.editing {
 		h++ // help line

@@ -995,6 +995,33 @@ sections:
         example: keybind = ctrl+shift+c=copy_to_clipboard
         hint: "repeated key — one per line | ghostty +list-keybinds, ghostty +list-actions --docs"
         doc_url: https://ghostty.org/docs/config/reference#keybind
+        widget: structlist
+        item_schema:
+          - name: keys
+            label: "Keys"
+            type: string
+            required: true
+            placeholder: "e.g. ctrl+shift+t"
+          - name: action
+            label: "Action"
+            type: enum
+            required: true
+            options:
+              - new_tab
+              - close_surface
+              - new_window
+              - close_window
+              - copy_to_clipboard
+              - paste_from_clipboard
+              - increase_font_size
+              - decrease_font_size
+              - reset_font_size
+              - scroll_page_up
+              - scroll_page_down
+              - toggle_fullscreen
+              - inspector:toggle
+              - reload_config
+        separator: "="
       - key: mouse-scroll-multiplier
         label: Scroll Multiplier
         type: number

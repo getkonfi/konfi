@@ -33,6 +33,10 @@ var fieldTypeIcon = map[string]string{
 	"slider":      "\U000F1A8A", // nf-md-tune_vertical
 	"path":        "\uf115",       // nf-fa-folder_open
 	"stylestring": "\uf893",       // nf-md-format_color_text
+	"hook":        "\uf0e7",       // nf-fa-bolt
+	"structlist":  "\uf00b",       // nf-fa-th_list
+	"patternlist": "\uf03a",       // nf-fa-list
+	"togglemap":   "\uf444",       // nf-md-toggle_switch
 }
 
 // row represents a navigable item in the field list — either a section header or a field.
@@ -406,11 +410,13 @@ func (c *content) openEditor() tea.Cmd {
 
 	e := editorForField(*f)
 
-	// for hook widgets, use raw JSON from FindValue (not MultiValueParser)
+	// for raw JSON widgets, use FindValue (not MultiValueParser)
 	initVal := c.detail.editOrigVal
-	if f.Widget == "hook" {
+	if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
 		if raw, ok := c.konfable.Parser().FindValue(c.config.Content(), f.Key); ok {
 			initVal = raw
+		} else if f.Widget == "structlist" {
+			initVal = ""
 		} else {
 			initVal = "[]"
 		}
@@ -479,8 +485,8 @@ func (c *content) commitEdit(value string) tea.Cmd {
 	oldValue := c.detail.editOrigVal
 	data := c.config.Content()
 
-	// hook widgets: write raw JSON via SetValue (not MultiValueParser)
-	if f.Widget == "hook" {
+	// raw JSON widgets: write via SetValue (not MultiValueParser)
+	if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
 		newData, err := c.konfable.Parser().SetValue(data, f.Key, value)
 		if err != nil {
 			return nil
@@ -1026,8 +1032,8 @@ func (c *content) refreshValues() {
 	for _, sec := range c.schema.Sections {
 		for i := range sec.Fields {
 			f := &sec.Fields[i]
-			if f.Widget == "hook" {
-				// hook widgets use raw JSON from FindValue
+			if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
+				// raw JSON widgets use FindValue directly
 				if v, ok := p.FindValue(data, f.Key); ok {
 					c.values[f.Key] = v
 				}
@@ -1420,6 +1426,8 @@ func (c content) View() string {
 					cursorBottom += le.cursorOffset() + 1
 				} else if he, ok := c.detail.editor.(*hookEditor); ok {
 					cursorBottom += he.cursorOffset() + 1
+				} else if se, ok := c.detail.editor.(*structListEditor); ok {
+					cursorBottom += se.cursorOffset() + 1
 				} else {
 					cursorBottom += c.detail.editor.Height() + 1
 				}

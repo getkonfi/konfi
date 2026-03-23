@@ -65,12 +65,56 @@ sections:
         default: "[]"
         description: tool patterns to always allow
         hint: 'e.g. Bash(*), Read, Write, Edit'
+        widget: patternlist
+        options:
+          - "Bash(*)"
+          - "Bash(git:*)"
+          - "Bash(npm:*)"
+          - "Bash(make:*)"
+          - "Bash(cargo:*)"
+          - "Bash(go:*)"
+          - "Bash(pip:*)"
+          - "Bash(docker:*)"
+          - "Read(*)"
+          - "Read(~/.config:*)"
+          - "Write(*)"
+          - "Write(~/.config:*)"
+          - "Edit(*)"
+          - "Glob(*)"
+          - "Grep(*)"
+          - "WebFetch(*)"
+          - "WebSearch(*)"
+          - "Agent(*)"
+          - "Skill(*)"
+          - "NotebookEdit(*)"
       - key: permissions.deny
         label: Deny Rules
         type: list
         default: "[]"
         description: tool patterns to always deny
         hint: 'e.g. Bash(sudo:*), Bash(rm -rf:*)'
+        widget: patternlist
+        options:
+          - "Bash(*)"
+          - "Bash(git:*)"
+          - "Bash(npm:*)"
+          - "Bash(make:*)"
+          - "Bash(cargo:*)"
+          - "Bash(go:*)"
+          - "Bash(pip:*)"
+          - "Bash(docker:*)"
+          - "Read(*)"
+          - "Read(~/.config:*)"
+          - "Write(*)"
+          - "Write(~/.config:*)"
+          - "Edit(*)"
+          - "Glob(*)"
+          - "Grep(*)"
+          - "WebFetch(*)"
+          - "WebSearch(*)"
+          - "Agent(*)"
+          - "Skill(*)"
+          - "NotebookEdit(*)"
 
   - name: Plugins
     key: ""
@@ -81,6 +125,11 @@ sections:
         default: "[]"
         description: map of plugin IDs to enabled state
         hint: "plugin-name@publisher format"
+        widget: togglemap
+        options:
+          - "context7"
+          - "sequential-thinking"
+          - "memory"
 
   - name: Hooks
     key: hooks
@@ -92,12 +141,24 @@ sections:
         default: "[]"
         description: hooks that run before each tool invocation
         hint: "matcher field filters by tool name"
+        options:
+          - "Bash"
+          - "Read"
+          - "Write"
+          - "Edit"
+          - "Glob"
+          - "Grep"
+          - "WebFetch"
+          - "Agent"
+          - "*"
       - key: hooks.Stop
         label: Stop
         type: list
         widget: hook
         default: "[]"
         description: hooks that run when Claude finishes a response
+        options:
+          - "*"
       - key: hooks.Notification
         label: Notification
         type: list
@@ -105,18 +166,26 @@ sections:
         default: "[]"
         description: hooks that run on notification events
         hint: "matcher: permission_prompt, idle_prompt"
+        options:
+          - "permission_prompt"
+          - "idle_prompt"
+          - "*"
       - key: hooks.UserPromptSubmit
         label: User Prompt Submit
         type: list
         widget: hook
         default: "[]"
         description: hooks that run when a user prompt is submitted
+        options:
+          - "*"
       - key: hooks.SessionStart
         label: Session Start
         type: list
         widget: hook
         default: "[]"
         description: hooks that run at the start of a session
+        options:
+          - "*"
 
   - name: Status Line
     key: statusLine

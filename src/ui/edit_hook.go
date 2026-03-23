@@ -41,6 +41,12 @@ type hookEditor struct {
 	editIdx  int // index being edited, or len(groups) for append
 	editStep int // 0=matcher, 1=command, 2=timeout
 	editBuf  hookGroup
+
+	// matcher completion overlay (editStep==0 only)
+	matcherOptions  []string
+	matcherFiltered []string
+	matcherCompIdx  int
+	matcherCompVisible bool
 }
 
 func (e *hookEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {
@@ -62,23 +68,57 @@ func (e *hookEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	s.Focused.Prompt = th.Muted
 	s.Focused.Text = th.Text
 	e.input.SetStyles(s)
+
+	if len(field.Options) > 0 {
+		e.matcherOptions = make([]string, len(field.Options))
+		copy(e.matcherOptions, field.Options)
+	}
 	return nil
 }
 
 func (e *hookEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	if e.editing {
 		if km, ok := msg.(tea.KeyPressMsg); ok {
+			// matcher completion overlay navigation (step 0 only)
+			if e.editStep == 0 && e.matcherCompVisible && len(e.matcherFiltered) > 0 {
+				switch km.String() {
+				case "up":
+					if e.matcherCompIdx > 0 {
+						e.matcherCompIdx--
+					}
+					return nil, false, false
+				case "down":
+					if e.matcherCompIdx < len(e.matcherFiltered)-1 {
+						e.matcherCompIdx++
+					}
+					return nil, false, false
+				case "tab", "right":
+					e.input.SetValue(e.matcherFiltered[e.matcherCompIdx])
+					e.input.CursorEnd()
+					e.matcherCompVisible = false
+					return nil, false, false
+				case "esc":
+					e.matcherCompVisible = false
+					return nil, false, false
+				}
+			}
+
 			switch km.String() {
 			case "enter":
+				e.matcherCompVisible = false
 				return e.advanceStep()
 			case "esc":
 				e.editing = false
+				e.matcherCompVisible = false
 				e.input.Blur()
 				return nil, false, false
 			}
 		}
 		var cmd tea.Cmd
 		e.input, cmd = e.input.Update(msg)
+		if e.editStep == 0 {
+			e.filterMatcherCompletions()
+		}
 		return cmd, false, false
 	}
 
@@ -239,6 +279,29 @@ func (e *hookEditor) View(width int) string {
 		b.WriteString("    " + e.th.Primary.Render("+ ") + e.th.Muted.Render(label+": ") + e.input.View())
 	}
 
+	// matcher completion overlay
+	if e.editing && e.editStep == 0 && e.matcherCompVisible && len(e.matcherFiltered) > 0 {
+		maxShow := 6
+		end := min(len(e.matcherFiltered), maxShow)
+		for i := 0; i < end; i++ {
+			b.WriteByte('\n')
+			display := e.matcherFiltered[i]
+			maxW := width - 8
+			if maxW > 0 && len(display) > maxW {
+				display = display[:maxW-1] + "…"
+			}
+			if i == e.matcherCompIdx {
+				b.WriteString("      " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))
+			} else {
+				b.WriteString("        " + e.th.Subtext.Render(display))
+			}
+		}
+		if len(e.matcherFiltered) > maxShow {
+			b.WriteByte('\n')
+			b.WriteString("        " + e.th.Muted.Render(fmt.Sprintf("… %d more", len(e.matcherFiltered)-maxShow)))
+		}
+	}
+
 	if !e.editing {
 		b.WriteByte('\n')
 		b.WriteString("    " + e.th.Muted.Render("a:add  d:delete  ⏎:edit  ^S:done  esc:cancel"))
@@ -278,6 +341,14 @@ func (e *hookEditor) Height() int {
 		if e.editIdx >= len(e.groups) {
 			h++ // new item placeholder
 		}
+		// completion overlay lines
+		if e.editStep == 0 && e.matcherCompVisible && len(e.matcherFiltered) > 0 {
+			shown := min(len(e.matcherFiltered), 6)
+			h += shown
+			if len(e.matcherFiltered) > 6 {
+				h++ // "… N more" line
+			}
+		}
 	}
 	if !e.editing {
 		h++ // help line
@@ -286,6 +357,28 @@ func (e *hookEditor) Height() int {
 		h = 1
 	}
 	return h
+}
+
+func (e *hookEditor) filterMatcherCompletions() {
+	if len(e.matcherOptions) == 0 {
+		return
+	}
+	query := strings.ToLower(strings.TrimSpace(e.input.Value()))
+	if query == "" {
+		e.matcherFiltered = e.matcherOptions
+	} else {
+		var filtered []string
+		for _, opt := range e.matcherOptions {
+			if strings.Contains(strings.ToLower(opt), query) {
+				filtered = append(filtered, opt)
+			}
+		}
+		e.matcherFiltered = filtered
+	}
+	e.matcherCompVisible = len(e.matcherFiltered) > 0
+	if e.matcherCompIdx >= len(e.matcherFiltered) {
+		e.matcherCompIdx = 0
+	}
 }
 
 // groupSummary returns a one-line display string for a hook group.
