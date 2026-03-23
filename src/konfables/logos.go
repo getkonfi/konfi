@@ -15,6 +15,7 @@ var Logos = map[string]pkg.PixelArt{
 	"ssh":          sshLogo,
 	"pacman":       pacmanLogo,
 	"dconf":        dconfLogo,
+	"claude":       claudeLogo,
 }
 
 // color aliases for readability
@@ -31,6 +32,8 @@ const (
 	lb uint8 = 75  // light blue
 	mb uint8 = 111 // medium blue
 	gn uint8 = 34  // green (tmux)
+	co uint8 = 173 // coral (claude)
+	sa uint8 = 180 // salmon (claude)
 )
 
 // ghostty — ghost silhouette with eyes, wavy bottom
@@ -281,5 +284,24 @@ var dconfLogo = pkg.PixelArt{
 		{__, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+	},
+}
+
+// claude — sparkle/diamond in coral and salmon (anthropic brand)
+var claudeLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, __, __, __, __, co, co, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, co, sa, sa, co, __, __, __, __, __, __},
+		{__, __, __, __, __, co, sa, sa, sa, sa, co, __, __, __, __, __},
+		{__, __, __, __, co, sa, sa, sa, sa, sa, sa, co, __, __, __, __},
+		{__, __, __, co, sa, sa, sa, wh, wh, sa, sa, sa, co, __, __, __},
+		{__, __, co, sa, sa, sa, wh, wh, wh, wh, sa, sa, sa, co, __, __},
+		{__, __, co, sa, sa, sa, wh, wh, wh, wh, sa, sa, sa, co, __, __},
+		{__, __, __, co, sa, sa, sa, wh, wh, sa, sa, sa, co, __, __, __},
+		{__, __, __, __, co, sa, sa, sa, sa, sa, sa, co, __, __, __, __},
+		{__, __, __, __, __, co, sa, sa, sa, sa, co, __, __, __, __, __},
+		{__, __, __, __, __, __, co, sa, sa, co, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, co, co, __, __, __, __, __, __, __},
 	},
 }

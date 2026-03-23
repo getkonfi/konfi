@@ -23,6 +23,7 @@ var validWidgets = map[string]bool{
 	"slider":      true,
 	"path":        true,
 	"stylestring": true,
+	"hook":        true,
 }
 
 // checkStructural runs offline structural validation on a single schema file.

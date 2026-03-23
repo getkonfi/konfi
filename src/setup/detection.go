@@ -2,7 +2,9 @@ package setup
 
 import (
 	"context"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -11,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/emin/konfigurator/konfables/alacritty"
+	"github.com/emin/konfigurator/konfables/claude"
 	"github.com/emin/konfigurator/konfables/dconf"
 	"github.com/emin/konfigurator/konfables/ghostty"
 	"github.com/emin/konfigurator/konfables/git"
@@ -85,6 +88,15 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"pacman", func() Konfable {
 		return pacman.New(pkg.NewFilePersister("/etc/pacman.conf"))
+	}, false, nil},
+	{"claude", func() Konfable {
+		home, _ := os.UserHomeDir()
+		cwd, _ := os.Getwd()
+		return claude.New(claude.NewTieredPersister(
+			filepath.Join(home, ".claude", "settings.json"),
+			filepath.Join(home, ".claude", "settings.local.json"),
+			filepath.Join(cwd, ".claude", "settings.json"),
+		))
 	}, false, nil},
 }
 

@@ -79,6 +79,26 @@ func (cf *ConfigFile) Save(ctx context.Context) error {
 	return nil
 }
 
+// TierOf returns which tier a key comes from, or "" if the persister doesn't support tiers.
+func (cf *ConfigFile) TierOf(key string) string {
+	cf.mu.Lock()
+	defer cf.mu.Unlock()
+	if tr, ok := cf.persister.(TierReporter); ok {
+		return tr.TierOf(key)
+	}
+	return ""
+}
+
+// Tiers returns all tiers that define a key, or nil if the persister doesn't support tiers.
+func (cf *ConfigFile) Tiers(key string) []string {
+	cf.mu.Lock()
+	defer cf.mu.Unlock()
+	if tr, ok := cf.persister.(TierReporter); ok {
+		return tr.Tiers(key)
+	}
+	return nil
+}
+
 // Reload re-reads data from the persister, resetting both original and current.
 func (cf *ConfigFile) Reload(ctx context.Context) error {
 	data, err := cf.persister.Load(ctx)

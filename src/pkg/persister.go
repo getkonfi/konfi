@@ -15,3 +15,10 @@ type Watchable interface {
 	Watch(onChange func()) error
 	Unwatch()
 }
+
+// TierReporter is an optional interface for multi-tier persisters.
+// it exposes which config tier (e.g. "global", "local", "project") owns a key.
+type TierReporter interface {
+	TierOf(key string) string   // highest-precedence tier owning this key
+	Tiers(key string) []string  // all tiers that define this key, highest first
+}
