@@ -136,6 +136,8 @@ func (e *hookEditor) startEdit(idx int) (tea.Cmd, bool, bool) {
 	e.editIdx = idx
 	e.editStep = 0
 	e.editBuf = e.groups[idx]
+	// deep-copy the hooks slice so edits don't alias the original backing array
+	e.editBuf.Hooks = append([]hookItem(nil), e.editBuf.Hooks...)
 	if len(e.editBuf.Hooks) == 0 {
 		e.editBuf.Hooks = []hookItem{{Type: "command"}}
 	}
@@ -249,7 +251,11 @@ func (e *hookEditor) View(width int) string {
 func (e *hookEditor) cursorOffset() int {
 	if e.editing && e.editIdx < len(e.groups) {
 		// editing existing: item line + input line below
-		return e.cursor + 1
+		return e.editIdx + 1
+	}
+	if e.editing && e.editIdx >= len(e.groups) {
+		// adding new: input renders after all existing groups
+		return len(e.groups)
 	}
 	return e.cursor
 }

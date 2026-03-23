@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strconv"
+
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
 
@@ -66,7 +68,7 @@ func formatValue(value, fieldType, configFormat string) string {
 	if configFormat == "toml" {
 		switch fieldType {
 		case "string", "color", "enum", "multi":
-			return `"` + value + `"`
+			return strconv.Quote(value)
 		}
 	}
 	return value

@@ -258,7 +258,9 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				c.scrollY--
 			}
 		case "J", "shift+down":
-			c.detail.scrollY++
+			if c.detail.scrollY < 500 {
+				c.detail.scrollY++
+			}
 		case "K", "shift+up":
 			if c.detail.scrollY > 0 {
 				c.detail.scrollY--
