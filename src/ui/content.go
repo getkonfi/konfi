@@ -404,9 +404,16 @@ func (c *content) openEditor() tea.Cmd {
 
 	e := editorForField(*f)
 
-	// for list fields, resolve the init value based on which editor was chosen
+	// for hook widgets, use raw JSON from FindValue (not MultiValueParser)
 	initVal := c.detail.editOrigVal
-	if f.Type == "list" {
+	if f.Widget == "hook" {
+		if raw, ok := c.konfable.Parser().FindValue(c.config.Content(), f.Key); ok {
+			initVal = raw
+		} else {
+			initVal = "[]"
+		}
+	} else if f.Type == "list" {
+		// for list fields, resolve the init value based on which editor was chosen
 		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
 			if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
 				if _, isListEd := e.(*listEditor); isListEd {
@@ -469,6 +476,18 @@ func (c *content) commitEdit(value string) tea.Cmd {
 	f := c.fields[c.detail.editField]
 	oldValue := c.detail.editOrigVal
 	data := c.config.Content()
+
+	// hook widgets: write raw JSON via SetValue (not MultiValueParser)
+	if f.Widget == "hook" {
+		newData, err := c.konfable.Parser().SetValue(data, f.Key, value)
+		if err != nil {
+			return nil
+		}
+		c.config.SetContent(newData)
+		c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
+		c.refreshValues()
+		return c.settingChangedCmd(f.Key, value)
+	}
 
 	// list fields use MultiValueParser
 	if f.Type == "list" {
@@ -1005,7 +1024,12 @@ func (c *content) refreshValues() {
 	for _, sec := range c.schema.Sections {
 		for i := range sec.Fields {
 			f := &sec.Fields[i]
-			if f.Type == "list" && hasMVP {
+			if f.Widget == "hook" {
+				// hook widgets use raw JSON from FindValue
+				if v, ok := p.FindValue(data, f.Key); ok {
+					c.values[f.Key] = v
+				}
+			} else if f.Type == "list" && hasMVP {
 				if vals, ok := mvp.FindValues(data, f.Key); ok {
 					switch len(vals) {
 					case 0:
@@ -1389,9 +1413,11 @@ func (c content) View() string {
 		cursorBottom := cl
 		if c.detail.editing && c.detail.editor != nil {
 			if _, ok := c.detail.editor.(InlineEditor); !ok {
-				// for list editors, track the active list cursor, not the editor bottom
+				// for list/hook editors, track the active cursor, not the editor bottom
 				if le, ok := c.detail.editor.(*listEditor); ok {
 					cursorBottom += le.cursorOffset() + 1
+				} else if he, ok := c.detail.editor.(*hookEditor); ok {
+					cursorBottom += he.cursorOffset() + 1
 				} else {
 					cursorBottom += c.detail.editor.Height() + 1
 				}

@@ -38,6 +38,8 @@ func editorForField(f pkg.Field) FieldEditor {
 			return &stylestringEditor{}
 		}
 		return &stringEditor{}
+	case "hook":
+		return &hookEditor{}
 	}
 	switch f.Type {
 	case "number":

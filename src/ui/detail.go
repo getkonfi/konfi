@@ -175,6 +175,16 @@ func (d detail) viewBrowse(width, height int) string {
 	badgeStyle := d.typeBadgeStyle(f.Type, colorHex)
 	b.WriteString(badgeStyle.Render(icon + " " + f.Type))
 
+	// tier provenance badge
+	if d.config != nil {
+		if tier := d.config.TierOf(f.Key); tier != "" {
+			b.WriteString(" " + d.theme.Muted.Render("["+tier+"]"))
+			if tiers := d.config.Tiers(f.Key); len(tiers) > 1 {
+				b.WriteString(" " + d.theme.Subtext.Render("← overrides "+tiers[1]))
+			}
+		}
+	}
+
 	// version badges (inline with type badge)
 	if f.Since != "" {
 		b.WriteString(" " + d.theme.Success.Render("since "+f.Since))
