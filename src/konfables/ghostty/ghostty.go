@@ -34,7 +34,7 @@ func (g *Ghostty) Info() konfables.AppInfo {
 
 func (g *Ghostty) Name() string            { return "ghostty" }
 func (g *Ghostty) ConfigPath() string       { return g.Path }
-func (g *Ghostty) Parser() konfables.Parser { return &parser{} }
+func (g *Ghostty) Parser() konfables.Parser { return newParser() }
 func (g *Ghostty) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "ghostty --version" and returns the version string.

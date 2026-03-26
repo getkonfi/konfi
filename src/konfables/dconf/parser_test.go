@@ -14,7 +14,7 @@ var sampleData = []byte(`/org/gnome/desktop/wm/preferences/button-layout = appme
 `)
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	t.Run("existing key", func(t *testing.T) {
 		val, ok := p.FindValue(sampleData, "/org/gnome/desktop/wm/preferences/button-layout")
@@ -55,7 +55,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestFindLine(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	tests := []struct {
 		key    string
@@ -82,7 +82,7 @@ func TestFindLine(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	t.Run("replace existing", func(t *testing.T) {
 		got, err := p.SetValue(sampleData, "/org/gnome/desktop/wm/preferences/focus-mode", "sloppy")
@@ -119,7 +119,7 @@ func TestSetValue(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	t.Run("delete existing", func(t *testing.T) {
 		got, err := p.DeleteKey(sampleData, "/org/gnome/desktop/peripherals/touchpad/tap-to-click")
@@ -137,15 +137,18 @@ func TestDeleteKey(t *testing.T) {
 	})
 
 	t.Run("delete missing", func(t *testing.T) {
-		_, err := p.DeleteKey(sampleData, "nonexistent")
-		if err == nil {
-			t.Error("expected error when deleting missing key")
+		got, err := p.DeleteKey(sampleData, "nonexistent")
+		if err != nil {
+			t.Errorf("DeleteKey(missing): %v", err)
+		}
+		if !bytes.Equal(got, sampleData) {
+			t.Error("DeleteKey(missing) should return data unchanged")
 		}
 	})
 }
 
 func TestListKeys(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	keys := p.ListKeys(sampleData)
 
 	if len(keys) != 6 {
@@ -168,7 +171,7 @@ func TestListKeys(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	updated, err := p.SetValue(sampleData, "/org/gnome/desktop/wm/preferences/num-workspaces", "6")
 	if err != nil {
@@ -186,7 +189,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestSetValueIdempotent(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	got, err := p.SetValue(sampleData, "/org/gnome/desktop/wm/preferences/num-workspaces", "4")
 	if err != nil {
 		t.Fatal(err)
@@ -197,7 +200,7 @@ func TestSetValueIdempotent(t *testing.T) {
 }
 
 func TestRoundTripGolden(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	src := []byte(`/org/gnome/desktop/wm/preferences/button-layout = appmenu:minimize,maximize,close
 /org/gnome/desktop/wm/preferences/focus-mode = click
@@ -406,7 +409,7 @@ func FuzzParser(f *testing.F) {
 	f.Add([]byte("path/key = value with spaces\n"), "path/key")
 	f.Add([]byte("a/b = c\nd/e = f\n"), "a/b")
 
-	p := &parser{}
+	p := newParser()
 	f.Fuzz(func(t *testing.T, data []byte, key string) {
 		p.FindValue(data, key)
 		p.FindLine(data, key)

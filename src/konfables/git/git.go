@@ -36,7 +36,7 @@ func (g *Git) Info() konfables.AppInfo {
 
 func (g *Git) Name() string             { return "git" }
 func (g *Git) ConfigPath() string       { return g.Path }
-func (g *Git) Parser() konfables.Parser { return &parser{} }
+func (g *Git) Parser() konfables.Parser { return newParser() }
 func (g *Git) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "git --version" and parses "git version X.Y.Z".

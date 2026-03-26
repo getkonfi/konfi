@@ -13,7 +13,7 @@ org.gnome.desktop.background/primary-color = #023c88
 `)
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	t.Run("existing key", func(t *testing.T) {
 		val, ok := p.FindValue(sampleData, "org.gnome.desktop.interface/color-scheme")
@@ -44,7 +44,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestFindLine(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	tests := []struct {
 		key    string
@@ -71,7 +71,7 @@ func TestFindLine(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	t.Run("replace existing", func(t *testing.T) {
 		got, err := p.SetValue(sampleData, "org.gnome.desktop.interface/color-scheme", "default")
@@ -109,7 +109,7 @@ func TestSetValue(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	t.Run("delete existing", func(t *testing.T) {
 		got, err := p.DeleteKey(sampleData, "org.gnome.desktop.interface/enable-animations")
@@ -128,15 +128,18 @@ func TestDeleteKey(t *testing.T) {
 	})
 
 	t.Run("delete missing", func(t *testing.T) {
-		_, err := p.DeleteKey(sampleData, "nonexistent")
-		if err == nil {
-			t.Error("expected error when deleting missing key")
+		got, err := p.DeleteKey(sampleData, "nonexistent")
+		if err != nil {
+			t.Errorf("DeleteKey(missing): %v", err)
+		}
+		if !bytes.Equal(got, sampleData) {
+			t.Error("DeleteKey(missing) should return data unchanged")
 		}
 	})
 }
 
 func TestListKeys(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	keys := p.ListKeys(sampleData)
 
 	if len(keys) != 5 {
@@ -158,7 +161,7 @@ func TestListKeys(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// set a new value, read it back
 	updated, err := p.SetValue(sampleData, "org.gnome.desktop.interface/cursor-size", "48")
@@ -178,7 +181,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestSetValueIdempotent(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	got, err := p.SetValue(sampleData, "org.gnome.desktop.interface/cursor-size", "24")
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +192,7 @@ func TestSetValueIdempotent(t *testing.T) {
 }
 
 func TestRoundTripGolden(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	src := []byte(`org.gnome.desktop.interface/color-scheme = prefer-dark
 org.gnome.desktop.interface/gtk-theme = Adwaita
@@ -264,7 +267,7 @@ func FuzzParser(f *testing.F) {
 	f.Add([]byte("schema/key = value with spaces\n"), "schema/key")
 	f.Add([]byte("a/b = c\nd/e = f\n"), "a/b")
 
-	p := &parser{}
+	p := newParser()
 	f.Fuzz(func(t *testing.T, data []byte, key string) {
 		p.FindValue(data, key)
 		p.FindLine(data, key)

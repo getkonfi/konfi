@@ -34,7 +34,7 @@ func (r *Rio) Info() konfables.AppInfo {
 
 func (r *Rio) Name() string             { return "rio" }
 func (r *Rio) ConfigPath() string       { return r.Path }
-func (r *Rio) Parser() konfables.Parser { return &parser{} }
+func (r *Rio) Parser() konfables.Parser { return newParser() }
 func (r *Rio) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "rio --version" and parses "rio X.Y.Z".

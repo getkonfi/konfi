@@ -34,7 +34,7 @@ func (a *Alacritty) Info() konfables.AppInfo {
 
 func (a *Alacritty) Name() string             { return "alacritty" }
 func (a *Alacritty) ConfigPath() string       { return a.Path }
-func (a *Alacritty) Parser() konfables.Parser { return &parser{} }
+func (a *Alacritty) Parser() konfables.Parser { return newParser() }
 func (a *Alacritty) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "alacritty --version" and parses "alacritty X.Y.Z".

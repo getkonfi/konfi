@@ -28,7 +28,7 @@ Include = /etc/pacman.d/mirrorlist
 `
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	tests := []struct {
 		key  string
 		want string
@@ -54,7 +54,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestFindLine(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	tests := []struct {
 		key    string
 		wantOk bool
@@ -73,7 +73,7 @@ func TestFindLine(t *testing.T) {
 }
 
 func TestSetValueKV(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// replace existing key=value
 	data, err := p.SetValue([]byte(testConfig), "options.ParallelDownloads", "10")
@@ -97,7 +97,7 @@ func TestSetValueKV(t *testing.T) {
 }
 
 func TestSetValueBareDirective(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// enable a bare directive that doesn't exist
 	data, err := p.SetValue([]byte(testConfig), "options.VerbosePkgLists", "true")
@@ -131,7 +131,7 @@ func TestSetValueBareDirective(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// delete key=value
 	data, err := p.DeleteKey([]byte(testConfig), "options.ParallelDownloads")
@@ -161,7 +161,7 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestListKeys(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	keys := p.ListKeys([]byte(testConfig))
 	expected := map[string]bool{
 		"options.HoldPkg":           true,
@@ -186,7 +186,7 @@ func TestListKeys(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// set then find
 	data, err := p.SetValue([]byte(testConfig), "options.ParallelDownloads", "3")

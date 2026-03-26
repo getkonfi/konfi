@@ -17,7 +17,7 @@ func loadTestdata(t *testing.T, name string) []byte {
 }
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	t.Run("existing key", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestFindLine(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	tests := []struct {
@@ -86,7 +86,7 @@ func TestFindLine(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	t.Run("replace existing", func(t *testing.T) {
@@ -123,7 +123,7 @@ func TestSetValue(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	t.Run("delete existing", func(t *testing.T) {
@@ -149,7 +149,7 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestFindValues(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	data := []byte(`font-family = JetBrains Mono
 keybind = ctrl+c=copy
@@ -190,7 +190,7 @@ font-size = 14
 }
 
 func TestSetValues(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	data := []byte(`font-family = JetBrains Mono
 keybind = ctrl+c=copy
@@ -237,7 +237,7 @@ font-size = 14
 }
 
 func TestListKeys(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 	keys := p.ListKeys(data)
 
@@ -258,7 +258,7 @@ func TestListKeys(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	updated, err := p.SetValue(data, "cursor-style", "beam")
@@ -285,7 +285,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestRoundTripGolden(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// realistic config with comments, empty lines, various value types
 	src := []byte(`# ghostty terminal config
@@ -368,7 +368,7 @@ func FuzzParser(f *testing.F) {
 	f.Add([]byte("no-equals-here\n"), "no-equals-here")
 	f.Add([]byte("key = \n"), "key")
 
-	p := &parser{}
+	p := newParser()
 	f.Fuzz(func(t *testing.T, data []byte, key string) {
 		// none of these should panic
 		p.FindValue(data, key)

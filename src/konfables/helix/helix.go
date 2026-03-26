@@ -34,7 +34,7 @@ func (h *Helix) Info() konfables.AppInfo {
 
 func (h *Helix) Name() string             { return "helix" }
 func (h *Helix) ConfigPath() string       { return h.Path }
-func (h *Helix) Parser() konfables.Parser { return &parser{} }
+func (h *Helix) Parser() konfables.Parser { return newParser() }
 func (h *Helix) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "hx --version" and parses "helix X.Y.Z (hash)".

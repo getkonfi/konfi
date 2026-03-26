@@ -34,7 +34,7 @@ func (p *Pacman) Info() konfables.AppInfo {
 
 func (p *Pacman) Name() string             { return "pacman" }
 func (p *Pacman) ConfigPath() string       { return p.Path }
-func (p *Pacman) Parser() konfables.Parser { return &parser{} }
+func (p *Pacman) Parser() konfables.Parser { return newParser() }
 func (p *Pacman) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "pacman --version" and parses "Pacman vX.Y.Z".

@@ -16,7 +16,7 @@ func loadTestdata(t *testing.T, name string) []byte {
 }
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	tests := []struct {
@@ -49,7 +49,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestFindLine(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	tests := []struct {
@@ -80,7 +80,7 @@ func TestFindLine(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	tests := []struct {
 		name   string
@@ -108,7 +108,7 @@ func TestSetValue(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	tests := []struct {
 		name   string
@@ -134,7 +134,7 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestDeleteKeyMissing(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	got, err := p.DeleteKey(data, "nonexistent.key")
@@ -147,7 +147,7 @@ func TestDeleteKeyMissing(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	src := []byte(`# alacritty configuration
 
@@ -243,7 +243,7 @@ func FuzzParser(f *testing.F) {
 	f.Add([]byte("[section]\n"), "section.key")
 	f.Add([]byte("bare_key = true\n"), "bare_key")
 
-	p := &parser{}
+	p := newParser()
 	f.Fuzz(func(t *testing.T, data []byte, key string) {
 		p.FindValue(data, key)
 		p.FindLine(data, key)

@@ -36,7 +36,7 @@ func (s *Starship) Info() konfables.AppInfo {
 
 func (s *Starship) Name() string             { return "starship" }
 func (s *Starship) ConfigPath() string       { return s.Path }
-func (s *Starship) Parser() konfables.Parser { return &parser{} }
+func (s *Starship) Parser() konfables.Parser { return newParser() }
 func (s *Starship) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "starship --version" and parses "starship X.Y.Z".

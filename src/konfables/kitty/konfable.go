@@ -34,7 +34,7 @@ func (k *Kitty) Info() konfables.AppInfo {
 
 func (k *Kitty) Name() string            { return "kitty" }
 func (k *Kitty) ConfigPath() string       { return k.Path }
-func (k *Kitty) Parser() konfables.Parser { return &parser{} }
+func (k *Kitty) Parser() konfables.Parser { return newParser() }
 func (k *Kitty) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "kitty --version" and returns the version string.

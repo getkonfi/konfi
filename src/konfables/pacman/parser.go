@@ -8,10 +8,14 @@ import (
 
 // parser handles pacman.conf INI format: [section] headers, key = value pairs,
 // and bare directives (presence-based boolean flags like Color, ILoveCandy).
-// reuses the TOML line-level helpers for key=value lines.
-type parser struct{}
+type parser struct {
+	base pkg.SectionParser
+}
 
-// bareDirectives lists pacman options that are presence-based boolean flags.
+func newParser() *parser {
+	return &parser{base: pkg.SectionParser{SplitKey: pkg.SplitKeyFirst}}
+}
+
 var bareDirectives = map[string]bool{
 	"UseSyslog":              true,
 	"Color":                  true,
@@ -23,77 +27,49 @@ var bareDirectives = map[string]bool{
 }
 
 func (p *parser) FindValue(data []byte, key string) (string, bool) {
-	section, field := splitKey(key)
-	if section == "" {
-		val, _, found := pkg.FindTopLevelKey(data, field)
-		return val, found
-	}
-	// try key=value first
-	val, _, found := pkg.FindKeyInSection(data, section, field)
+	val, found := p.base.FindValue(data, key)
 	if found {
 		return val, true
 	}
-	// try bare directive
-	if _, found := findBareDirective(data, section, field); found {
-		return "true", true
+	section, field := pkg.SplitKeyFirst(key)
+	if section != "" {
+		if _, found := findBareDirective(data, section, field); found {
+			return "true", true
+		}
 	}
 	return "", false
 }
 
 func (p *parser) FindLine(data []byte, key string) (int, bool) {
-	section, field := splitKey(key)
-	if section == "" {
-		_, lineIdx, found := pkg.FindTopLevelKey(data, field)
-		return lineIdx, found
-	}
-	_, lineIdx, found := pkg.FindKeyInSection(data, section, field)
+	lineIdx, found := p.base.FindLine(data, key)
 	if found {
 		return lineIdx, true
 	}
-	lineIdx, found = findBareDirective(data, section, field)
-	return lineIdx, found
+	section, field := pkg.SplitKeyFirst(key)
+	if section != "" {
+		return findBareDirective(data, section, field)
+	}
+	return -1, false
 }
 
 func (p *parser) SetValue(data []byte, key, value string) ([]byte, error) {
-	section, field := splitKey(key)
-
+	_, field := pkg.SplitKeyFirst(key)
 	if bareDirectives[field] {
+		section, _ := pkg.SplitKeyFirst(key)
 		return setBareDirective(data, section, field, value)
 	}
-
-	// normal key=value handling
-	if section == "" {
-		_, lineIdx, found := pkg.FindTopLevelKey(data, field)
-		if found {
-			return pkg.ReplaceValueOnLine(data, lineIdx, value), nil
-		}
-		return pkg.InsertTopLevelKey(data, field, value), nil
-	}
-
-	_, lineIdx, found := pkg.FindKeyInSection(data, section, field)
-	if found {
-		return pkg.ReplaceValueOnLine(data, lineIdx, value), nil
-	}
-	return pkg.InsertKeyInSection(data, section, field, value), nil
+	return p.base.SetValue(data, key, value)
 }
 
 func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
-	section, field := splitKey(key)
-
+	section, field := pkg.SplitKeyFirst(key)
 	if section == "" {
-		_, lineIdx, found := pkg.FindTopLevelKey(data, field)
-		if !found {
-			return data, nil
-		}
-		return pkg.DeleteKeyOnLine(data, lineIdx), nil
+		return p.base.DeleteKey(data, key)
 	}
-
-	// try key=value
 	_, lineIdx, found := pkg.FindKeyInSection(data, section, field)
 	if found {
 		return pkg.DeleteKeyOnLine(data, lineIdx), nil
 	}
-	// try bare directive
 	lineIdx, found = findBareDirective(data, section, field)
 	if found {
 		return pkg.DeleteKeyOnLine(data, lineIdx), nil
@@ -116,7 +92,6 @@ func (p *parser) ListKeys(data []byte) []string {
 		}
 		k, _, ok := pkg.ParseKVLine(trimmed)
 		if !ok {
-			// bare directive: a single word with no = sign
 			if isValidDirective(trimmed) {
 				k = trimmed
 			} else {
@@ -132,7 +107,6 @@ func (p *parser) ListKeys(data []byte) []string {
 	return keys
 }
 
-// findBareDirective searches for a bare directive (no = sign) within a section.
 func findBareDirective(data []byte, section, key string) (int, bool) {
 	lines := strings.Split(string(data), "\n")
 	inSection := false
@@ -156,7 +130,6 @@ func findBareDirective(data []byte, section, key string) (int, bool) {
 	return -1, false
 }
 
-// setBareDirective handles set/unset for presence-based boolean flags.
 func setBareDirective(data []byte, section, field, value string) ([]byte, error) {
 	lineIdx, found := findBareDirective(data, section, field)
 
@@ -167,11 +140,9 @@ func setBareDirective(data []byte, section, field, value string) ([]byte, error)
 		return data, nil
 	}
 
-	// value is "true" or anything else — ensure directive is present
 	if found {
 		return data, nil
 	}
-	// also check if it exists as key=value and remove it first
 	_, kvIdx, kvFound := pkg.FindKeyInSection(data, section, field)
 	if kvFound {
 		data = pkg.DeleteKeyOnLine(data, kvIdx)
@@ -179,7 +150,6 @@ func setBareDirective(data []byte, section, field, value string) ([]byte, error)
 	return insertBareInSection(data, section, field), nil
 }
 
-// insertBareInSection adds a bare directive at the end of a section.
 func insertBareInSection(data []byte, section, field string) []byte {
 	lines := strings.Split(string(data), "\n")
 	sectionEnd := -1
@@ -207,7 +177,6 @@ func insertBareInSection(data []byte, section, field string) []byte {
 		return insertLine(lines, sectionEnd+1, field)
 	}
 
-	// section not found, append
 	result := string(data)
 	if !strings.HasSuffix(result, "\n") {
 		result += "\n"
@@ -227,7 +196,6 @@ func insertLine(lines []string, at int, content string) []byte {
 	return []byte(strings.Join(result, "\n"))
 }
 
-// isValidDirective checks if a line looks like a bare directive (single word, no special chars).
 func isValidDirective(s string) bool {
 	if s == "" {
 		return false
@@ -238,12 +206,4 @@ func isValidDirective(s string) bool {
 		}
 	}
 	return true
-}
-
-func splitKey(key string) (section, field string) {
-	idx := strings.IndexByte(key, '.')
-	if idx < 0 {
-		return "", key
-	}
-	return key[:idx], key[idx+1:]
 }

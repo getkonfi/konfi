@@ -31,5 +31,5 @@ func (k *Konfigurator) Info() konfables.AppInfo {
 
 func (k *Konfigurator) Name() string            { return "konfigurator" }
 func (k *Konfigurator) ConfigPath() string       { return k.Path }
-func (k *Konfigurator) Parser() konfables.Parser { return &parser{} }
+func (k *Konfigurator) Parser() konfables.Parser { return newParser() }
 func (k *Konfigurator) Schema() ([]byte, error)  { return schemaData, nil }

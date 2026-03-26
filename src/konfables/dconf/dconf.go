@@ -30,5 +30,5 @@ func (d *Dconf) Info() konfables.AppInfo {
 
 func (d *Dconf) Name() string             { return "dconf" }
 func (d *Dconf) ConfigPath() string       { return "" }
-func (d *Dconf) Parser() konfables.Parser { return &parser{} }
+func (d *Dconf) Parser() konfables.Parser { return newParser() }
 func (d *Dconf) Schema() ([]byte, error)  { return schemaData, nil }

@@ -17,7 +17,7 @@ func loadTestdata(t *testing.T, name string) []byte {
 }
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	t.Run("existing key", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestFindLine(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	tests := []struct {
@@ -73,7 +73,7 @@ func TestFindLine(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	t.Run("replace existing", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestSetValue(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	t.Run("delete existing", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestListKeys(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 	keys := p.ListKeys(data)
 
@@ -156,7 +156,7 @@ func TestListKeys(t *testing.T) {
 }
 
 func TestRoundTrip(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data := loadTestdata(t, "config.txt")
 
 	updated, err := p.SetValue(data, "some_key", "test")
@@ -183,7 +183,7 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestRoundTripGolden(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	src := []byte(`# konfigurator settings
 theme: catppuccin
@@ -256,7 +256,7 @@ func FuzzParser(f *testing.F) {
 	f.Add([]byte("a: b\nc: d\ne: f\n"), "c")
 	f.Add([]byte("no-colon-here\n"), "no-colon-here")
 
-	p := &parser{}
+	p := newParser()
 	f.Fuzz(func(t *testing.T, data []byte, key string) {
 		p.FindValue(data, key)
 		p.FindLine(data, key)

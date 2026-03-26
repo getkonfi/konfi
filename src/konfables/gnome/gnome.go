@@ -30,5 +30,5 @@ func (g *GNOME) Info() konfables.AppInfo {
 
 func (g *GNOME) Name() string             { return "gnome" }
 func (g *GNOME) ConfigPath() string       { return "" }
-func (g *GNOME) Parser() konfables.Parser { return &parser{} }
+func (g *GNOME) Parser() konfables.Parser { return newParser() }
 func (g *GNOME) Schema() ([]byte, error)  { return schemaData, nil }
