@@ -11,8 +11,9 @@ import (
 
 // KonfConfig holds konfigurator's own preferences.
 type KonfConfig struct {
-	Theme    string `yaml:"theme"`
-	LogLevel string `yaml:"log_level"`
+	Theme          string `yaml:"theme"`
+	LogLevel       string `yaml:"log_level"`
+	BrowseLoadsApp bool   `yaml:"browse_loads_app"`
 }
 
 func defaultConfig() *KonfConfig {

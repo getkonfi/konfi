@@ -18,6 +18,14 @@ sections:
           - tokyonight
           - gruvbox
           - nord
+  - name: Navigation
+    key: ""
+    fields:
+      - key: browse_loads_app
+        label: Browse Loads App
+        type: bool
+        default: "false"
+        description: load app content while browsing the sidebar instead of requiring Enter
   - name: Logging
     key: ""
     fields:

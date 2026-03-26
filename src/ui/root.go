@@ -539,21 +539,23 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AppSelectedMsg:
 		if msg.Index == -1 {
-			if msg.Confirmed {
+			if msg.Confirmed || r.app.Config.BrowseLoadsApp {
 				r.content.showDashboard()
 				r.status.status = ""
 			}
 			return r, nil
 		}
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
-			if !msg.Confirmed {
+			if !msg.Confirmed && !r.app.Config.BrowseLoadsApp {
 				return r, nil // browse only — don't load
 			}
 			k := r.allKonfables[msg.Index]
 			r.status.status = ""
 			cmd := r.content.loadApp(k)
 			cmds = append(cmds, cmd)
-			r.focusPane(paneContent)
+			if msg.Confirmed {
+				r.focusPane(paneContent)
+			}
 		}
 		return r, tea.Batch(cmds...)
 
@@ -649,7 +651,10 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.app.Config.Theme = msg.Value
 		case "log_level":
 			r.app.Config.LogLevel = msg.Value
+		case "browse_loads_app":
+			r.app.Config.BrowseLoadsApp = msg.Value == "true"
 		}
+		_ = setup.SaveConfig(r.app.Config)
 		return r, tea.Batch(cmds...)
 
 	case EditorExitMsg:
