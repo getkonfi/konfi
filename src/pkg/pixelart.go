@@ -75,6 +75,7 @@ const (
 	AnimFade           // alacritty radial fade-in
 	AnimWave           // hyprland color wave
 	AnimChomp          // pacman progressive jaw close/open
+	AnimDrip           // water drop ripple from configurable origin
 )
 
 // Pixel identifies a single pixel coordinate.
@@ -104,6 +105,10 @@ type AnimConfig struct {
 	ChompLayers [][]Pixel // pixel groups filled in order (layer 0 first)
 	ChompSeq    []int     // per-frame: number of layers filled (0 = open, len = closed)
 	ChompColor  uint8     // fill color for mouth pixels
+
+	// drip-specific
+	DripOrigin Pixel   // origin point for ripple expansion
+	DripBright []uint8 // brightness ramp (bright→base)
 }
 
 // Particle is a short-lived colored pixel for the flame effect.
@@ -171,6 +176,8 @@ func (s *AnimState) CurrentFrame() PixelArt {
 		s.applyWave(&frame)
 	case AnimChomp:
 		s.applyChomp(&frame)
+	case AnimDrip:
+		s.applyDrip(&frame)
 	}
 	return frame
 }
@@ -317,6 +324,50 @@ func (s *AnimState) applyChomp(frame *PixelArt) {
 		for _, p := range s.Config.ChompLayers[i] {
 			if p.Row >= 0 && p.Row < frame.Height && p.Col >= 0 && p.Col < frame.Width {
 				frame.Pixels[p.Row][p.Col] = s.Config.ChompColor
+			}
+		}
+	}
+}
+
+// applyDrip sends a brightness ripple outward from DripOrigin.
+func (s *AnimState) applyDrip(frame *PixelArt) {
+	if len(s.Config.DripBright) == 0 {
+		return
+	}
+
+	ox := float64(s.Config.DripOrigin.Col) + 0.5
+	oy := float64(s.Config.DripOrigin.Row) + 0.5
+
+	// max distance from origin to any corner
+	maxDist := 0.0
+	for _, cx := range []float64{0, float64(frame.Width)} {
+		for _, cy := range []float64{0, float64(frame.Height)} {
+			d := math.Sqrt((cx-ox)*(cx-ox) + (cy-oy)*(cy-oy))
+			if d > maxDist {
+				maxDist = d
+			}
+		}
+	}
+
+	ringPos := float64(s.Frame) / float64(s.Config.Frames) * maxDist * 1.3
+	ringWidth := 2.5
+
+	for y := 0; y < frame.Height; y++ {
+		for x := 0; x < frame.Width; x++ {
+			if s.Base.Pixels[y][x] == 0 {
+				continue
+			}
+			dx := float64(x) - ox + 0.5
+			dy := float64(y) - oy + 0.5
+			dist := math.Sqrt(dx*dx + dy*dy)
+			delta := math.Abs(dist - ringPos)
+			if delta < ringWidth {
+				t := delta / ringWidth
+				ci := int(t * float64(len(s.Config.DripBright)-1))
+				if ci >= len(s.Config.DripBright) {
+					ci = len(s.Config.DripBright) - 1
+				}
+				frame.Pixels[y][x] = s.Config.DripBright[ci]
 			}
 		}
 	}
