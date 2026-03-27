@@ -16,6 +16,10 @@ var Logos = map[string]pkg.PixelArt{
 	"pacman":       pacmanLogo,
 	"dconf":        dconfLogo,
 	"claude":       claudeLogo,
+	"gnome":        dconfLogo,
+	"kitty":        kittyLogo,
+	"helix":        helixLogo,
+	"rio":          rioLogo,
 }
 
 // color aliases for readability
@@ -34,6 +38,9 @@ const (
 	gn uint8 = 34  // green (tmux)
 	co uint8 = 173 // coral (claude)
 	sa uint8 = 180 // salmon (claude)
+	br uint8 = 130 // brown (kitty)
+	pu uint8 = 99  // purple (helix)
+	pk uint8 = 199 // pink (rio)
 )
 
 // ghostty — ghost silhouette with eyes, wavy bottom
@@ -55,7 +62,7 @@ var ghosttyLogo = pkg.PixelArt{
 	},
 }
 
-// alacritty — triangle/A mark in orange and yellow
+// alacritty — triangle/A mark in orange and yellow (no crossbar)
 var alacrittyLogo = pkg.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
@@ -64,7 +71,7 @@ var alacrittyLogo = pkg.PixelArt{
 		{__, __, __, __, __, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
 		{__, __, __, __, or, yl, yl, yl, yl, yl, yl, or, __, __, __, __},
 		{__, __, __, or, or, yl, yl, yl, yl, yl, yl, or, or, __, __, __},
-		{__, __, or, or, or, or, or, or, or, or, or, or, or, or, __, __},
+		{__, __, or, or, yl, yl, yl, __, __, yl, yl, yl, or, or, __, __},
 		{__, or, or, yl, yl, yl, __, __, __, __, yl, yl, yl, or, or, __},
 		{__, or, yl, yl, yl, __, __, __, __, __, __, yl, yl, yl, or, __},
 		{or, or, yl, yl, __, __, __, __, __, __, __, __, yl, yl, or, or},
@@ -142,8 +149,9 @@ var LogoAnims = map[string]pkg.AnimConfig{
 		Kind: pkg.AnimFade, Frames: 12, TickMs: 60,
 	},
 	"hyprland": {
-		Kind: pkg.AnimWave, Frames: 33, TickMs: 60,
-		WaveBright: []uint8{255, 195, 153, 111},
+		Kind: pkg.AnimDrip, Frames: 33, TickMs: 60,
+		DripOrigin: pkg.Pixel{Row: 0, Col: 7},
+		DripBright: []uint8{255, 195, 153, 111},
 	},
 	"pacman": {
 		Kind: pkg.AnimChomp, Frames: 25, TickMs: 100,
@@ -171,24 +179,45 @@ var LogoAnims = map[string]pkg.AnimConfig{
 			0, 0, 0, 0, 0,
 		},
 	},
+	"kitty": {
+		Kind: pkg.AnimBlink, Frames: 18, TickMs: 80,
+		BlinkPixels: []pkg.Pixel{
+			{Row: 3, Col: 3}, {Row: 3, Col: 4},
+			{Row: 3, Col: 11}, {Row: 3, Col: 12},
+		},
+		BlinkColor: br,
+		// slow cat blink
+		BlinkSeq: []bool{
+			true, true, true, true, true, true, true, true, true, true, true, true,
+			false, false, false, false, false,
+			true,
+		},
+	},
+	"helix": {
+		Kind: pkg.AnimWave, Frames: 33, TickMs: 60,
+		WaveBright: []uint8{255, 195, 153, 111},
+	},
+	"rio": {
+		Kind: pkg.AnimFade, Frames: 12, TickMs: 60,
+	},
 }
 
-// hyprland — abstract flowing wave/swirl
+// hyprland — water drop with glossy highlight
 var hyprlandLogo = pkg.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __, __, __},
-		{__, __, __, lb, lb, mb, mb, lb, lb, __, __, __, __, __, __, __},
-		{__, __, lb, lb, __, __, mb, mb, lb, lb, __, __, __, __, __, __},
-		{__, __, lb, __, __, __, __, mb, mb, lb, lb, lb, __, __, __, __},
-		{__, __, __, __, __, __, __, __, mb, mb, mb, lb, lb, __, __, __},
-		{__, __, __, __, __, __, __, __, __, __, mb, __, __, lb, __, __},
-		{__, __, lb, __, __, mb, __, __, __, __, __, __, __, __, __, __},
-		{__, __, lb, lb, mb, mb, mb, __, __, __, __, __, __, lb, __, __},
-		{__, __, __, __, lb, lb, mb, mb, __, __, __, __, lb, lb, __, __},
-		{__, __, __, __, __, lb, lb, mb, mb, __, __, lb, lb, __, __, __},
-		{__, __, __, __, __, __, lb, lb, mb, mb, lb, lb, __, __, __, __},
-		{__, __, __, __, __, __, __, __, lb, lb, lb, __, __, __, __, __},
+		{__, __, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, lb, mb, mb, lb, __, __, __, __, __, __},
+		{__, __, __, __, __, lb, mb, mb, mb, mb, lb, __, __, __, __, __},
+		{__, __, __, __, lb, mb, mb, mb, mb, mb, mb, lb, __, __, __, __},
+		{__, __, __, lb, lb, mb, mb, mb, mb, mb, mb, lb, lb, __, __, __},
+		{__, __, __, lb, mb, mb, wh, wh, mb, mb, mb, mb, lb, __, __, __},
+		{__, __, lb, lb, mb, mb, wh, mb, mb, mb, mb, mb, lb, lb, __, __},
+		{__, __, lb, mb, mb, mb, mb, mb, mb, mb, mb, mb, mb, lb, __, __},
+		{__, __, lb, lb, mb, mb, mb, mb, mb, mb, mb, mb, lb, lb, __, __},
+		{__, __, __, lb, lb, mb, mb, mb, mb, mb, mb, lb, lb, __, __, __},
+		{__, __, __, __, lb, lb, lb, mb, mb, lb, lb, lb, __, __, __, __},
+		{__, __, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __},
 	},
 }
 
@@ -303,5 +332,62 @@ var claudeLogo = pkg.PixelArt{
 		{__, __, __, __, __, co, sa, sa, sa, sa, co, __, __, __, __, __},
 		{__, __, __, __, __, __, co, sa, sa, co, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, co, co, __, __, __, __, __, __, __},
+	},
+}
+
+// kitty — cat peeking over terminal screen
+var kittyLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, br, br, __, __, __, __, __, __, __, __, __, __, br, br, __},
+		{__, br, br, br, __, __, __, __, __, __, __, __, br, br, br, __},
+		{__, br, br, br, br, br, br, br, br, br, br, br, br, br, br, __},
+		{__, br, br, yl, yl, br, br, br, br, br, br, yl, yl, br, br, __},
+		{__, br, br, br, br, br, br, dk, br, br, br, br, br, br, br, __},
+		{__, __, br, br, br, br, dk, br, br, dk, br, br, br, br, __, __},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, dk, dk, dk, wh, wh, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+	},
+}
+
+// helix — double helix strands in purple and cyan
+var helixLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, __, pu, pu, __, __, __, __, __, __, cy, cy, __, __, __},
+		{__, __, __, __, pu, pu, __, __, __, __, cy, cy, __, __, __, __},
+		{__, __, __, __, __, pu, pu, __, __, cy, cy, __, __, __, __, __},
+		{__, __, __, __, __, __, pu, cy, cy, pu, __, __, __, __, __, __},
+		{__, __, __, __, __, cy, cy, __, __, pu, pu, __, __, __, __, __},
+		{__, __, __, __, cy, cy, __, __, __, __, pu, pu, __, __, __, __},
+		{__, __, __, cy, cy, __, __, __, __, __, __, pu, pu, __, __, __},
+		{__, __, __, __, cy, cy, __, __, __, __, pu, pu, __, __, __, __},
+		{__, __, __, __, __, cy, cy, __, __, pu, pu, __, __, __, __, __},
+		{__, __, __, __, __, __, cy, pu, pu, cy, __, __, __, __, __, __},
+		{__, __, __, __, __, pu, pu, __, __, cy, cy, __, __, __, __, __},
+		{__, __, __, __, pu, pu, __, __, __, __, cy, cy, __, __, __, __},
+	},
+}
+
+// rio — dark face with gradient border (pink→cyan) and white eyes
+var rioLogo = pkg.PixelArt{
+	Width: 16, Height: 12,
+	Pixels: [][]uint8{
+		{__, __, pk, pk, pk, pk, pk, pk, pk, pk, pk, pk, pk, pk, __, __},
+		{__, pk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, pk, __, __},
+		{__, pk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, pu, __, __},
+		{__, pk, dk, dk, wh, wh, dk, dk, dk, dk, wh, wh, dk, pu, __, __},
+		{__, pk, dk, dk, wh, dk, dk, dk, dk, dk, dk, wh, dk, pu, __, __},
+		{__, pk, dk, dk, wh, wh, dk, dk, dk, dk, wh, wh, dk, cy, __, __},
+		{__, pu, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, cy, __, __},
+		{__, pu, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, cy, __, __},
+		{__, pu, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, cy, __, __},
+		{__, cy, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, cy, __, __},
+		{__, cy, cy, dk, dk, dk, dk, dk, dk, dk, dk, dk, cy, cy, __, __},
+		{__, __, cy, cy, cy, cy, cy, cy, cy, cy, cy, cy, cy, __, __, __},
 	},
 }
