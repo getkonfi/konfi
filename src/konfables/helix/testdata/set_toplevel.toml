@@ -1,0 +1,14 @@
+# helix editor config
+theme = "catppuccin"
+
+[editor]
+line-number = "relative"
+mouse = false
+bufferline = "multiple"
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+
+[keys.normal]
+C-s = ":w"

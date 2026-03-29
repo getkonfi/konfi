@@ -1,0 +1,15 @@
+# rio terminal config
+
+[renderer]
+performance = "High"
+backend = "Automatic"
+
+[fonts]
+size = 18
+
+[fonts.regular]
+family = "JetBrains Mono"
+style = "Normal"
+
+[navigation]
+mode = "Plain"

@@ -1,0 +1,17 @@
+# rio terminal config
+padding-x = 8
+
+[renderer]
+performance = "High"
+backend = "Automatic"
+
+[fonts]
+size = 18
+
+[fonts.regular]
+family = "JetBrains Mono"
+style = "Normal"
+
+weight = 400
+[navigation]
+mode = "Plain"

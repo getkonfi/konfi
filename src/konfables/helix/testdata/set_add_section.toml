@@ -1,0 +1,15 @@
+# helix editor config
+theme = "gruvbox"
+
+[editor]
+line-number = "relative"
+mouse = false
+bufferline = "multiple"
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+
+select = "underline"
+[keys.normal]
+C-s = ":w"
