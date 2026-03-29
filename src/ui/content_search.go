@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -22,6 +23,17 @@ func (c *content) buildFieldList() {
 		c.fields = append(c.fields, sec.Fields...)
 	}
 	c.searchIndex = pkg.NewSearchIndex(c.schema.Sections)
+	// cache label column width and pre-padded labels
+	c.labelW = 0
+	for i := range c.fields {
+		if len(c.fields[i].Label) > c.labelW {
+			c.labelW = len(c.fields[i].Label)
+		}
+	}
+	c.paddedLabels = make([]string, len(c.fields))
+	for i := range c.fields {
+		c.paddedLabels[i] = fmt.Sprintf("%-*s", c.labelW, c.fields[i].Label)
+	}
 	c.refilter()
 }
 

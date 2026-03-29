@@ -37,6 +37,10 @@ type detail struct {
 	konfable konfables.Konfable
 	values   map[string]string
 	focused  bool
+
+	// cached config lines for renderFileSnippet
+	snippetLines []string
+	snippetGen   int64 // config generation that produced snippetLines
 }
 
 func newDetail(th *theme.Theme) detail {
@@ -72,11 +76,13 @@ func (d *detail) reset() {
 	d.konfable = nil
 	d.values = nil
 	d.focused = false
+	d.snippetLines = nil
 }
 
 // forceRescan clears the cached key so the next sync re-scans the config.
 func (d *detail) forceRescan() {
 	d.previewKey = ""
+	d.snippetLines = nil
 }
 
 // refreshPreviewLine updates the preview line from config for the current field.
@@ -426,8 +432,11 @@ func (d detail) renderFileSnippet(width, height int) string {
 		return sb.String()
 	}
 
-	data := d.config.Content()
-	rawLines := strings.Split(string(data), "\n")
+	if d.snippetLines == nil {
+		data := d.config.Content()
+		d.snippetLines = strings.Split(string(data), "\n")
+	}
+	rawLines := d.snippetLines
 
 	startLine := d.previewLine - height/2
 	if startLine < 0 {

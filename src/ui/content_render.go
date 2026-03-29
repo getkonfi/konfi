@@ -155,16 +155,6 @@ func (c content) cursorLine() int {
 }
 
 // labelColumnWidth computes the max label width for the active section.
-func (c content) labelColumnWidth() int {
-	w := 0
-	for i := range c.fields {
-		if len(c.fields[i].Label) > w {
-			w = len(c.fields[i].Label)
-		}
-	}
-	return w
-}
-
 // headerLeftLines returns the left column lines for the header.
 func (c content) headerLeftLines() []string {
 	title := ""
@@ -702,8 +692,6 @@ func (c content) renderBody(width int) string {
 		b.WriteByte('\n')
 	}
 
-	labelW := c.labelColumnWidth()
-
 	// detect inline editing state once before the loop
 	editingInline := c.detail.editing && c.detail.editor != nil
 
@@ -712,6 +700,9 @@ func (c content) renderBody(width int) string {
 		c.theme.Primary, c.theme.Secondary, c.theme.Accent,
 		c.theme.Success, c.theme.Warning,
 	}
+
+	// hoist per-field constants outside the loop
+	icons := fieldIcons(c.nerdFont)
 
 	for i, r := range c.visible {
 		// section header row
@@ -739,7 +730,6 @@ func (c content) renderBody(width int) string {
 		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
 
 		// type icon (widget hint takes precedence)
-		icons := fieldIcons(c.nerdFont)
 		icon := icons[f.Widget]
 		if icon == "" {
 			icon = icons[f.Type]
@@ -748,11 +738,11 @@ func (c content) renderBody(width int) string {
 			icon = " "
 		}
 
+		// single map lookup for current value
+		val, hasVal := c.values[f.Key]
+
 		// configured indicator (only green when value differs from default)
-		val, isConfigured := c.values[f.Key]
-		if isConfigured && val == f.Default {
-			isConfigured = false
-		}
+		isConfigured := hasVal && val != f.Default
 		var dot string
 		if isConfigured {
 			dot = c.theme.Success.Render("●")
@@ -761,7 +751,6 @@ func (c content) renderBody(width int) string {
 		}
 
 		// value rendering
-		val, hasVal := c.values[f.Key]
 		var renderedVal string
 		if !hasVal {
 			val = f.Default
@@ -790,7 +779,7 @@ func (c content) renderBody(width int) string {
 		showBounds := f.Type == "number" && f.Widget != "slider" && (f.Min != nil || f.Max != nil) && !isEditRow
 
 		// build prefix and label (cursor/icon)
-		paddedLabel := fmt.Sprintf("%-*s", labelW, f.Label)
+		paddedLabel := c.paddedLabels[r.fieldIdx]
 		iconStyle := c.typeIconStyle(f.Type, val)
 		var prefix, label string
 		if isCursor {
