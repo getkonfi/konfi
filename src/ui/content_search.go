@@ -58,7 +58,7 @@ func (c *content) refilter() {
 	for i := range c.fields {
 		f := &c.fields[i]
 		si := c.fieldSection[i]
-		if c.configuredOnly {
+		if c.configuredOnly && !c.showEffective {
 			if _, ok := c.values[f.Key]; !ok {
 				continue
 			}
@@ -75,10 +75,18 @@ func (c *content) refilter() {
 				}
 			}
 		}
+		if c.bookmarkedOnly && c.konfable != nil {
+			if !c.bookmarks[c.konfable.Name()+"/"+f.Key] {
+				continue
+			}
+		}
 		// insert section header before first field of each section
 		if si != lastHeaderSection {
 			c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
 			lastHeaderSection = si
+		}
+		if c.collapsed[si] {
+			continue
 		}
 		c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: i})
 	}
@@ -86,6 +94,7 @@ func (c *content) refilter() {
 	// clear search matches (empty-query path, ranked path handles its own)
 	c.searchMatches = c.searchMatches[:0]
 	c.searchIdx = 0
+	c.searchMatchInfo = nil
 
 	// clamp cursor
 	if len(c.visible) == 0 {
@@ -97,10 +106,6 @@ func (c *content) refilter() {
 		c.cursor = 0
 	}
 
-	// ensure cursor is not stuck on a section header after clamping
-	if len(c.visible) > 0 && c.cursor >= 0 && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
-		c.skipSectionHeaders(1)
-	}
 }
 
 // refilterRanked builds the visible row slice using bm25-ranked results.
@@ -128,13 +133,14 @@ func (c *content) refilterRanked(query string) {
 		flatIdx    int
 		sectionIdx int
 		score      float64
+		matchInfo  string
 	}
 	var filtered []rankedField
 	for _, r := range results {
 		flatIdx := offsets[r.SectionIdx] + r.FieldIdx
 
 		f := &c.fields[flatIdx]
-		if c.configuredOnly {
+		if c.configuredOnly && !c.showEffective {
 			if _, ok := c.values[f.Key]; !ok {
 				continue
 			}
@@ -151,10 +157,16 @@ func (c *content) refilterRanked(query string) {
 				}
 			}
 		}
+		if c.bookmarkedOnly && c.konfable != nil {
+			if !c.bookmarks[c.konfable.Name()+"/"+f.Key] {
+				continue
+			}
+		}
 		filtered = append(filtered, rankedField{
 			flatIdx:    flatIdx,
 			sectionIdx: r.SectionIdx,
 			score:      r.Score,
+			matchInfo:  r.MatchInfo,
 		})
 	}
 
@@ -191,11 +203,19 @@ func (c *content) refilterRanked(query string) {
 	})
 
 	// build visible rows: section header + ranked fields
+	c.searchMatchInfo = make(map[int]string)
 	for _, si := range sectionOrder {
 		sg := sectionMap[si]
 		c.visible = append(c.visible, row{isSection: true, sectionIdx: si, fieldIdx: -1})
+		if c.collapsed[si] {
+			continue
+		}
 		for _, rf := range sg.fields {
+			vi := len(c.visible)
 			c.visible = append(c.visible, row{sectionIdx: si, fieldIdx: rf.flatIdx})
+			if rf.matchInfo != "" {
+				c.searchMatchInfo[vi] = rf.matchInfo
+			}
 		}
 	}
 
@@ -216,20 +236,5 @@ func (c *content) refilterRanked(query string) {
 	if c.cursor < 0 {
 		c.cursor = 0
 	}
-	if c.visible[c.cursor].isSection {
-		c.skipSectionHeaders(1)
-	}
 }
 
-// skipSectionHeaders advances the cursor past section header rows in the given direction.
-func (c *content) skipSectionHeaders(dir int) {
-	for c.cursor >= 0 && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
-		c.cursor += dir
-	}
-	if c.cursor < 0 {
-		c.cursor = 0
-	}
-	if c.cursor >= len(c.visible) {
-		c.cursor = len(c.visible) - 1
-	}
-}

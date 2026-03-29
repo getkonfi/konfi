@@ -85,11 +85,19 @@ type content struct {
 	cachedChangesDirty bool
 
 	// search match tracking for n/N navigation
-	searchMatches []int // indices into c.visible for matched rows
-	searchIdx     int   // current position in searchMatches
+	searchMatches  []int            // indices into c.visible for matched rows
+	searchIdx      int              // current position in searchMatches
+	searchMatchInfo map[int]string  // visible row index → match explanation
 
 	// "what's new" filter — toggled by root via n key
 	showNewOnly bool
+
+	// effective config view — shows all fields with defaults filled in
+	showEffective bool
+
+	// bookmarks
+	bookmarks      map[string]bool
+	bookmarkedOnly bool
 
 	// last error from a void edit method — checked and cleared by Update callers
 	lastErr string
@@ -106,6 +114,9 @@ type content struct {
 	// pre-parsed schema cache (populated at startup by computeNewCounts)
 	schemaCache map[string]*pkg.Schema
 
+	// cross-app equivalent field lookup
+	crossRef *pkg.CrossRefIndex
+
 	// cached layout styles — recomputed on resize
 	outerStyle lipgloss.Style
 	layoutW    int // width that produced outerStyle
@@ -118,10 +129,14 @@ type content struct {
 
 // dashboardApp holds summary info for the landing page.
 type dashboardApp struct {
-	icon      string
-	name      string
-	installed bool
-	version   string
+	icon            string
+	name            string
+	installed       bool
+	version         string
+	configuredCount int    // fields with non-default values
+	totalFields     int    // total schema fields
+	deprecatedCount int    // deprecated diagnostics
+	coverage        string // from schema.Coverage
 }
 
 func newContent(th *theme.Theme) content {
@@ -181,14 +196,12 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			case "down":
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
-					c.skipSectionHeaders(1)
 				}
 				c.syncDetail()
 				return c, nil
 			case "up":
 				if c.cursor > 0 {
 					c.cursor--
-					c.skipSectionHeaders(-1)
 				}
 				c.syncDetail()
 				return c, nil
@@ -210,7 +223,14 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		hasRows := c.schema != nil && len(c.visible) > 0
 
 		switch msg.String() {
-		case "enter":
+		case "space", "enter":
+			if hasRows && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
+				si := c.visible[c.cursor].sectionIdx
+				c.collapsed[si] = !c.collapsed[si]
+				c.refilter()
+				c.syncDetail()
+				return c, nil
+			}
 			if f := c.currentField(); f != nil {
 				if f.Type == "bool" {
 					c.toggleBool(*f)
@@ -223,6 +243,12 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		case "f":
 			if c.schema != nil {
 				c.configuredOnly = !c.configuredOnly
+				c.refilter()
+				c.syncDetail()
+			}
+		case "g":
+			if c.schema != nil {
+				c.showEffective = !c.showEffective
 				c.refilter()
 				c.syncDetail()
 			}
@@ -251,7 +277,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			if hasRows {
 				if c.cursor < len(c.visible)-1 {
 					c.cursor++
-					c.skipSectionHeaders(1)
 				}
 				c.syncDetail()
 			} else {
@@ -261,7 +286,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			if hasRows {
 				if c.cursor > 0 {
 					c.cursor--
-					c.skipSectionHeaders(-1)
 				}
 				c.syncDetail()
 			} else if c.scrollY > 0 {
@@ -278,7 +302,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		case "home":
 			if hasRows {
 				c.cursor = 0
-				c.skipSectionHeaders(1)
 				c.syncDetail()
 			} else {
 				c.scrollY = 0
@@ -286,7 +309,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		case "end":
 			if hasRows {
 				c.cursor = len(c.visible) - 1
-				c.skipSectionHeaders(-1)
 				c.syncDetail()
 			}
 		case "pgdown":
@@ -296,7 +318,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor >= len(c.visible) {
 					c.cursor = len(c.visible) - 1
 				}
-				c.skipSectionHeaders(-1)
 				c.syncDetail()
 			} else {
 				c.scrollY += page
@@ -308,7 +329,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if c.cursor < 0 {
 					c.cursor = 0
 				}
-				c.skipSectionHeaders(1)
 				c.syncDetail()
 			} else {
 				c.scrollY -= page
@@ -336,6 +356,26 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				}
 				cmd := c.drainErr()
 				return c, cmd
+			}
+		case "[":
+			if hasRows {
+				for vi := c.cursor - 1; vi >= 0; vi-- {
+					if c.visible[vi].isSection {
+						c.cursor = vi
+						c.syncDetail()
+						break
+					}
+				}
+			}
+		case "]":
+			if hasRows {
+				for vi := c.cursor + 1; vi < len(c.visible); vi++ {
+					if c.visible[vi].isSection {
+						c.cursor = vi
+						c.syncDetail()
+						break
+					}
+				}
 			}
 		case "o":
 			if url := c.currentDocURL(); url != "" {
@@ -743,6 +783,7 @@ func (c *content) showDashboard() {
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
 	c.showNewOnly = false
+	c.showEffective = false
 	c.searching = false
 	c.search.SetValue("")
 	c.search.Blur()
@@ -790,6 +831,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
 	c.showNewOnly = false
+	c.showEffective = false
 	c.searching = false
 	c.search.SetValue("")
 	c.search.Blur()
@@ -1055,6 +1097,22 @@ func (c *content) computePendingChanges() []pendingChange {
 	return changes
 }
 
+// jumpToFieldByKey scrolls to the field with the given key.
+func (c *content) jumpToFieldByKey(key string) {
+	for i := range c.fields {
+		if c.fields[i].Key == key {
+			for vi, row := range c.visible {
+				if !row.isSection && row.fieldIdx == i {
+					c.cursor = vi
+					c.syncDetail()
+					return
+				}
+			}
+			return
+		}
+	}
+}
+
 // syncDiffView populates the diff preview from current pending changes.
 func (c *content) syncDiffView() {
 	c.diffView.SetEntries(c.pendingChanges())
@@ -1072,6 +1130,12 @@ func (c *content) snapshotOrigValues() {
 
 // syncDetail pushes content state into the detail sub-model and updates breadcrumb.
 func (c *content) syncDetail() {
+	c.detail.crossRef = c.crossRef
+	if c.konfable != nil {
+		c.detail.appName = c.konfable.Name()
+	} else {
+		c.detail.appName = ""
+	}
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
 
 	// update breadcrumb path

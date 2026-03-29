@@ -11,10 +11,11 @@ import (
 
 // KonfConfig holds konfigurator's own preferences.
 type KonfConfig struct {
-	Theme          string `yaml:"theme"`
-	LogLevel       string `yaml:"log_level"`
-	BrowseLoadsApp bool   `yaml:"browse_loads_app"`
-	NerdFont       bool   `yaml:"nerd_font"`
+	Theme          string   `yaml:"theme"`
+	LogLevel       string   `yaml:"log_level"`
+	BrowseLoadsApp bool     `yaml:"browse_loads_app"`
+	NerdFont       bool     `yaml:"nerd_font"`
+	Bookmarks      []string `yaml:"bookmarks,omitempty"`
 }
 
 func defaultConfig() *KonfConfig {

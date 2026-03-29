@@ -131,7 +131,7 @@ func (c *content) fieldAreaOverhead() int {
 
 // filterIndicatorVisible returns true when a filter indicator line should be shown.
 func (c *content) filterIndicatorVisible() bool {
-	return !c.searching && (c.configuredOnly || c.showNewOnly)
+	return !c.searching && (c.configuredOnly || c.showNewOnly || c.showEffective || c.bookmarkedOnly)
 }
 
 // cursorLine returns the rendered line number for the current cursor position
@@ -358,7 +358,8 @@ func (c *content) renderDashboard(width int) string {
 			if a.version != "" {
 				ver = c.theme.Muted.Render("  " + a.version)
 			}
-			b.WriteString(centerLine(icon+name+ver, width))
+			stats := c.dashboardStats(a)
+			b.WriteString(centerLine(icon+name+ver+stats, width))
 			b.WriteByte('\n')
 		}
 	}
@@ -376,7 +377,11 @@ func (c *content) renderDashboard(width int) string {
 		for _, a := range notInstalled {
 			icon := c.theme.Muted.Faint(true).Render(a.icon)
 			name := c.theme.Muted.Faint(true).Render(" " + a.name)
-			b.WriteString(centerLine(icon+name, width))
+			total := ""
+			if a.totalFields > 0 {
+				total = c.theme.Muted.Faint(true).Render(fmt.Sprintf("  %d fields", a.totalFields))
+			}
+			b.WriteString(centerLine(icon+name+total, width))
 			b.WriteByte('\n')
 		}
 	}
@@ -695,9 +700,16 @@ func (c *content) renderBody(width int) string {
 
 	// filter indicator (when not searching)
 	if c.filterIndicatorVisible() {
-		label := "configured only"
-		if c.showNewOnly {
+		var label string
+		switch {
+		case c.bookmarkedOnly:
+			label = "bookmarks"
+		case c.showEffective:
+			label = "effective (all with defaults)"
+		case c.showNewOnly:
 			label = "new only"
+		default:
+			label = "configured only"
 		}
 		b.WriteString(c.theme.Warning.Render("▸ " + label))
 		b.WriteByte('\n')
@@ -720,7 +732,16 @@ func (c *content) renderBody(width int) string {
 		if r.isSection {
 			name := c.schema.Sections[r.sectionIdx].Name
 			sc := sectionColors[r.sectionIdx%len(sectionColors)]
-			header := sc.Bold(true).Render("── " + name + " ")
+			indicator := "▾ "
+			if c.collapsed[r.sectionIdx] {
+				indicator = "▸ "
+			}
+			isCursor := c.focused && i == c.cursor
+			prefix := "── "
+			if isCursor {
+				prefix = sc.Render("▎ ")
+			}
+			header := sc.Bold(true).Render(prefix + indicator + name + " ")
 			remaining := width - lipgloss.Width(header)
 			if remaining > 0 {
 				header += sc.Faint(true).Render(strings.Repeat("─", remaining))
@@ -765,7 +786,11 @@ func (c *content) renderBody(width int) string {
 		var renderedVal string
 		if !hasVal {
 			val = f.Default
-			renderedVal = c.renderFieldValue(*f, val, true)
+			if c.showEffective && val != "" {
+				renderedVal = c.theme.Muted.Italic(true).Render(val + " (default)")
+			} else {
+				renderedVal = c.renderFieldValue(*f, val, true)
+			}
 		} else {
 			renderedVal = c.renderFieldValue(*f, val, false)
 		}
@@ -792,6 +817,7 @@ func (c *content) renderBody(width int) string {
 		// build prefix and label (cursor/icon)
 		paddedLabel := c.paddedLabels[r.fieldIdx]
 		iconStyle := c.typeIconStyle(f.Type, val)
+		isBookmarked := c.konfable != nil && c.bookmarks[c.konfable.Name()+"/"+f.Key]
 		var prefix, label string
 		if isCursor {
 			prefix = c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
@@ -799,6 +825,9 @@ func (c *content) renderBody(width int) string {
 		} else {
 			prefix = "  " + iconStyle.Faint(true).Render(icon) + " "
 			label = c.theme.FieldLabel.Render(paddedLabel)
+		}
+		if isBookmarked {
+			label = c.theme.Warning.Render("★") + label
 		}
 
 		if showBounds {
@@ -837,6 +866,15 @@ func (c *content) renderBody(width int) string {
 					renderedVal = c.renderFieldValue(*f, valPlain, false)
 				}
 				line = prefix + label + " " + dot + " " + renderedVal
+			}
+		}
+
+		// search match explanation
+		if info, ok := c.searchMatchInfo[i]; ok {
+			usedW := lipgloss.Width(line)
+			infoStr := c.theme.Muted.Italic(true).Render("  " + info)
+			if usedW+lipgloss.Width(infoStr) <= width {
+				line += infoStr
 			}
 		}
 
@@ -940,6 +978,21 @@ func centerBlock(block string, width int) string {
 		lines[i] = centerLine(line, width)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// dashboardStats formats the stats suffix for an installed dashboard app.
+func (c *content) dashboardStats(a dashboardApp) string {
+	if a.totalFields == 0 {
+		return ""
+	}
+	s := fmt.Sprintf("  %d/%d configured", a.configuredCount, a.totalFields)
+	if a.deprecatedCount > 0 {
+		s += fmt.Sprintf(" · %d deprecated", a.deprecatedCount)
+	}
+	if a.coverage != "" && a.coverage != "full" {
+		s += " [" + a.coverage + "]"
+	}
+	return c.theme.Muted.Render(s)
 }
 
 // centerLine centers a single line within the given width using lipgloss.

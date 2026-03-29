@@ -72,8 +72,20 @@ type root struct {
 	// cached parsed schemas — populated by computeNewCounts, reused by loadApp
 	schemaCache map[string]*pkg.Schema
 
+	// AI ask overlay
+	ask         askOverlay
+	pendingJump *pendingJump // deferred field jump after cross-app AI navigation
+
+	// diff confirmation overlay before saving
+	showDiffPreview bool
+
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
+}
+
+// pendingJump stores a deferred field navigation for after an app load completes.
+type pendingJump struct {
+	fieldKey string
 }
 
 // ProgramSetter allows main to inject the tea.Program after creation.
@@ -136,7 +148,20 @@ func NewRoot(app *setup.App) tea.Model {
 	ct.appVersion = app.AppVersion
 	ct.schemaCache = schemaCache
 
-	// populate dashboard data (skip home item at index 0)
+	// build cross-app equivalent field index
+	var installedNames []string
+	for name := range installed {
+		installedNames = append(installedNames, name)
+	}
+	ct.crossRef = pkg.NewCrossRefIndex(schemaCache, installedNames)
+
+	// parse bookmarks from config
+	ct.bookmarks = make(map[string]bool)
+	for _, b := range app.Config.Bookmarks {
+		ct.bookmarks[b] = true
+	}
+
+	// populate dashboard data with stats
 	for _, k := range allK {
 		info := k.Info()
 		nIcon := info.NerdIcon
@@ -154,10 +179,64 @@ func NewRoot(app *setup.App) tea.Model {
 		if v, ok := app.Versions[k.Name()]; ok {
 			da.version = v
 		}
+
+		// stats from schema
+		if s, ok := schemaCache[k.Name()]; ok {
+			for si := range s.Sections {
+				da.totalFields += len(s.Sections[si].Fields)
+			}
+			da.coverage = s.Coverage
+
+			// count configured + deprecated for installed apps
+			if installed[k.Name()] {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				cf, err := pkg.NewConfigFile(ctx, k)
+				cancel()
+				if err == nil && cf != nil {
+					data := cf.Content()
+					p := k.Parser()
+					if p != nil {
+						configured := 0
+						if bp, ok := p.(konfables.BatchParser); ok {
+							all := bp.FindAll(data)
+							configured = len(all)
+						} else {
+							// per-field lookup against schema keys
+							for si := range s.Sections {
+								for fi := range s.Sections[si].Fields {
+									if _, found := p.FindValue(data, s.Sections[si].Fields[fi].Key); found {
+										configured++
+									}
+								}
+							}
+						}
+						da.configuredCount = configured
+
+						// deprecated count via diagnostics
+						var configKeys []string
+						if bp, ok := p.(konfables.BatchParser); ok {
+							for key := range bp.FindAll(data) {
+								configKeys = append(configKeys, key)
+							}
+						}
+						if len(configKeys) > 0 {
+							diags := pkg.Diagnose(configKeys, s, da.version)
+							for _, d := range diags {
+								if d.Kind == "deprecated" {
+									da.deprecatedCount++
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
 		ct.dashboardApps = append(ct.dashboardApps, da)
 	}
 	st := newStatusbar(th)
 	pal := newPalette(th)
+	ask := newAskOverlay(th, schemaCache)
 
 	r := &root{
 		app:          app,
@@ -165,6 +244,7 @@ func NewRoot(app *setup.App) tea.Model {
 		content:      ct,
 		status:       st,
 		palette:      pal,
+		ask:          ask,
 		focus:        paneSidebar,
 		mode:         ModeNormal,
 		allKonfables: allK,
@@ -203,6 +283,59 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p, cmd := r.palette.Update(msg)
 			r.palette = p
 			return r, cmd
+		}
+	}
+
+	// ask overlay intercepts ALL input when visible
+	if r.ask.Visible() {
+		var cmd tea.Cmd
+		switch jump := msg.(type) {
+		case AskJumpMsg:
+			r.ask.Close()
+			// same-app: jump directly
+			if r.content.konfable != nil && r.content.konfable.Name() == jump.App {
+				r.content.jumpToFieldByKey(jump.Key)
+				r.focusPane(paneContent)
+				r.updateHints()
+				return r, nil
+			}
+			// cross-app: select app, store pending jump
+			for i, k := range r.allKonfables {
+				if k.Name() != jump.App {
+					continue
+				}
+				r.pendingJump = &pendingJump{fieldKey: jump.Key}
+				r.pushNav()
+				r.sidebar.setCursorToApp(i)
+				cmd = r.content.loadApp(r.allKonfables[i])
+				r.focusPane(paneContent)
+				return r, cmd
+			}
+			return r, nil
+		default:
+			r.ask, cmd = r.ask.Update(msg)
+			return r, cmd
+		}
+	}
+
+	// diff confirmation overlay intercepts keys when visible
+	if r.showDiffPreview {
+		if km, ok := msg.(tea.KeyPressMsg); ok {
+			switch km.String() {
+			case "enter", "y":
+				r.showDiffPreview = false
+				r.status.status = "saving..."
+				cfg := r.content.config
+				return r, func() tea.Msg {
+					err := cfg.Save(context.Background())
+					return saveResultMsg{err: err}
+				}
+			case "esc", "n":
+				r.showDiffPreview = false
+				r.status.status = ""
+				return r, nil
+			}
+			return r, nil
 		}
 	}
 
@@ -323,14 +456,12 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+s":
 			if r.content.config != nil && r.content.config.Dirty() {
-				r.status.status = "saving..."
-				cfg := r.content.config
-				return r, func() tea.Msg {
-					err := cfg.Save(context.Background())
-					return saveResultMsg{err: err}
-				}
+				r.content.syncDiffView()
+				r.showDiffPreview = true
+				return r, nil
 			}
-			return r, nil
+			r.status.status = "no changes"
+			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg { return fileStateClearMsg{} })
 
 		case "tab":
 			r.cyclePane(1)
@@ -354,6 +485,21 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "esc":
 			// layered esc: clear filters before jumping to sidebar
+			if r.content.bookmarkedOnly {
+				r.content.bookmarkedOnly = false
+				r.content.refilter()
+				r.content.syncDetail()
+				r.status.status = ""
+				r.updateHints()
+				return r, nil
+			}
+			if r.content.showEffective {
+				r.content.showEffective = false
+				r.content.refilter()
+				r.content.syncDetail()
+				r.updateHints()
+				return r, nil
+			}
 			if r.content.showNewOnly {
 				r.content.showNewOnly = false
 				r.content.refilter()
@@ -408,6 +554,14 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.palette.width = r.width
 			r.palette.height = r.height
 			return r, cmd
+
+		case "ctrl+a":
+			if r.installed["claude"] {
+				cmd := r.ask.Open()
+				r.ask.width = r.width
+				r.ask.height = r.height
+				return r, cmd
+			}
 
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			idx := int(msg.String()[0]-'0') - 1
@@ -486,6 +640,29 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, r.openInEditor()
 			}
 
+		case "m":
+			if r.focus == paneContent && r.content.konfable != nil {
+				cmd := r.toggleBookmark()
+				if cmd != nil {
+					r.updateHints()
+					return r, cmd
+				}
+			}
+
+		case "b":
+			if r.focus == paneContent && r.content.schema != nil {
+				r.content.bookmarkedOnly = !r.content.bookmarkedOnly
+				r.content.refilter()
+				r.content.syncDetail()
+				if r.content.bookmarkedOnly {
+					r.status.status = "showing bookmarks"
+				} else {
+					r.status.status = ""
+				}
+				r.updateHints()
+				return r, nil
+			}
+
 		case "ctrl+z":
 			return r, func() tea.Msg { return UndoMsg{} }
 
@@ -533,6 +710,15 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.updateHints()
 		return r, nil
 
+	case AskOpenMsg:
+		if r.installed["claude"] {
+			cmd := r.ask.Open()
+			r.ask.width = r.width
+			r.ask.height = r.height
+			return r, cmd
+		}
+		return r, nil
+
 	case JumpToFieldMsg:
 		if len(r.content.fields) == 0 {
 			return r, nil
@@ -561,12 +747,9 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SaveMsg:
 		if r.content.config != nil && r.content.config.Dirty() {
-			r.status.status = "saving..."
-			cfg := r.content.config
-			return r, func() tea.Msg {
-				err := cfg.Save(context.Background())
-				return saveResultMsg{err: err}
-			}
+			r.content.syncDiffView()
+			r.showDiffPreview = true
+			return r, nil
 		}
 		return r, nil
 
@@ -642,6 +825,12 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 			}
 		}
+		// fulfill pending jump from ask AI
+		if r.pendingJump != nil {
+			key := r.pendingJump.fieldKey
+			r.pendingJump = nil
+			r.content.jumpToFieldByKey(key)
+		}
 		r.updateHints()
 		return r, nil
 
@@ -668,12 +857,39 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			r.content.fileState = "saved"
 			r.content.snapshotOrigValues()
+			info := r.currentAppInfo()
+			if info.AutoReload {
+				r.status.status = "saved (live reload)"
+				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+					return fileStateClearMsg{}
+				})
+			}
+			if len(info.ReloadCmd) > 0 {
+				r.status.status = "saved, reloading..."
+				reloadCmd := info.ReloadCmd
+				return r, func() tea.Msg {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					err := exec.CommandContext(ctx, reloadCmd[0], reloadCmd[1:]...).Run()
+					return postSaveReloadMsg{err: err}
+				}
+			}
 			r.status.status = "saved"
 			return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
 				return fileStateClearMsg{}
 			})
 		}
 		return r, nil
+
+	case postSaveReloadMsg:
+		if msg.err != nil {
+			r.status.status = "saved (reload failed)"
+		} else {
+			r.status.status = "saved + reloaded"
+		}
+		return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+			return fileStateClearMsg{}
+		})
 
 	case fileStateClearMsg:
 		if r.content.config != nil && r.content.config.Dirty() {
@@ -863,6 +1079,18 @@ func (r *root) View() tea.View {
 		return v
 	}
 
+	if r.showDiffPreview {
+		v.Content = r.renderDiffPreview()
+		return v
+	}
+
+	if r.ask.Visible() {
+		r.ask.width = r.width
+		r.ask.height = r.height
+		v.Content = r.ask.View()
+		return v
+	}
+
 	if r.palette.Visible() {
 		r.palette.width = r.width
 		r.palette.height = r.height
@@ -980,17 +1208,23 @@ func (r *root) updateHints() {
 				{"esc", "clear"},
 			}
 		} else {
-			r.content.hints = []keyHint{
+			hints := []keyHint{
 				{"←↑↓", "navigate"},
 				{"⏎", "open"},
 				{"1-9", "jump"},
 				{"/", "search"},
 				{"^K", "palette"},
+			}
+			if r.installed["claude"] {
+				hints = append(hints, keyHint{"^A", "ask"})
+			}
+			hints = append(hints, []keyHint{
 				{"→", "content"},
 				{"t", "theme"},
 				{"?", "help"},
 				{"q", "quit"},
-			}
+			}...)
+			r.content.hints = hints
 		}
 	case paneContent:
 		if r.content.searching {
@@ -1032,6 +1266,9 @@ func (r *root) updateHints() {
 		}...)
 		if r.content.config != nil && r.content.config.Dirty() {
 			hints = append(hints, keyHint{"^S", "save"})
+		}
+		if r.installed["claude"] {
+			hints = append(hints, keyHint{"^A", "ask"})
 		}
 		hints = append(hints, []keyHint{
 			{"?", "help"},
@@ -1128,6 +1365,16 @@ func (r *root) buildPaletteItems() []PaletteItem {
 		Action:     ToggleHelpMsg{},
 	})
 
+	if r.installed["claude"] {
+		items = append(items, PaletteItem{
+			Label:      "Ask AI",
+			Shortcut:   "ctrl+a",
+			Category:   "action",
+			MatchTerms: "ask ai claude natural language search find",
+			Action:     AskOpenMsg{},
+		})
+	}
+
 	return items
 }
 
@@ -1215,6 +1462,50 @@ func (r *root) navForward() tea.Cmd {
 	return func() tea.Msg {
 		return AppSelectedMsg{Index: idx, Confirmed: true}
 	}
+}
+
+// renderDiffPreview renders a centered card with the diff view and confirmation hints.
+func (r *root) renderDiffPreview() string {
+	th := r.app.Theme
+
+	cardW := r.width * 60 / 100
+	if cardW < 40 {
+		cardW = 40
+	}
+	if cardW > r.width-4 {
+		cardW = r.width - 4
+	}
+	cardH := r.height * 70 / 100
+	if cardH < 10 {
+		cardH = 10
+	}
+	if cardH > r.height-4 {
+		cardH = r.height - 4
+	}
+
+	innerW := cardW - 4
+	innerH := cardH - 6 // border + padding + header + footer
+
+	r.content.diffView.SetSize(innerW, innerH)
+
+	var b strings.Builder
+	b.WriteString(th.Primary.Bold(true).Render("  save changes?"))
+	b.WriteString("\n\n")
+	b.WriteString(r.content.diffView.View())
+	b.WriteString("\n\n")
+	b.WriteString(th.Muted.Italic(true).Render("  enter save  esc cancel"))
+
+	card := helpCardStyle.
+		BorderForeground(th.Palette.Primary).
+		Width(cardW).
+		Height(cardH).
+		Render(b.String())
+
+	return lipgloss.Place(r.width, r.height,
+		lipgloss.Center, lipgloss.Center,
+		card,
+		lipgloss.WithWhitespaceChars(" "),
+	)
 }
 
 // computeNewCounts counts fields with a `since` matching the detected version per app.
@@ -1382,3 +1673,38 @@ func (r *root) openInEditor() tea.Cmd {
 
 // statusClearMsg clears the transient status after a delay.
 type statusClearMsg struct{}
+
+// currentAppInfo returns the AppInfo for the currently loaded konfable.
+func (r *root) currentAppInfo() konfables.AppInfo {
+	if r.content.konfable != nil {
+		return r.content.konfable.Info()
+	}
+	return konfables.AppInfo{}
+}
+
+// toggleBookmark adds or removes a bookmark for the focused field.
+func (r *root) toggleBookmark() tea.Cmd {
+	f := r.content.currentField()
+	if f == nil || r.content.konfable == nil {
+		return nil
+	}
+	key := r.content.konfable.Name() + "/" + f.Key
+	if r.content.bookmarks[key] {
+		delete(r.content.bookmarks, key)
+		r.status.status = "bookmark removed"
+	} else {
+		r.content.bookmarks[key] = true
+		r.status.status = "bookmark added"
+	}
+	// persist
+	bm := make([]string, 0, len(r.content.bookmarks))
+	for k := range r.content.bookmarks {
+		bm = append(bm, k)
+	}
+	r.app.Config.Bookmarks = bm
+	cfg := r.app.Config
+	return func() tea.Msg {
+		_ = setup.SaveConfig(cfg)
+		return statusClearMsg{}
+	}
+}
