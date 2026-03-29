@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // managedKey describes a gsettings schema + key pair.
@@ -43,17 +45,33 @@ var managedKeys = []managedKey{
 // it does NOT implement pkg.Watchable — there's no cheap way to watch dconf changes.
 type GsettingsPersister struct{}
 
-// Load runs gsettings get for each managed key and assembles synthetic bytes.
+// Load runs gsettings get for each managed key concurrently and assembles synthetic bytes.
 // format: "schema/key = value\n" per line.
 func (gp *GsettingsPersister) Load(ctx context.Context) ([]byte, error) {
+	type result struct {
+		val string
+		ok  bool
+	}
+	results := make([]result, len(managedKeys))
+
+	g, gctx := errgroup.WithContext(ctx)
+	for i, mk := range managedKeys {
+		g.Go(func() error {
+			val, err := gsettingsGet(gctx, mk.Schema, mk.Key)
+			if err != nil {
+				return nil // skip keys that don't exist on this system
+			}
+			results[i] = result{val: val, ok: true}
+			return nil
+		})
+	}
+	_ = g.Wait() // individual errors are swallowed above
+
 	var buf bytes.Buffer
-	for _, mk := range managedKeys {
-		val, err := gsettingsGet(ctx, mk.Schema, mk.Key)
-		if err != nil {
-			// skip keys that don't exist on this system
-			continue
+	for i, mk := range managedKeys {
+		if results[i].ok {
+			fmt.Fprintf(&buf, "%s/%s = %s\n", mk.Schema, mk.Key, results[i].val)
 		}
-		fmt.Fprintf(&buf, "%s/%s = %s\n", mk.Schema, mk.Key, val)
 	}
 	return buf.Bytes(), nil
 }

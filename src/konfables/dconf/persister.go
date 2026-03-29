@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // managedPath is a dconf absolute path to a managed key.
@@ -40,16 +42,33 @@ var managedKeys = []managedPath{
 // it does NOT implement pkg.Watchable — there's no cheap way to watch dconf changes.
 type DconfPersister struct{}
 
-// Load runs dconf read for each managed key and assembles synthetic bytes.
+// Load runs dconf read for each managed key concurrently and assembles synthetic bytes.
 // format: "/path/to/key = value\n" per line (matches schema.yaml keys).
 func (dp *DconfPersister) Load(ctx context.Context) ([]byte, error) {
+	type result struct {
+		val string
+		ok  bool
+	}
+	results := make([]result, len(managedKeys))
+
+	g, gctx := errgroup.WithContext(ctx)
+	for i, path := range managedKeys {
+		g.Go(func() error {
+			val, err := dconfRead(gctx, string(path))
+			if err != nil {
+				return nil
+			}
+			results[i] = result{val: val, ok: true}
+			return nil
+		})
+	}
+	_ = g.Wait()
+
 	var buf bytes.Buffer
-	for _, path := range managedKeys {
-		val, err := dconfRead(ctx, string(path))
-		if err != nil {
-			continue
+	for i, path := range managedKeys {
+		if results[i].ok {
+			fmt.Fprintf(&buf, "%s = %s\n", path, results[i].val)
 		}
-		fmt.Fprintf(&buf, "%s = %s\n", path, val)
 	}
 	return buf.Bytes(), nil
 }

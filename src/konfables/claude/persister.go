@@ -107,8 +107,12 @@ func (tp *TieredPersister) Save(_ context.Context, original, data []byte) error 
 	}
 
 	// handle deleted keys
+	newKeySet := make(map[string]struct{}, len(newKeys))
+	for _, k := range newKeys {
+		newKeySet[k] = struct{}{}
+	}
 	for _, key := range origKeys {
-		if containsKey(newKeys, key) {
+		if _, ok := newKeySet[key]; ok {
 			continue
 		}
 		tier := tp.ownerTier(key, tierMap)
@@ -424,12 +428,3 @@ func copyTierMap(m map[string][]string) map[string][]string {
 	return out
 }
 
-// containsKey checks if a string slice contains a value.
-func containsKey(keys []string, key string) bool {
-	for _, k := range keys {
-		if k == key {
-			return true
-		}
-	}
-	return false
-}
