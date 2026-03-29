@@ -106,12 +106,25 @@ type SearchResult struct {
 	FieldIdx   int
 	SectionIdx int
 	Score      float64
+	MatchInfo  string // human-readable explanation of the best match
 }
+
+// matchKind classifies how a query term was expanded
+type matchKind int
+
+const (
+	matchExact    matchKind = iota // direct hit or plural variant
+	matchSynonym                  // synonym expansion
+	matchPrefix                   // prefix expansion
+	matchContains                 // substring match
+)
 
 // queryTerm pairs a corpus term with a relevance boost
 type queryTerm struct {
-	term  string
-	boost float64 // 1.0 = exact/plural, 0.5 = prefix/contains/synonym
+	term    string
+	boost   float64   // 1.0 = exact/plural, 0.5 = prefix/contains/synonym
+	kind    matchKind // how this term was derived
+	origTok string    // original query token that produced this term
 }
 
 func pluralVariant(s string) string {
@@ -250,13 +263,13 @@ func (idx *SearchIndex) Search(query string) []SearchResult {
 	for _, qt := range queryTokens {
 		matched := false
 		if _, ok := idx.DF[qt]; ok {
-			terms = append(terms, queryTerm{qt, 1.0})
+			terms = append(terms, queryTerm{qt, 1.0, matchExact, qt})
 			matched = true
 		}
 		// plural/singular variant at full weight
 		if alt := pluralVariant(qt); alt != "" {
 			if _, ok := idx.DF[alt]; ok {
-				terms = append(terms, queryTerm{alt, 1.0})
+				terms = append(terms, queryTerm{alt, 1.0, matchExact, qt})
 				matched = true
 			}
 		}
@@ -264,7 +277,7 @@ func (idx *SearchIndex) Search(query string) []SearchResult {
 			// prefix fallback via binary search on sorted terms
 			i := sort.SearchStrings(idx.sortedTerms, qt)
 			for ; i < len(idx.sortedTerms) && strings.HasPrefix(idx.sortedTerms[i], qt); i++ {
-				terms = append(terms, queryTerm{idx.sortedTerms[i], expandBoost})
+				terms = append(terms, queryTerm{idx.sortedTerms[i], expandBoost, matchPrefix, qt})
 				matched = true
 			}
 		}
@@ -272,27 +285,46 @@ func (idx *SearchIndex) Search(query string) []SearchResult {
 			// contains fallback
 			for _, term := range idx.sortedTerms {
 				if strings.Contains(term, qt) {
-					terms = append(terms, queryTerm{term, expandBoost})
+					terms = append(terms, queryTerm{term, expandBoost, matchContains, qt})
 				}
 			}
 		}
 		// synonyms always from original token, discounted
 		for _, syn := range ExpandSynonyms(qt) {
-			terms = append(terms, queryTerm{syn, expandBoost})
+			terms = append(terms, queryTerm{syn, expandBoost, matchSynonym, qt})
 		}
 	}
 
 	var results []SearchResult
 	for di := range idx.Docs {
 		score := 0.0
+		bestContrib := 0.0
+		var bestTerm queryTerm
 		for _, qt := range terms {
-			score += qt.boost * idx.bm25f(di, qt.term)
+			contrib := qt.boost * idx.bm25f(di, qt.term)
+			score += contrib
+			if contrib > bestContrib {
+				bestContrib = contrib
+				bestTerm = qt
+			}
 		}
 		if score > 0 {
+			var info string
+			switch bestTerm.kind {
+			case matchExact:
+				info = "match: " + bestTerm.term
+			case matchSynonym:
+				info = "via " + bestTerm.term + " (synonym)"
+			case matchPrefix:
+				info = "prefix: " + bestTerm.origTok + "→" + bestTerm.term
+			case matchContains:
+				info = "contains: " + bestTerm.origTok
+			}
 			results = append(results, SearchResult{
 				FieldIdx:   idx.docFieldIdx[di],
 				SectionIdx: idx.docSectionIdx[di],
 				Score:      score,
+				MatchInfo:  info,
 			})
 		}
 	}
