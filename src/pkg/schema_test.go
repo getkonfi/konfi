@@ -14,10 +14,21 @@ func TestLoadSchema(t *testing.T) {
 		path string
 		app  string
 	}{
-		{"../konfables/ghostty/schema.yaml", "ghostty"},
-		{"../konfables/starship/schema.yaml", "starship"},
 		{"../konfables/alacritty/schema.yaml", "alacritty"},
+		{"../konfables/claude/schema.yaml", "claude"},
+		{"../konfables/dconf/schema.yaml", "dconf"},
+		{"../konfables/ghostty/schema.yaml", "ghostty"},
+		{"../konfables/git/schema.yaml", "git"},
+		{"../konfables/gnome/schema.yaml", "gnome"},
+		{"../konfables/helix/schema.yaml", "helix"},
 		{"../konfables/hyprland/schema.yaml", "hyprland"},
+		{"../konfables/kitty/schema.yaml", "kitty"},
+		{"../konfables/konfigurator/schema.yaml", "konfigurator"},
+		{"../konfables/pacman/schema.yaml", "pacman"},
+		{"../konfables/rio/schema.yaml", "rio"},
+		{"../konfables/ssh/schema.yaml", "ssh"},
+		{"../konfables/starship/schema.yaml", "starship"},
+		{"../konfables/tmux/schema.yaml", "tmux"},
 	}
 
 	for _, tt := range schemas {
@@ -40,47 +51,34 @@ func TestLoadSchema(t *testing.T) {
 				t.Error("expected at least one section")
 			}
 
-			// ghostty should have 50+ fields after schema expansion
-			if tt.app == "ghostty" {
-				total := 0
-				for _, sec := range s.Sections {
-					total += len(sec.Fields)
-				}
-				if total < 50 {
-					t.Errorf("ghostty schema too small: got %d fields, want at least 50", total)
-				}
-				if len(s.Sections) < 7 {
-					t.Errorf("ghostty schema too few sections: got %d, want at least 7", len(s.Sections))
-				}
+			// minimum field counts per app (conservative lower bounds)
+			minFields := map[string]int{
+				"alacritty":    40,
+				"claude":       10,
+				"dconf":        10,
+				"ghostty":      50,
+				"git":          30,
+				"gnome":        30,
+				"helix":        20,
+				"hyprland":     50,
+				"kitty":        20,
+				"konfigurator": 3,
+				"pacman":       15,
+				"rio":          20,
+				"ssh":          30,
+				"starship":     60,
+				"tmux":         30,
+			}
+			total := 0
+			for _, sec := range s.Sections {
+				total += len(sec.Fields)
+			}
+			if min, ok := minFields[tt.app]; ok && total < min {
+				t.Errorf("%s schema too small: got %d fields, want at least %d", tt.app, total, min)
 			}
 
-			// enriched app schemas should meet minimum field counts
-			if tt.app == "alacritty" {
-				total := 0
-				for _, sec := range s.Sections {
-					total += len(sec.Fields)
-				}
-				if total < 40 {
-					t.Errorf("alacritty schema too small: got %d fields, want at least 40", total)
-				}
-			}
-			if tt.app == "hyprland" {
-				total := 0
-				for _, sec := range s.Sections {
-					total += len(sec.Fields)
-				}
-				if total < 50 {
-					t.Errorf("hyprland schema too small: got %d fields, want at least 50", total)
-				}
-			}
-			if tt.app == "starship" {
-				total := 0
-				for _, sec := range s.Sections {
-					total += len(sec.Fields)
-				}
-				if total < 60 {
-					t.Errorf("starship schema too small: got %d fields, want at least 60", total)
-				}
+			if tt.app == "ghostty" && len(s.Sections) < 7 {
+				t.Errorf("ghostty schema too few sections: got %d, want at least 7", len(s.Sections))
 			}
 
 			// verify every field has required attributes
@@ -601,63 +599,6 @@ sections:
 	}
 }
 
-// --- CheckVersion tests ---
-
-func TestCheckVersion_SchemaOutdated(t *testing.T) {
-	s := &Schema{App: "ghostty", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
-	r := s.CheckVersion("3.0.0")
-	if !r.SchemaOutdated {
-		t.Error("expected SchemaOutdated=true for app newer than max")
-	}
-	if r.AppTooOld {
-		t.Error("AppTooOld should be false")
-	}
-	if r.Reason == "" {
-		t.Error("expected a reason")
-	}
-}
-
-func TestCheckVersion_AppTooOld(t *testing.T) {
-	s := &Schema{App: "ghostty", MinAppVersion: "2.0.0", MaxAppVersion: "3.0.0"}
-	r := s.CheckVersion("1.0.0")
-	if !r.AppTooOld {
-		t.Error("expected AppTooOld=true for app older than min")
-	}
-	if r.SchemaOutdated {
-		t.Error("SchemaOutdated should be false")
-	}
-	if r.Reason == "" {
-		t.Error("expected a reason")
-	}
-}
-
-func TestCheckVersion_InRange(t *testing.T) {
-	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "3.0.0"}
-	r := s.CheckVersion("2.0.0")
-	if r.SchemaOutdated || r.AppTooOld {
-		t.Error("expected no mismatch for in-range version")
-	}
-	if r.Reason != "" {
-		t.Errorf("expected empty reason, got %q", r.Reason)
-	}
-}
-
-func TestCheckVersion_EmptyVersion(t *testing.T) {
-	s := &Schema{App: "test", MinAppVersion: "1.0.0", MaxAppVersion: "2.0.0"}
-	r := s.CheckVersion("")
-	if r.SchemaOutdated || r.AppTooOld || r.Reason != "" {
-		t.Error("empty version should produce zero result")
-	}
-}
-
-func TestCheckVersion_NoBounds(t *testing.T) {
-	s := &Schema{App: "test"}
-	r := s.CheckVersion("99.0.0")
-	if r.SchemaOutdated || r.AppTooOld {
-		t.Error("no bounds should produce no mismatch")
-	}
-}
-
 // --- FieldsAddedSince tests ---
 
 func TestFieldsAddedSince_Basic(t *testing.T) {
@@ -688,80 +629,6 @@ func TestFieldsAddedSince_EmptyVersion(t *testing.T) {
 	added := s.FieldsAddedSince("")
 	if added != nil {
 		t.Error("empty version should return nil")
-	}
-}
-
-// --- SelectSchema tests ---
-
-func TestSelectSchema_Empty(t *testing.T) {
-	if got := SelectSchema(nil, "1.0.0"); got != nil {
-		t.Error("nil input should return nil")
-	}
-}
-
-func TestSelectSchema_Single(t *testing.T) {
-	s := &Schema{App: "test", FormatSince: "1.0.0"}
-	if got := SelectSchema([]*Schema{s}, "2.0.0"); got != s {
-		t.Error("single schema should always be returned")
-	}
-}
-
-func TestSelectSchema_PicksCorrect(t *testing.T) {
-	v1 := &Schema{App: "test", FormatSince: "1.0.0", SchemaVersion: "v1"}
-	v2 := &Schema{App: "test", FormatSince: "3.0.0", SchemaVersion: "v2"}
-	schemas := []*Schema{v1, v2}
-
-	// app at 2.0.0 should get v1 schema (FormatSince=1.0.0 <= 2.0.0, highest match)
-	got := SelectSchema(schemas, "2.0.0")
-	if got.SchemaVersion != "v1" {
-		t.Errorf("expected v1 schema for app 2.0.0, got %s", got.SchemaVersion)
-	}
-
-	// app at 3.0.0 should get v2 schema
-	got = SelectSchema(schemas, "3.0.0")
-	if got.SchemaVersion != "v2" {
-		t.Errorf("expected v2 schema for app 3.0.0, got %s", got.SchemaVersion)
-	}
-
-	// app at 5.0.0 should get v2 schema (highest FormatSince <= 5.0.0)
-	got = SelectSchema(schemas, "5.0.0")
-	if got.SchemaVersion != "v2" {
-		t.Errorf("expected v2 schema for app 5.0.0, got %s", got.SchemaVersion)
-	}
-}
-
-func TestSelectSchema_UnknownVersion(t *testing.T) {
-	v1 := &Schema{App: "test", FormatSince: "1.0.0", SchemaVersion: "v1"}
-	v2 := &Schema{App: "test", FormatSince: "3.0.0", SchemaVersion: "v2"}
-	// empty version should return the latest (highest FormatSince)
-	got := SelectSchema([]*Schema{v1, v2}, "")
-	if got.SchemaVersion != "v2" {
-		t.Errorf("empty version should pick latest schema, got %s", got.SchemaVersion)
-	}
-}
-
-func TestSelectSchema_AllFuture(t *testing.T) {
-	v1 := &Schema{App: "test", FormatSince: "5.0.0", SchemaVersion: "v1"}
-	v2 := &Schema{App: "test", FormatSince: "8.0.0", SchemaVersion: "v2"}
-	// app at 1.0.0 — all schemas are future, should fall back to the lowest
-	got := SelectSchema([]*Schema{v1, v2}, "1.0.0")
-	if got.SchemaVersion != "v1" {
-		t.Errorf("expected v1 (lowest FormatSince) as fallback, got %s", got.SchemaVersion)
-	}
-}
-
-func TestSelectSchema_EmptyFormatSince(t *testing.T) {
-	legacy := &Schema{App: "test", SchemaVersion: "legacy"}
-	v2 := &Schema{App: "test", FormatSince: "2.0.0", SchemaVersion: "v2"}
-	// at 1.0.0, v2 is too new — should pick legacy (empty FormatSince treated as oldest)
-	got := SelectSchema([]*Schema{legacy, v2}, "1.0.0")
-	if got.SchemaVersion != "legacy" {
-		t.Errorf("expected legacy schema at 1.0.0, got %s", got.SchemaVersion)
-	}
-	// at 3.0.0, v2 matches
-	got = SelectSchema([]*Schema{legacy, v2}, "3.0.0")
-	if got.SchemaVersion != "v2" {
-		t.Errorf("expected v2 schema at 3.0.0, got %s", got.SchemaVersion)
 	}
 }
 

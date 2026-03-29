@@ -216,42 +216,6 @@ func LoadSchema(data []byte) (*Schema, error) {
 	return &s, nil
 }
 
-// VersionCheckResult is a structured, non-error result of version compatibility checks.
-type VersionCheckResult struct {
-	// schema covers versions up to max_app_version, but app is newer
-	SchemaOutdated bool
-	// app is older than schema's min_app_version
-	AppTooOld bool
-	// human-readable reason (empty when no mismatch)
-	Reason string
-}
-
-// CheckVersion compares appVersion against schema bounds and returns a structured result.
-// empty or unparseable appVersion produces a zero result (no warnings).
-func (s *Schema) CheckVersion(appVersion string) VersionCheckResult {
-	nv := NormalizeSemver(appVersion)
-	if nv == "" {
-		return VersionCheckResult{}
-	}
-	if max := NormalizeSemver(s.MaxAppVersion); max != "" {
-		if semver.Compare(nv, max) > 0 {
-			return VersionCheckResult{
-				SchemaOutdated: true,
-				Reason:         fmt.Sprintf("schema covers %s up to %s, detected %s", s.App, s.MaxAppVersion, appVersion),
-			}
-		}
-	}
-	if min := NormalizeSemver(s.MinAppVersion); min != "" {
-		if semver.Compare(nv, min) < 0 {
-			return VersionCheckResult{
-				AppTooOld: true,
-				Reason:    fmt.Sprintf("schema requires %s %s+, detected %s", s.App, s.MinAppVersion, appVersion),
-			}
-		}
-	}
-	return VersionCheckResult{}
-}
-
 // FieldsAddedSince returns fields whose Since version is > baseVersion.
 // useful for "what's new" annotations. empty baseVersion returns nil.
 func (s *Schema) FieldsAddedSince(baseVersion string) []Field {
@@ -273,59 +237,3 @@ func (s *Schema) FieldsAddedSince(baseVersion string) []Field {
 	return added
 }
 
-// SelectSchema picks the appropriate schema for the given app version from a
-// list of candidates. selection logic: pick the schema whose FormatSince is
-// <= appVersion, preferring the highest FormatSince. if appVersion is empty
-// or unparseable, returns the schema with the highest FormatSince (latest).
-// returns nil only if schemas is empty.
-func SelectSchema(schemas []*Schema, appVersion string) *Schema {
-	if len(schemas) == 0 {
-		return nil
-	}
-	if len(schemas) == 1 {
-		return schemas[0]
-	}
-
-	nv := NormalizeSemver(appVersion)
-
-	// sort candidates by FormatSince descending (highest first)
-	type candidate struct {
-		schema     *Schema
-		normalized string // normalized FormatSince
-	}
-	var candidates []candidate
-	for _, s := range schemas {
-		candidates = append(candidates, candidate{
-			schema:     s,
-			normalized: NormalizeSemver(s.FormatSince),
-		})
-	}
-	slices.SortFunc(candidates, func(a, b candidate) int {
-		// empty FormatSince sorts last
-		if a.normalized == "" && b.normalized == "" {
-			return 0
-		}
-		if a.normalized == "" {
-			return 1
-		}
-		if b.normalized == "" {
-			return -1
-		}
-		return semver.Compare(b.normalized, a.normalized) // descending
-	})
-
-	// unknown version — return the latest schema
-	if nv == "" {
-		return candidates[0].schema
-	}
-
-	// pick highest FormatSince that is <= appVersion
-	for _, c := range candidates {
-		if c.normalized == "" || semver.Compare(c.normalized, nv) <= 0 {
-			return c.schema
-		}
-	}
-
-	// all schemas have FormatSince > appVersion — fall back to the lowest
-	return candidates[len(candidates)-1].schema
-}

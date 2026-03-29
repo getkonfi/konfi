@@ -51,7 +51,3 @@ func (h *Helix) Version(ctx context.Context) (string, error) {
 	return line, nil
 }
 
-// DefaultConfigPath returns the standard helix config.toml location.
-func DefaultConfigPath() string {
-	return pkg.XDGConfigPath("helix", "config.toml")
-}
