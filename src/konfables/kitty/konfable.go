@@ -29,6 +29,7 @@ func (k *Kitty) Info() konfables.AppInfo {
 		Format:     "kitty",
 		Icon:       "",
 		NerdIcon:   "\uf490", // nerd font terminal icon
+		ReloadCmd:  []string{"kitty", "@", "set-colors", "--all", "--configured"},
 	}
 }
 

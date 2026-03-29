@@ -31,6 +31,7 @@ func (t *Tmux) Info() konfables.AppInfo {
 		Format:     "tmux",
 		Icon:       "",
 		NerdIcon:   "\uebc8", // nf-md-dock_window
+		ReloadCmd:  []string{"tmux", "source-file", t.Path},
 	}
 }
 

@@ -13,7 +13,9 @@ type AppInfo struct {
 	ConfigPath string
 	Format     string
 	Icon       string
-	NerdIcon   string // nerd font glyph for sidebar
+	NerdIcon   string   // nerd font glyph for sidebar
+	ReloadCmd  []string // post-save command, e.g. ["hyprctl", "reload"]
+	AutoReload bool     // true if app watches its config file
 }
 
 // Parser performs surgical, line-preserving edits on config file bytes.

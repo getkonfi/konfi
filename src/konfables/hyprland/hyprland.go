@@ -29,6 +29,7 @@ func (h *Hyprland) Info() konfables.AppInfo {
 		Format:     "hyprland",
 		Icon:       "🪟",
 		NerdIcon:   "\uf219", //  window
+		ReloadCmd:  []string{"hyprctl", "reload"},
 	}
 }
 

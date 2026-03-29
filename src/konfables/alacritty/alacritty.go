@@ -29,6 +29,7 @@ func (a *Alacritty) Info() konfables.AppInfo {
 		Format:     "toml",
 		Icon:       "🖥",
 		NerdIcon:   "\ue795", //  terminal
+		AutoReload: true,
 	}
 }
 

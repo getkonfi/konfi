@@ -29,6 +29,7 @@ func (g *Ghostty) Info() konfables.AppInfo {
 		Format:     "ghostty",
 		Icon:       "👻",
 		NerdIcon:   "\uf47d", // 󰑽 ghost
+		AutoReload: true,
 	}
 }
 

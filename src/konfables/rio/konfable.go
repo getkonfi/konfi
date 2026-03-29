@@ -29,6 +29,7 @@ func (r *Rio) Info() konfables.AppInfo {
 		Format:     "toml",
 		Icon:       "R",
 		NerdIcon:   "\ue795", // terminal
+		AutoReload: true,
 	}
 }
 
