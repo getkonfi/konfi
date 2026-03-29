@@ -42,6 +42,16 @@ type MultiValueParser interface {
 	SetValues(data []byte, key string, values []string) ([]byte, error)
 }
 
+// BatchParser can return all key-value pairs in a single pass.
+type BatchParser interface {
+	FindAll(data []byte) map[string]string
+}
+
+// BatchMultiParser extends BatchParser with multi-value batch support.
+type BatchMultiParser interface {
+	FindAllMulti(data []byte) (singles map[string]string, multi map[string][]string)
+}
+
 // Versioned is an optional interface for apps that can report their version.
 type Versioned interface {
 	Version(ctx context.Context) (string, error)

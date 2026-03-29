@@ -45,6 +45,45 @@ func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
 	return deleteNested(data, block, inner)
 }
 
+// FindAll returns all key-value pairs as dotted paths in a single pass.
+func (p *parser) FindAll(data []byte) map[string]string {
+	lines := bytes.Split(data, []byte("\n"))
+	m := make(map[string]string)
+	var stack []string
+
+	for _, line := range lines {
+		trimmed := bytes.TrimSpace(line)
+		if len(trimmed) == 0 || trimmed[0] == '#' {
+			continue
+		}
+
+		s := string(trimmed)
+		if bytes.HasSuffix(trimmed, []byte("{")) {
+			name := strings.TrimSpace(strings.TrimSuffix(s, "{"))
+			if name != "" {
+				stack = append(stack, name)
+			}
+			continue
+		}
+
+		if bytes.Equal(trimmed, []byte("}")) {
+			if len(stack) > 0 {
+				stack = stack[:len(stack)-1]
+			}
+			continue
+		}
+
+		if k, v, ok := parseLine(trimmed); ok {
+			if len(stack) > 0 {
+				m[strings.Join(stack, ".")+"."+k] = v
+			} else {
+				m[k] = v
+			}
+		}
+	}
+	return m
+}
+
 // ListKeys returns all config keys defined in the data as dotted paths.
 func (p *parser) ListKeys(data []byte) []string {
 	lines := bytes.Split(data, []byte("\n"))

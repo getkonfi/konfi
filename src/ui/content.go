@@ -78,12 +78,21 @@ type content struct {
 	undoStack  *UndoStack
 	diffView   *diffView
 
+	// cached pending changes — invalidated on value mutation
+	cachedChanges    []pendingChange
+	cachedChangesDirty bool
+
 	// search match tracking for n/N navigation
 	searchMatches []int // indices into c.visible for matched rows
 	searchIdx     int   // current position in searchMatches
 
 	// "what's new" filter — toggled by root via n key
 	showNewOnly bool
+
+	// cached label column width — set in buildFieldList
+	labelW int
+	// pre-padded labels for rendering — set in buildFieldList
+	paddedLabels []string
 
 	// dashboard data (shown when no app is selected)
 	dashboardApps []dashboardApp
@@ -858,6 +867,7 @@ func (c content) openDocs(url string) tea.Cmd {
 
 func (c *content) refreshValues() {
 	c.values = make(map[string]string)
+	c.cachedChangesDirty = true
 	if c.config == nil || c.schema == nil || c.konfable == nil {
 		return
 	}
@@ -868,28 +878,53 @@ func (c *content) refreshValues() {
 	}
 
 	data := c.config.Content()
-	mvp, hasMVP := p.(konfables.MultiValueParser)
-	for _, sec := range c.schema.Sections {
-		for i := range sec.Fields {
-			f := &sec.Fields[i]
-			if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
-				// raw JSON widgets use FindValue directly
-				if v, ok := p.FindValue(data, f.Key); ok {
+
+	// batch lookup: single pass over the file when supported
+	if bmp, ok := p.(konfables.BatchMultiParser); ok {
+		// flat parsers with repeated keys (ghostty keybind, palette)
+		singles, multi := bmp.FindAllMulti(data)
+		for _, sec := range c.schema.Sections {
+			for i := range sec.Fields {
+				f := &sec.Fields[i]
+				if vals, isList := multi[f.Key]; isList {
+					c.values[f.Key] = strings.Join(vals, ", ")
+				} else if v, found := singles[f.Key]; found {
 					c.values[f.Key] = v
 				}
-			} else if f.Type == "list" && hasMVP {
-				if vals, ok := mvp.FindValues(data, f.Key); ok {
-					switch len(vals) {
-					case 0:
-						// no values — skip
-					case 1:
-						c.values[f.Key] = vals[0]
-					default:
-						c.values[f.Key] = strings.Join(vals, ", ")
-					}
+			}
+		}
+	} else if bp, ok := p.(konfables.BatchParser); ok {
+		all := bp.FindAll(data)
+		for _, sec := range c.schema.Sections {
+			for i := range sec.Fields {
+				if v, found := all[sec.Fields[i].Key]; found {
+					c.values[sec.Fields[i].Key] = v
 				}
-			} else if v, ok := p.FindValue(data, f.Key); ok {
-				c.values[f.Key] = v
+			}
+		}
+	} else {
+		// fallback: per-field lookup
+		mvp, hasMVP := p.(konfables.MultiValueParser)
+		for _, sec := range c.schema.Sections {
+			for i := range sec.Fields {
+				f := &sec.Fields[i]
+				if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
+					if v, ok := p.FindValue(data, f.Key); ok {
+						c.values[f.Key] = v
+					}
+				} else if f.Type == "list" && hasMVP {
+					if vals, ok := mvp.FindValues(data, f.Key); ok {
+						switch len(vals) {
+						case 0:
+						case 1:
+							c.values[f.Key] = vals[0]
+						default:
+							c.values[f.Key] = strings.Join(vals, ", ")
+						}
+					}
+				} else if v, ok := p.FindValue(data, f.Key); ok {
+					c.values[f.Key] = v
+				}
 			}
 		}
 	}
@@ -911,8 +946,17 @@ type pendingChange struct {
 	Deleted bool // key was removed
 }
 
-// pendingChanges computes per-field diffs between origValues and current values.
+// pendingChanges returns cached per-field diffs, recomputing only when dirty.
 func (c *content) pendingChanges() []pendingChange {
+	if !c.cachedChangesDirty {
+		return c.cachedChanges
+	}
+	c.cachedChangesDirty = false
+	c.cachedChanges = c.computePendingChanges()
+	return c.cachedChanges
+}
+
+func (c *content) computePendingChanges() []pendingChange {
 	if c.schema == nil || c.origValues == nil {
 		return nil
 	}
@@ -974,6 +1018,7 @@ func (c *content) syncDiffView() {
 
 // snapshotOrigValues copies the current values as the baseline for change tracking.
 func (c *content) snapshotOrigValues() {
+	c.cachedChangesDirty = true
 	c.origValues = make(map[string]string, len(c.values))
 	for k, v := range c.values {
 		c.origValues[k] = v

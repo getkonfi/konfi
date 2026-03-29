@@ -100,6 +100,17 @@ func (p *JSONParser) ListKeys(data []byte) []string {
 	return keys
 }
 
+// FindAll returns all leaf key-value pairs as a flat map with dotted keys.
+func (p *JSONParser) FindAll(data []byte) map[string]string {
+	root, err := unmarshalOrdered(data)
+	if err != nil {
+		return nil
+	}
+	m := make(map[string]string)
+	collectValues(root, nil, m)
+	return m
+}
+
 // FindValues returns the elements of a JSON array at the given dotted key path as strings.
 func (p *JSONParser) FindValues(data []byte, key string) ([]string, bool) {
 	path := splitDotPath(key)
@@ -575,5 +586,47 @@ func collectKeys(m orderedMap, prefix []string, keys *[]string) {
 		default:
 			*keys = append(*keys, strings.Join(fullPath, "."))
 		}
+	}
+}
+
+// collectValues gathers all leaf paths and their string values into a map.
+func collectValues(m orderedMap, prefix []string, out map[string]string) {
+	for _, kv := range m {
+		fullPath := append(append([]string{}, prefix...), kv.Key)
+		switch child := kv.Value.(type) {
+		case orderedMap:
+			collectValues(child, fullPath, out)
+		default:
+			key := strings.Join(fullPath, ".")
+			out[key] = anyToString(kv.Value)
+		}
+	}
+}
+
+// anyToString converts a decoded JSON value to its display string.
+func anyToString(v any) string {
+	switch val := v.(type) {
+	case string:
+		return val
+	case bool:
+		if val {
+			return "true"
+		}
+		return "false"
+	case float64:
+		if val == float64(int64(val)) {
+			return strconv.FormatInt(int64(val), 10)
+		}
+		return strconv.FormatFloat(val, 'f', -1, 64)
+	case []any:
+		b, err := json.Marshal(val)
+		if err != nil {
+			return fmt.Sprintf("%v", val)
+		}
+		return string(b)
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%v", val)
 	}
 }

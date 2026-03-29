@@ -96,6 +96,33 @@ func (p *SectionParser) DeleteKey(data []byte, key string) ([]byte, error) {
 	return DeleteKeyOnLine(data, lineIdx), nil
 }
 
+// FindAll returns all key-value pairs in a single pass, using dotted keys.
+func (p *SectionParser) FindAll(data []byte) map[string]string {
+	lines := strings.Split(string(data), "\n")
+	m := make(map[string]string)
+	currentSection := ""
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || p.isCommentStart(trimmed[0]) {
+			continue
+		}
+		if trimmed[0] == '[' {
+			currentSection = ParseSectionHeader(trimmed)
+			continue
+		}
+		k, v, ok := ParseKVLine(trimmed)
+		if !ok {
+			continue
+		}
+		if currentSection != "" {
+			m[currentSection+"."+k] = v
+		} else {
+			m[k] = v
+		}
+	}
+	return m
+}
+
 func (p *SectionParser) ListKeys(data []byte) []string {
 	lines := strings.Split(string(data), "\n")
 	var keys []string

@@ -145,6 +145,55 @@ func (p *FlatParser) DeleteKey(data []byte, key string) ([]byte, error) {
 	return bytes.Join(out, []byte("\n")), nil
 }
 
+// FindAll returns all key-value pairs in a single pass.
+func (p *FlatParser) FindAll(data []byte) map[string]string {
+	lines := bytes.Split(data, []byte("\n"))
+	m := make(map[string]string, len(lines)/2)
+	for _, line := range lines {
+		s := strings.TrimSpace(string(line))
+		if s == "" || s[0] == '#' {
+			continue
+		}
+		k, v, ok := p.Split(s)
+		if ok {
+			m[k] = v
+		}
+	}
+	return m
+}
+
+// FindAllMulti returns all key-value pairs in a single pass,
+// collecting repeated keys into slices.
+func (p *FlatParser) FindAllMulti(data []byte) (singles map[string]string, multi map[string][]string) {
+	lines := bytes.Split(data, []byte("\n"))
+	singles = make(map[string]string, len(lines)/2)
+	count := make(map[string]int, len(lines)/2)
+	for _, line := range lines {
+		s := strings.TrimSpace(string(line))
+		if s == "" || s[0] == '#' {
+			continue
+		}
+		k, v, ok := p.Split(s)
+		if !ok {
+			continue
+		}
+		count[k]++
+		if count[k] == 1 {
+			singles[k] = v
+		} else if count[k] == 2 {
+			// promote to multi
+			if multi == nil {
+				multi = make(map[string][]string)
+			}
+			multi[k] = []string{singles[k], v}
+			delete(singles, k)
+		} else {
+			multi[k] = append(multi[k], v)
+		}
+	}
+	return singles, multi
+}
+
 func (p *FlatParser) ListKeys(data []byte) []string {
 	lines := bytes.Split(data, []byte("\n"))
 	var keys []string

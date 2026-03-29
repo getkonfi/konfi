@@ -40,6 +40,39 @@ func (p *parser) FindValue(data []byte, key string) (string, bool) {
 	return "", false
 }
 
+// FindAll returns all key-value pairs in a single pass, including bare directives.
+func (p *parser) FindAll(data []byte) map[string]string {
+	lines := strings.Split(string(data), "\n")
+	m := make(map[string]string)
+	currentSection := ""
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || trimmed[0] == '#' {
+			continue
+		}
+		if trimmed[0] == '[' {
+			currentSection = pkg.ParseSectionHeader(trimmed)
+			continue
+		}
+		k, v, ok := pkg.ParseKVLine(trimmed)
+		if !ok {
+			// bare directive
+			if isValidDirective(trimmed) {
+				k = trimmed
+				v = "true"
+			} else {
+				continue
+			}
+		}
+		if currentSection != "" {
+			m[currentSection+"."+k] = v
+		} else {
+			m[k] = v
+		}
+	}
+	return m
+}
+
 func (p *parser) FindLine(data []byte, key string) (int, bool) {
 	lineIdx, found := p.base.FindLine(data, key)
 	if found {

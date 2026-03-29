@@ -24,6 +24,24 @@ func (p *parser) FindValue(data []byte, key string) (string, bool) {
 	return "", false
 }
 
+// FindAll returns all key-value pairs from global and Host * scopes in a single pass.
+func (p *parser) FindAll(data []byte) map[string]string {
+	lines := strings.Split(string(data), "\n")
+	m := make(map[string]string)
+	scope := scopeGlobal
+	for _, line := range lines {
+		scope = updateScope(line, scope)
+		if scope == scopeOther {
+			continue
+		}
+		k, v, ok := parseSSHLine(line)
+		if ok {
+			m[k] = v
+		}
+	}
+	return m
+}
+
 func (p *parser) FindLine(data []byte, key string) (int, bool) {
 	lines := strings.Split(string(data), "\n")
 	scope := scopeGlobal

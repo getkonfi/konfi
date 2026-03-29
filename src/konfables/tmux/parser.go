@@ -18,6 +18,19 @@ func (p *parser) FindValue(data []byte, key string) (string, bool) {
 	return "", false
 }
 
+// FindAll returns all key-value pairs in a single pass.
+func (p *parser) FindAll(data []byte) map[string]string {
+	lines := strings.Split(string(data), "\n")
+	m := make(map[string]string)
+	for _, line := range lines {
+		k, v, ok := parseTmuxSet(line)
+		if ok {
+			m[k] = v
+		}
+	}
+	return m
+}
+
 func (p *parser) FindLine(data []byte, key string) (int, bool) {
 	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
