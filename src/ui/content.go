@@ -91,6 +91,9 @@ type content struct {
 	// "what's new" filter — toggled by root via n key
 	showNewOnly bool
 
+	// last error from a void edit method — checked and cleared by Update callers
+	lastErr string
+
 	// cached label column width — set in buildFieldList
 	labelW int
 	// pre-padded labels for rendering — set in buildFieldList
@@ -211,7 +214,8 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			if f := c.currentField(); f != nil {
 				if f.Type == "bool" {
 					c.toggleBool(*f)
-					return c, nil
+					cmd := c.drainErr()
+					return c, cmd
 				}
 				cmd := c.openEditor()
 				return c, cmd
@@ -321,6 +325,8 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				} else if _, hasCur := c.values[f.Key]; hasCur {
 					c.deleteField(*f)
 				}
+				cmd := c.drainErr()
+				return c, cmd
 			}
 		case "d":
 			// delete key from config entirely
@@ -328,6 +334,8 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				if _, hasCur := c.values[f.Key]; hasCur {
 					c.deleteField(*f)
 				}
+				cmd := c.drainErr()
+				return c, cmd
 			}
 		case "o":
 			if url := c.currentDocURL(); url != "" {
@@ -366,11 +374,15 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 	case UndoMsg:
 		if op, ok := c.undoStack.Undo(); ok {
 			c.applyFieldByKey(op.FieldKey, op.OldValue)
+			cmd := c.drainErr()
+			return c, cmd
 		}
 
 	case RedoMsg:
 		if op, ok := c.undoStack.Redo(); ok {
 			c.applyFieldByKey(op.FieldKey, op.NewValue)
+			cmd := c.drainErr()
+			return c, cmd
 		}
 
 	case insightTickMsg:
@@ -565,6 +577,7 @@ func (c *content) toggleBool(f pkg.Field) {
 	data := c.config.Content()
 	newData, err := c.konfable.Parser().SetValue(data, f.Key, serialized)
 	if err != nil {
+		c.lastErr = "toggle failed: " + err.Error()
 		return
 	}
 	c.config.SetContent(newData)
@@ -582,6 +595,7 @@ func (c *content) deleteField(f pkg.Field) {
 	data := c.config.Content()
 	newData, err := p.DeleteKey(data, f.Key)
 	if err != nil {
+		c.lastErr = "delete failed: " + err.Error()
 		return
 	}
 	c.config.SetContent(newData)
@@ -607,6 +621,7 @@ func (c *content) revertField(f pkg.Field, origVal string) {
 			}
 			newData, err := mvp.SetValues(data, f.Key, vals)
 			if err != nil {
+				c.lastErr = "revert failed: " + err.Error()
 				return
 			}
 			c.config.SetContent(newData)
@@ -619,6 +634,7 @@ func (c *content) revertField(f pkg.Field, origVal string) {
 	serialized := formatValue(origVal, f.Type, c.konfable.Info().Format)
 	newData, err := p.SetValue(data, f.Key, serialized)
 	if err != nil {
+		c.lastErr = "revert failed: " + err.Error()
 		return
 	}
 	c.config.SetContent(newData)
@@ -638,6 +654,7 @@ func (c *content) applyFieldByKey(key, value string) {
 	if value == "" {
 		newData, err := p.DeleteKey(data, key)
 		if err != nil {
+			c.lastErr = "undo/redo failed: " + err.Error()
 			return
 		}
 		c.config.SetContent(newData)
@@ -658,6 +675,7 @@ func (c *content) applyFieldByKey(key, value string) {
 		if fieldWidget == "hook" || fieldWidget == "togglemap" || fieldWidget == "structlist" {
 			newData, err := p.SetValue(data, key, value)
 			if err != nil {
+				c.lastErr = "undo/redo failed: " + err.Error()
 				return
 			}
 			c.config.SetContent(newData)
@@ -671,6 +689,7 @@ func (c *content) applyFieldByKey(key, value string) {
 				vals := strings.Split(value, "\n")
 				newData, err := mvp.SetValues(data, key, vals)
 				if err != nil {
+					c.lastErr = "undo/redo failed: " + err.Error()
 					return
 				}
 				c.config.SetContent(newData)
@@ -682,11 +701,22 @@ func (c *content) applyFieldByKey(key, value string) {
 		serialized := formatValue(value, fieldType, fmtStr)
 		newData, err := p.SetValue(data, key, serialized)
 		if err != nil {
+			c.lastErr = "undo/redo failed: " + err.Error()
 			return
 		}
 		c.config.SetContent(newData)
 	}
 	c.refreshValues()
+}
+
+// drainErr returns a Cmd that surfaces lastErr as a StatusMsg, then clears it.
+func (c *content) drainErr() tea.Cmd {
+	if c.lastErr == "" {
+		return nil
+	}
+	text := c.lastErr
+	c.lastErr = ""
+	return func() tea.Msg { return StatusMsg{Text: text} }
 }
 
 // stopWatching type-asserts the konfable for Watchable and calls Unwatch.

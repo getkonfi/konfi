@@ -83,6 +83,9 @@ type EditorExitMsg struct{ Err error }
 // confirmQuitClearMsg auto-clears the quit confirmation after a timeout.
 type confirmQuitClearMsg struct{}
 
+// confirmSwitchClearMsg auto-clears the app-switch confirmation after a timeout.
+type confirmSwitchClearMsg struct{}
+
 // ToggleFilterMsg toggles the "configured only" filter from the palette.
 type ToggleFilterMsg struct{}
 

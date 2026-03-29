@@ -50,8 +50,10 @@ type root struct {
 	width    int
 	height   int
 	ready    bool
-	showHelp    bool
-	confirmQuit bool
+	showHelp     bool
+	confirmQuit  bool
+	confirmSwitch bool          // dirty-state guard for app switching
+	pendingSwitch *AppSelectedMsg // deferred app switch awaiting confirmation
 
 	// all konfables (indexed by sidebar item order)
 	allKonfables []konfables.Konfable
@@ -287,6 +289,16 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// reset confirm-quit on any key that isn't q
 		if msg.String() != "q" {
 			r.confirmQuit = false
+		}
+		// reset confirm-switch on keys that aren't navigation
+		switch msg.String() {
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9",
+			"ctrl+n", "ctrl+p", "ctrl+o", "ctrl+]",
+			"enter", "space", "j", "k", "up", "down":
+			// keep confirmSwitch alive for navigation keys
+		default:
+			r.confirmSwitch = false
+			r.pendingSwitch = nil
 		}
 
 		switch msg.String() {
@@ -570,6 +582,17 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !msg.Confirmed && !r.app.Config.BrowseLoadsApp {
 				return r, nil // browse only — don't load
 			}
+			// guard: warn before discarding unsaved edits
+			if r.content.config != nil && r.content.config.Dirty() && !r.confirmSwitch {
+				r.confirmSwitch = true
+				r.pendingSwitch = &msg
+				r.status.status = "unsaved changes — press again to switch, ctrl+s to save"
+				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+					return confirmSwitchClearMsg{}
+				})
+			}
+			r.confirmSwitch = false
+			r.pendingSwitch = nil
 			k := r.allKonfables[msg.Index]
 			r.status.status = ""
 			cmd := r.content.loadApp(k)
@@ -667,6 +690,14 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, nil
 
+	case confirmSwitchClearMsg:
+		r.confirmSwitch = false
+		r.pendingSwitch = nil
+		if r.status.status == "unsaved changes — press again to switch, ctrl+s to save" {
+			r.status.status = ""
+		}
+		return r, nil
+
 	case statusClearMsg:
 		r.status.status = ""
 		return r, nil
@@ -678,7 +709,10 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if r.content.config != nil && r.content.config.Dirty() {
 				r.content.fileState = "unsaved"
 			}
-			r.status.status = "pasted"
+			// only show "pasted" if applyPaste didn't set an error
+			if !strings.HasPrefix(r.status.status, "paste failed") {
+				r.status.status = "pasted"
+			}
 			r.updateHints()
 			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
 				return statusClearMsg{}
@@ -913,10 +947,25 @@ func (r *root) updateHints() {
 	r.status.SetUndoCount(r.content.undoStack.Len())
 
 	if r.content.Editing() {
-		r.content.hints = []keyHint{
-			{"⏎", "confirm"},
-			{"esc", "cancel"},
-			{"tab", "switch mode"},
+		switch r.content.detail.editor.(type) {
+		case *listEditor, *hookEditor, *structListEditor:
+			r.content.hints = []keyHint{
+				{"a", "add"}, {"d", "delete"},
+				{"⏎", "edit"}, {"^S", "done"}, {"esc", "cancel"},
+			}
+		case *toggleMapEditor:
+			r.content.hints = []keyHint{
+				{"␣", "toggle"}, {"a", "add"}, {"d", "delete"},
+				{"⏎", "done"}, {"esc", "cancel"},
+			}
+		case *enumEditor:
+			r.content.hints = []keyHint{
+				{"↑↓", "select"}, {"⏎", "confirm"}, {"esc", "cancel"},
+			}
+		default:
+			r.content.hints = []keyHint{
+				{"⏎", "confirm"}, {"esc", "cancel"}, {"tab", "switch mode"},
+			}
 		}
 		r.status.hints = r.content.hints
 		return
