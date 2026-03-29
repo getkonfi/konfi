@@ -3,17 +3,17 @@ package pacman
 import (
 	"strings"
 
-	"github.com/emin/konfigurator/pkg"
+	cfgparse "github.com/emin/konfigurator/pkg/parser"
 )
 
 // parser handles pacman.conf INI format: [section] headers, key = value pairs,
 // and bare directives (presence-based boolean flags like Color, ILoveCandy).
 type parser struct {
-	base pkg.SectionParser
+	base cfgparse.SectionParser
 }
 
 func newParser() *parser {
-	return &parser{base: pkg.SectionParser{SplitKey: pkg.SplitKeyFirst}}
+	return &parser{base: cfgparse.SectionParser{SplitKey: cfgparse.SplitKeyFirst}}
 }
 
 var bareDirectives = map[string]bool{
@@ -31,7 +31,7 @@ func (p *parser) FindValue(data []byte, key string) (string, bool) {
 	if found {
 		return val, true
 	}
-	section, field := pkg.SplitKeyFirst(key)
+	section, field := cfgparse.SplitKeyFirst(key)
 	if section != "" {
 		if _, found := findBareDirective(data, section, field); found {
 			return "true", true
@@ -51,10 +51,10 @@ func (p *parser) FindAll(data []byte) map[string]string {
 			continue
 		}
 		if trimmed[0] == '[' {
-			currentSection = pkg.ParseSectionHeader(trimmed)
+			currentSection = cfgparse.ParseSectionHeader(trimmed)
 			continue
 		}
-		k, v, ok := pkg.ParseKVLine(trimmed)
+		k, v, ok := cfgparse.ParseKVLine(trimmed)
 		if !ok {
 			// bare directive
 			if isValidDirective(trimmed) {
@@ -78,7 +78,7 @@ func (p *parser) FindLine(data []byte, key string) (int, bool) {
 	if found {
 		return lineIdx, true
 	}
-	section, field := pkg.SplitKeyFirst(key)
+	section, field := cfgparse.SplitKeyFirst(key)
 	if section != "" {
 		return findBareDirective(data, section, field)
 	}
@@ -86,26 +86,26 @@ func (p *parser) FindLine(data []byte, key string) (int, bool) {
 }
 
 func (p *parser) SetValue(data []byte, key, value string) ([]byte, error) {
-	_, field := pkg.SplitKeyFirst(key)
+	_, field := cfgparse.SplitKeyFirst(key)
 	if bareDirectives[field] {
-		section, _ := pkg.SplitKeyFirst(key)
+		section, _ := cfgparse.SplitKeyFirst(key)
 		return setBareDirective(data, section, field, value)
 	}
 	return p.base.SetValue(data, key, value)
 }
 
 func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
-	section, field := pkg.SplitKeyFirst(key)
+	section, field := cfgparse.SplitKeyFirst(key)
 	if section == "" {
 		return p.base.DeleteKey(data, key)
 	}
-	_, lineIdx, found := pkg.FindKeyInSection(data, section, field)
+	_, lineIdx, found := cfgparse.FindKeyInSection(data, section, field)
 	if found {
-		return pkg.DeleteKeyOnLine(data, lineIdx), nil
+		return cfgparse.DeleteKeyOnLine(data, lineIdx), nil
 	}
 	lineIdx, found = findBareDirective(data, section, field)
 	if found {
-		return pkg.DeleteKeyOnLine(data, lineIdx), nil
+		return cfgparse.DeleteKeyOnLine(data, lineIdx), nil
 	}
 	return data, nil
 }
@@ -120,10 +120,10 @@ func (p *parser) ListKeys(data []byte) []string {
 			continue
 		}
 		if trimmed[0] == '[' {
-			currentSection = pkg.ParseSectionHeader(trimmed)
+			currentSection = cfgparse.ParseSectionHeader(trimmed)
 			continue
 		}
-		k, _, ok := pkg.ParseKVLine(trimmed)
+		k, _, ok := cfgparse.ParseKVLine(trimmed)
 		if !ok {
 			if isValidDirective(trimmed) {
 				k = trimmed
@@ -146,7 +146,7 @@ func findBareDirective(data []byte, section, key string) (int, bool) {
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" && trimmed[0] == '[' {
-			sectionName := pkg.ParseSectionHeader(trimmed)
+			sectionName := cfgparse.ParseSectionHeader(trimmed)
 			inSection = sectionName == section
 			continue
 		}
@@ -168,7 +168,7 @@ func setBareDirective(data []byte, section, field, value string) ([]byte, error)
 
 	if value == "false" {
 		if found {
-			return pkg.DeleteKeyOnLine(data, lineIdx), nil
+			return cfgparse.DeleteKeyOnLine(data, lineIdx), nil
 		}
 		return data, nil
 	}
@@ -176,9 +176,9 @@ func setBareDirective(data []byte, section, field, value string) ([]byte, error)
 	if found {
 		return data, nil
 	}
-	_, kvIdx, kvFound := pkg.FindKeyInSection(data, section, field)
+	_, kvIdx, kvFound := cfgparse.FindKeyInSection(data, section, field)
 	if kvFound {
-		data = pkg.DeleteKeyOnLine(data, kvIdx)
+		data = cfgparse.DeleteKeyOnLine(data, kvIdx)
 	}
 	return insertBareInSection(data, section, field), nil
 }
@@ -194,7 +194,7 @@ func insertBareInSection(data []byte, section, field string) []byte {
 			if inSection {
 				return insertLine(lines, i, field)
 			}
-			sectionName := pkg.ParseSectionHeader(trimmed)
+			sectionName := cfgparse.ParseSectionHeader(trimmed)
 			inSection = sectionName == section
 			if inSection {
 				sectionEnd = i

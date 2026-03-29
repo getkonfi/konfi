@@ -9,6 +9,7 @@ import (
 
 	"github.com/emin/konfigurator/konfables"
 	"github.com/emin/konfigurator/pkg"
+	"github.com/emin/konfigurator/pkg/pixelart"
 	"github.com/emin/konfigurator/theme"
 
 	"charm.land/bubbles/v2/textinput"
@@ -71,7 +72,7 @@ type content struct {
 	splitFlap           *splitFlapState
 
 	// logo animation
-	logoAnim    *pkg.AnimState
+	logoAnim    *pixelart.AnimState
 	logoAnimGen int
 
 	// breadcrumb, undo/redo, diff preview
@@ -811,7 +812,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.logoAnimGen++
 	if cfg, ok := konfables.LogoAnims[k.Name()]; ok {
 		if logo, lok := konfables.Logos[k.Name()]; lok {
-			c.logoAnim = pkg.NewAnimState(logo, cfg)
+			c.logoAnim = pixelart.NewAnimState(logo, cfg)
 			cmds = append(cmds, logoAnimCmd(c.logoAnimGen))
 		}
 	} else {

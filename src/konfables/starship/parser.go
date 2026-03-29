@@ -1,7 +1,7 @@
 package starship
 
-import "github.com/emin/konfigurator/pkg"
+import "github.com/emin/konfigurator/pkg/parser"
 
-func newParser() *pkg.SectionParser {
-	return &pkg.SectionParser{SplitKey: pkg.SplitKeyFirst}
+func newParser() *parser.SectionParser {
+	return &parser.SectionParser{SplitKey: parser.SplitKeyFirst}
 }

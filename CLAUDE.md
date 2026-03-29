@@ -17,14 +17,18 @@ src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
 - `ui/` — bubble tea model tree. thin glue layer
 - `theme/` — palette definitions, semantic lipgloss styles
 - `konfables/` — feature-first domains. each app owns parser, schema, editor
-- `pkg/` — shared foundation: config file, schema types, TOML helpers, file utils
+- `pkg/` — shared foundation: config file, schema types, search, file utils
+- `pkg/parser/` — format parsers: flat key-value, section/INI, JSON, TOML helpers
+- `pkg/pixelart/` — pixel art rendering and logo animations
 
 ## import flow (no cycles)
 ```
 main → setup → ui → theme → pkg
               │ └→ konfables/* → theme
-              │         └────→ pkg
+              │         └────→ pkg, pkg/parser
               └──────────────→ pkg
+ui → pkg/pixelart, pkg (search, schema, config)
+konfables/logos → pkg/pixelart
 ```
 
 ## commands
@@ -42,7 +46,7 @@ main → setup → ui → theme → pkg
 - user approval before any config writes (no silent dotfile modification)
 - `setup/detection.go` imports concrete konfable packages — one-directional
 - `theme/` never imports `konfables/`
-- konfables import `theme` (for Theme in editors) and `pkg` (for ConfigFile, Schema)
+- konfables import `theme` (for Theme in editors), `pkg` (for ConfigFile, Schema), and `pkg/parser` (for format parsers)
 
 ## aim
  - main aim is to bring ease of use by having a single tui for various apps

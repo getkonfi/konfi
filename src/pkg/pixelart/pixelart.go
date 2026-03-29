@@ -1,4 +1,4 @@
-package pkg
+package pixelart
 
 import (
 	"image/color"

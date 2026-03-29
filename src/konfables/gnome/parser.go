@@ -1,7 +1,7 @@
 package gnome
 
-import "github.com/emin/konfigurator/pkg"
+import "github.com/emin/konfigurator/pkg/parser"
 
-func newParser() *pkg.FlatParser {
-	return &pkg.FlatParser{Split: pkg.SplitSpacedEquals, Format: pkg.FormatEquals}
+func newParser() *parser.FlatParser {
+	return &parser.FlatParser{Split: parser.SplitSpacedEquals, Format: parser.FormatEquals}
 }

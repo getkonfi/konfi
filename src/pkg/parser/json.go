@@ -1,4 +1,4 @@
-package pkg
+package parser
 
 import (
 	"bytes"
@@ -7,6 +7,14 @@ import (
 	"strconv"
 	"strings"
 )
+
+// ParserCapabilities describes what a parser format supports.
+type ParserCapabilities struct {
+	SupportsComments   bool
+	SupportsNesting    bool
+	LosslessRoundtrip  bool
+	SupportsMultivalue bool
+}
 
 // JSONParser performs surgical edits on JSON config files.
 // keys use dotted paths: "permissions.allow" → {"permissions":{"allow":...}}.

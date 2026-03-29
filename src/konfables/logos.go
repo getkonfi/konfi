@@ -1,10 +1,10 @@
 package konfables
 
-import "github.com/emin/konfigurator/pkg"
+import "github.com/emin/konfigurator/pkg/pixelart"
 
 // Logos maps app names to their pixel art representations.
 // each logo is 16×12 pixels using 256-color indices (0 = transparent).
-var Logos = map[string]pkg.PixelArt{
+var Logos = map[string]pixelart.PixelArt{
 	"ghostty":      ghosttyLogo,
 	"alacritty":    alacrittyLogo,
 	"starship":     starshipLogo,
@@ -44,7 +44,7 @@ const (
 )
 
 // ghostty — ghost silhouette with eyes, wavy bottom
-var ghosttyLogo = pkg.PixelArt{
+var ghosttyLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, wh, wh, wh, wh, wh, wh, __, __, __, __, __},
@@ -63,7 +63,7 @@ var ghosttyLogo = pkg.PixelArt{
 }
 
 // alacritty — triangle/A mark in orange and yellow (no crossbar)
-var alacrittyLogo = pkg.PixelArt{
+var alacrittyLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
@@ -82,7 +82,7 @@ var alacrittyLogo = pkg.PixelArt{
 }
 
 // starship — rocket pointing upward with exhaust flame
-var starshipLogo = pkg.PixelArt{
+var starshipLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, __, cy, cy, __, __, __, __, __, __, __},
@@ -101,7 +101,7 @@ var starshipLogo = pkg.PixelArt{
 }
 
 // konfigurator — gear/cog icon
-var konfiguratorLogo = pkg.PixelArt{
+var konfiguratorLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, lg, lg, __, __, lg, lg, __, __, __, __, __},
@@ -120,10 +120,10 @@ var konfiguratorLogo = pkg.PixelArt{
 }
 
 // LogoAnims maps app names to their logo animation configs.
-var LogoAnims = map[string]pkg.AnimConfig{
+var LogoAnims = map[string]pixelart.AnimConfig{
 	"ghostty": {
-		Kind: pkg.AnimBlink, Frames: 18, TickMs: 80,
-		BlinkPixels: []pkg.Pixel{
+		Kind: pixelart.AnimBlink, Frames: 18, TickMs: 80,
+		BlinkPixels: []pixelart.Pixel{
 			{Row: 4, Col: 4}, {Row: 4, Col: 5}, {Row: 5, Col: 4}, {Row: 5, Col: 5},
 			{Row: 4, Col: 10}, {Row: 4, Col: 11}, {Row: 5, Col: 10}, {Row: 5, Col: 11},
 		},
@@ -136,7 +136,7 @@ var LogoAnims = map[string]pkg.AnimConfig{
 		},
 	},
 	"starship": {
-		Kind: pkg.AnimFlame, Frames: 20, TickMs: 60,
+		Kind: pixelart.AnimFlame, Frames: 20, TickMs: 60,
 		FlameZone:   [4]int{10, 11, 6, 9},
 		FlameColors: []uint8{rd, or, yl, dk},
 		// ramp up → plateau → die down
@@ -146,17 +146,17 @@ var LogoAnims = map[string]pkg.AnimConfig{
 		},
 	},
 	"alacritty": {
-		Kind: pkg.AnimFade, Frames: 12, TickMs: 60,
+		Kind: pixelart.AnimFade, Frames: 12, TickMs: 60,
 	},
 	"hyprland": {
-		Kind: pkg.AnimDrip, Frames: 33, TickMs: 60,
-		DripOrigin: pkg.Pixel{Row: 0, Col: 7},
+		Kind: pixelart.AnimDrip, Frames: 33, TickMs: 60,
+		DripOrigin: pixelart.Pixel{Row: 0, Col: 7},
 		DripBright: []uint8{255, 195, 153, 111},
 	},
 	"pacman": {
-		Kind: pkg.AnimChomp, Frames: 25, TickMs: 100,
+		Kind: pixelart.AnimChomp, Frames: 25, TickMs: 100,
 		ChompColor: yl,
-		ChompLayers: [][]pkg.Pixel{
+		ChompLayers: [][]pixelart.Pixel{
 			// layer 0: col 13 (outermost edge)
 			{{Row: 2, Col: 13}, {Row: 3, Col: 13}, {Row: 4, Col: 13}, {Row: 5, Col: 13}, {Row: 6, Col: 13}, {Row: 7, Col: 13}, {Row: 8, Col: 13}, {Row: 9, Col: 13}},
 			// layer 1: col 12
@@ -180,8 +180,8 @@ var LogoAnims = map[string]pkg.AnimConfig{
 		},
 	},
 	"kitty": {
-		Kind: pkg.AnimBlink, Frames: 18, TickMs: 80,
-		BlinkPixels: []pkg.Pixel{
+		Kind: pixelart.AnimBlink, Frames: 18, TickMs: 80,
+		BlinkPixels: []pixelart.Pixel{
 			{Row: 3, Col: 3}, {Row: 3, Col: 4},
 			{Row: 3, Col: 11}, {Row: 3, Col: 12},
 		},
@@ -194,16 +194,16 @@ var LogoAnims = map[string]pkg.AnimConfig{
 		},
 	},
 	"helix": {
-		Kind: pkg.AnimWave, Frames: 33, TickMs: 60,
+		Kind: pixelart.AnimWave, Frames: 33, TickMs: 60,
 		WaveBright: []uint8{255, 195, 153, 111},
 	},
 	"rio": {
-		Kind: pkg.AnimFade, Frames: 12, TickMs: 60,
+		Kind: pixelart.AnimFade, Frames: 12, TickMs: 60,
 	},
 }
 
 // hyprland — water drop with glossy highlight
-var hyprlandLogo = pkg.PixelArt{
+var hyprlandLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __},
@@ -222,7 +222,7 @@ var hyprlandLogo = pkg.PixelArt{
 }
 
 // git — branching diamond in orange (git logo silhouette)
-var gitLogo = pkg.PixelArt{
+var gitLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, __, or, or, __, __, __, __, __, __, __},
@@ -241,7 +241,7 @@ var gitLogo = pkg.PixelArt{
 }
 
 // tmux — split pane layout in green
-var tmuxLogo = pkg.PixelArt{
+var tmuxLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, gn, __, __},
@@ -260,7 +260,7 @@ var tmuxLogo = pkg.PixelArt{
 }
 
 // pacman — open mouth pac-man shape in yellow
-var pacmanLogo = pkg.PixelArt{
+var pacmanLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, yl, yl, yl, yl, yl, __, __, __, __, __},
@@ -279,7 +279,7 @@ var pacmanLogo = pkg.PixelArt{
 }
 
 // ssh — key shape in yellow
-var sshLogo = pkg.PixelArt{
+var sshLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, yl, yl, yl, yl, __, __, __, __, __, __},
@@ -298,7 +298,7 @@ var sshLogo = pkg.PixelArt{
 }
 
 // dconf — GNOME foot silhouette in light blue
-var dconfLogo = pkg.PixelArt{
+var dconfLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, lb, lb, __, __, lb, lb, __, lb, lb, __, __, __},
@@ -317,7 +317,7 @@ var dconfLogo = pkg.PixelArt{
 }
 
 // claude — sparkle/diamond in coral and salmon (anthropic brand)
-var claudeLogo = pkg.PixelArt{
+var claudeLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, __, co, co, __, __, __, __, __, __, __},
@@ -336,7 +336,7 @@ var claudeLogo = pkg.PixelArt{
 }
 
 // kitty — cat peeking over terminal screen
-var kittyLogo = pkg.PixelArt{
+var kittyLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, br, br, __, __, __, __, __, __, __, __, __, __, br, br, __},
@@ -355,7 +355,7 @@ var kittyLogo = pkg.PixelArt{
 }
 
 // helix — double helix strands in purple and cyan
-var helixLogo = pkg.PixelArt{
+var helixLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, pu, pu, __, __, __, __, __, __, cy, cy, __, __, __},
@@ -374,7 +374,7 @@ var helixLogo = pkg.PixelArt{
 }
 
 // rio — dark face with gradient border (pink→cyan) and white eyes
-var rioLogo = pkg.PixelArt{
+var rioLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, pk, pk, pk, pk, pk, pk, pk, pk, pk, pk, pk, pk, __, __},

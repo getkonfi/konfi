@@ -1,7 +1,7 @@
 package kitty
 
-import "github.com/emin/konfigurator/pkg"
+import "github.com/emin/konfigurator/pkg/parser"
 
-func newParser() *pkg.FlatParser {
-	return &pkg.FlatParser{Split: pkg.SplitEqualsOrSpace, Format: pkg.FormatSpace}
+func newParser() *parser.FlatParser {
+	return &parser.FlatParser{Split: parser.SplitEqualsOrSpace, Format: parser.FormatSpace}
 }

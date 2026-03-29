@@ -237,3 +237,18 @@ func (s *Schema) FieldsAddedSince(baseVersion string) []Field {
 	return added
 }
 
+// NormalizeSemver prepends "v" if missing and validates via semver.
+// returns empty string for non-semver input.
+func NormalizeSemver(v string) string {
+	if v == "" {
+		return ""
+	}
+	if v[0] != 'v' {
+		v = "v" + v
+	}
+	if !semver.IsValid(v) {
+		return ""
+	}
+	return v
+}
+

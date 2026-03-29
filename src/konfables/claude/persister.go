@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/emin/konfigurator/pkg"
+	"github.com/emin/konfigurator/pkg/parser"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -85,7 +86,7 @@ func (tp *TieredPersister) Save(_ context.Context, original, data []byte) error 
 		tierData[t.Name] = raw
 	}
 
-	parser := &pkg.JSONParser{}
+	parser := &parser.JSONParser{}
 	dirty := make(map[string]bool)
 
 	// handle changed/added keys
@@ -413,7 +414,7 @@ func marshalJSON(v any) ([]byte, error) {
 
 // listAllKeys returns all leaf dotted keys from a JSON blob.
 func listAllKeys(data []byte) []string {
-	p := &pkg.JSONParser{}
+	p := &parser.JSONParser{}
 	return p.ListKeys(data)
 }
 

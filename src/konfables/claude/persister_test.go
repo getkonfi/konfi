@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/emin/konfigurator/pkg/parser"
 )
 
 func setupTiers(t *testing.T) (global, local, project string) {
@@ -487,7 +487,7 @@ func TestSaveNestedKeyToCorrectTier(t *testing.T) {
 func TestIntegration3Tier(t *testing.T) {
 	global, local, project := setupTiers(t)
 	ctx := context.Background()
-	parser := &pkg.JSONParser{}
+	parser := &parser.JSONParser{}
 
 	// --- fixtures: 3 tiers with overlapping keys ---
 	writeJSON(t, global, map[string]any{

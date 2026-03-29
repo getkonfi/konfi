@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/pkg"
+	"github.com/emin/konfigurator/pkg/parser"
 )
 
 //go:embed schema.yaml
@@ -34,7 +34,7 @@ func (c *Claude) Info() konfables.AppInfo {
 
 func (c *Claude) Name() string             { return "claude" }
 func (c *Claude) ConfigPath() string        { return c.tiers[0].Path }
-func (c *Claude) Parser() konfables.Parser  { return &pkg.JSONParser{} }
+func (c *Claude) Parser() konfables.Parser  { return &parser.JSONParser{} }
 func (c *Claude) Schema() ([]byte, error)   { return schemaData, nil }
 
 // Version runs "claude --version" and returns the version string.
