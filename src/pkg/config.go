@@ -15,6 +15,7 @@ type ConfigFile struct {
 	original  []byte
 	current   []byte
 	dirty     bool
+	gen       uint64
 	mu        sync.Mutex
 }
 
@@ -52,6 +53,14 @@ func (cf *ConfigFile) SetContent(data []byte) {
 	defer cf.mu.Unlock()
 	cf.current = bytes.Clone(data)
 	cf.dirty = !bytes.Equal(cf.current, cf.original)
+	cf.gen++
+}
+
+// Generation returns a monotonically increasing counter bumped on every content change.
+func (cf *ConfigFile) Generation() uint64 {
+	cf.mu.Lock()
+	defer cf.mu.Unlock()
+	return cf.gen
 }
 
 // Dirty returns whether the working copy differs from the original.
@@ -110,6 +119,7 @@ func (cf *ConfigFile) Reload(ctx context.Context) error {
 	cf.original = data
 	cf.current = bytes.Clone(data)
 	cf.dirty = false
+	cf.gen++
 	cf.mu.Unlock()
 	return nil
 }

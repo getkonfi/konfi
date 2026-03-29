@@ -17,6 +17,7 @@ type FilePersister struct {
 	defaultContent []byte
 
 	watcher   *fsnotify.Watcher
+	done      chan struct{}
 	selfWrite int64 // unix nano timestamp of last self-write
 	mu        sync.Mutex
 }
@@ -98,6 +99,7 @@ func (fp *FilePersister) Watch(onChange func()) error {
 		return fmt.Errorf("watch %s: %w", fp.Path, err)
 	}
 
+	fp.done = make(chan struct{})
 	fp.watcher = w
 
 	go func() {
@@ -106,6 +108,8 @@ func (fp *FilePersister) Watch(onChange func()) error {
 
 		for {
 			select {
+			case <-fp.done:
+				return
 			case ev, ok := <-w.Events:
 				if !ok {
 					return
@@ -155,6 +159,10 @@ func (fp *FilePersister) Unwatch() {
 	fp.mu.Lock()
 	defer fp.mu.Unlock()
 
+	if fp.done != nil {
+		close(fp.done)
+		fp.done = nil
+	}
 	if fp.watcher != nil {
 		fp.watcher.Close()
 		fp.watcher = nil

@@ -5,9 +5,41 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 
 	"charm.land/lipgloss/v2"
 )
+
+// pixel render caches — at most 256 color indices
+var (
+	pixelOnce sync.Once
+	fgPixel   [256]string // "▀" with fg=color[i]
+	bgPixel   [256]string // "▄" with fg=color[i]
+	dualPixel sync.Map    // [2]uint8 → "▀" with fg=top, bg=bottom
+)
+
+func initPixelCache() {
+	pixelOnce.Do(func() {
+		for i := 1; i < 256; i++ {
+			c := color256(uint8(i))
+			fgPixel[i] = lipgloss.NewStyle().Foreground(c).Render("▀")
+			bgPixel[i] = lipgloss.NewStyle().Foreground(c).Render("▄")
+		}
+	})
+}
+
+func cachedDual(top, bottom uint8) string {
+	key := [2]uint8{top, bottom}
+	if v, ok := dualPixel.Load(key); ok {
+		return v.(string)
+	}
+	s := lipgloss.NewStyle().
+		Foreground(color256(top)).
+		Background(color256(bottom)).
+		Render("▀")
+	dualPixel.Store(key, s)
+	return s
+}
 
 // PixelArt holds a pixel grid that renders via the half-block technique.
 // Height must be even. Pixel values are 256-color indices; 0 = transparent.
@@ -18,7 +50,8 @@ type PixelArt struct {
 
 // Render produces a string using ▀/▄ half-block characters.
 // each terminal row encodes two pixel rows: fg=top, bg=bottom.
-func (p PixelArt) Render() string {
+func (p *PixelArt) Render() string {
+	initPixelCache()
 	var b strings.Builder
 	for y := 0; y < p.Height; y += 2 {
 		if y > 0 {
@@ -33,16 +66,11 @@ func (p PixelArt) Render() string {
 
 			switch {
 			case top != 0 && bottom != 0:
-				s := lipgloss.NewStyle().
-					Foreground(color256(top)).
-					Background(color256(bottom))
-				b.WriteString(s.Render("▀"))
+				b.WriteString(cachedDual(top, bottom))
 			case top != 0:
-				s := lipgloss.NewStyle().Foreground(color256(top))
-				b.WriteString(s.Render("▀"))
+				b.WriteString(fgPixel[top])
 			case bottom != 0:
-				s := lipgloss.NewStyle().Foreground(color256(bottom))
-				b.WriteString(s.Render("▄"))
+				b.WriteString(bgPixel[bottom])
 			default:
 				b.WriteByte(' ')
 			}
@@ -56,7 +84,7 @@ func color256(idx uint8) color.Color {
 }
 
 // Clone returns a deep copy of the pixel grid.
-func (p PixelArt) Clone() PixelArt {
+func (p *PixelArt) Clone() PixelArt {
 	c := PixelArt{Width: p.Width, Height: p.Height, Pixels: make([][]uint8, len(p.Pixels))}
 	for i, row := range p.Pixels {
 		c.Pixels[i] = make([]uint8, len(row))
@@ -163,7 +191,7 @@ func (s *AnimState) Tick() bool {
 }
 
 // CurrentFrame produces the pixel art for the current animation frame.
-func (s *AnimState) CurrentFrame() PixelArt {
+func (s *AnimState) CurrentFrame() *PixelArt {
 	frame := s.Base.Clone()
 	switch s.Config.Kind {
 	case AnimBlink:
@@ -179,7 +207,7 @@ func (s *AnimState) CurrentFrame() PixelArt {
 	case AnimDrip:
 		s.applyDrip(&frame)
 	}
-	return frame
+	return &frame
 }
 
 // applyBlink toggles eye pixels between BlinkColor and base per BlinkSeq.

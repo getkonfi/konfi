@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"bytes"
 	"strings"
 )
 
@@ -83,9 +82,9 @@ func (p *FlatParser) FindLine(data []byte, key string) (int, bool) {
 }
 
 func (p *FlatParser) find(data []byte, key string) (value string, lineIdx int, found bool) {
-	lines := bytes.Split(data, []byte("\n"))
+	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s == "" || s[0] == '#' {
 			continue
 		}
@@ -98,42 +97,41 @@ func (p *FlatParser) find(data []byte, key string) (value string, lineIdx int, f
 }
 
 func (p *FlatParser) SetValue(data []byte, key, value string) ([]byte, error) {
-	lines := bytes.Split(data, []byte("\n"))
+	lines := strings.Split(string(data), "\n")
 	for i, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s == "" || s[0] == '#' {
 			continue
 		}
 		k, oldVal, ok := p.Split(s)
 		if ok && k == key {
 			// preserve original line format by replacing only the value portion
-			orig := string(line)
-			lead := len(orig) - len(strings.TrimLeft(orig, " \t"))
+			lead := len(line) - len(strings.TrimLeft(line, " \t"))
 			if oldVal != "" {
 				// value sits at end of trimmed content
 				valStart := lead + len(s) - len(oldVal)
-				lines[i] = []byte(orig[:valStart] + value)
+				lines[i] = line[:valStart] + value
 			} else {
 				// empty old value — append after existing content
-				lines[i] = []byte(strings.TrimRight(orig, " \t") + value)
+				lines[i] = strings.TrimRight(line, " \t") + value
 			}
-			return bytes.Join(lines, []byte("\n")), nil
+			return []byte(strings.Join(lines, "\n")), nil
 		}
 	}
 	// not found — append
 	if len(data) > 0 && data[len(data)-1] != '\n' {
-		lines = append(lines, []byte(p.Format(key, value)))
+		lines = append(lines, p.Format(key, value))
 	} else {
-		lines = append(lines[:len(lines)-1], []byte(p.Format(key, value)), []byte(""))
+		lines = append(lines[:len(lines)-1], p.Format(key, value), "")
 	}
-	return bytes.Join(lines, []byte("\n")), nil
+	return []byte(strings.Join(lines, "\n")), nil
 }
 
 func (p *FlatParser) DeleteKey(data []byte, key string) ([]byte, error) {
-	lines := bytes.Split(data, []byte("\n"))
-	out := make([][]byte, 0, len(lines))
+	lines := strings.Split(string(data), "\n")
+	out := make([]string, 0, len(lines))
 	for _, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s != "" && s[0] != '#' {
 			k, _, ok := p.Split(s)
 			if ok && k == key {
@@ -142,15 +140,15 @@ func (p *FlatParser) DeleteKey(data []byte, key string) ([]byte, error) {
 		}
 		out = append(out, line)
 	}
-	return bytes.Join(out, []byte("\n")), nil
+	return []byte(strings.Join(out, "\n")), nil
 }
 
 // FindAll returns all key-value pairs in a single pass.
 func (p *FlatParser) FindAll(data []byte) map[string]string {
-	lines := bytes.Split(data, []byte("\n"))
+	lines := strings.Split(string(data), "\n")
 	m := make(map[string]string, len(lines)/2)
 	for _, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s == "" || s[0] == '#' {
 			continue
 		}
@@ -165,11 +163,11 @@ func (p *FlatParser) FindAll(data []byte) map[string]string {
 // FindAllMulti returns all key-value pairs in a single pass,
 // collecting repeated keys into slices.
 func (p *FlatParser) FindAllMulti(data []byte) (singles map[string]string, multi map[string][]string) {
-	lines := bytes.Split(data, []byte("\n"))
+	lines := strings.Split(string(data), "\n")
 	singles = make(map[string]string, len(lines)/2)
 	count := make(map[string]int, len(lines)/2)
 	for _, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s == "" || s[0] == '#' {
 			continue
 		}
@@ -195,10 +193,10 @@ func (p *FlatParser) FindAllMulti(data []byte) (singles map[string]string, multi
 }
 
 func (p *FlatParser) ListKeys(data []byte) []string {
-	lines := bytes.Split(data, []byte("\n"))
+	lines := strings.Split(string(data), "\n")
 	var keys []string
 	for _, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s == "" || s[0] == '#' {
 			continue
 		}
@@ -212,10 +210,10 @@ func (p *FlatParser) ListKeys(data []byte) []string {
 
 // FindValues collects all values for a repeated key (e.g., ghostty keybind, palette).
 func (p *FlatParser) FindValues(data []byte, key string) ([]string, bool) {
-	lines := bytes.Split(data, []byte("\n"))
+	lines := strings.Split(string(data), "\n")
 	var vals []string
 	for _, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s == "" || s[0] == '#' {
 			continue
 		}
@@ -232,10 +230,10 @@ func (p *FlatParser) FindValues(data []byte, key string) ([]string, bool) {
 
 // SetValues replaces all instances of a repeated key with the given values.
 func (p *FlatParser) SetValues(data []byte, key string, values []string) ([]byte, error) {
-	lines := bytes.Split(data, []byte("\n"))
-	out := make([][]byte, 0, len(lines))
+	lines := strings.Split(string(data), "\n")
+	out := make([]string, 0, len(lines))
 	for _, line := range lines {
-		s := strings.TrimSpace(string(line))
+		s := strings.TrimSpace(line)
 		if s != "" && s[0] != '#' {
 			k, _, ok := p.Split(s)
 			if ok && k == key {
@@ -245,12 +243,12 @@ func (p *FlatParser) SetValues(data []byte, key string, values []string) ([]byte
 		out = append(out, line)
 	}
 	for _, v := range values {
-		newLine := []byte(p.Format(key, v))
-		if len(out) > 0 && len(bytes.TrimSpace(out[len(out)-1])) == 0 {
+		newLine := p.Format(key, v)
+		if len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
 			out = append(out[:len(out)-1], newLine, out[len(out)-1])
 		} else {
 			out = append(out, newLine)
 		}
 	}
-	return bytes.Join(out, []byte("\n")), nil
+	return []byte(strings.Join(out, "\n")), nil
 }

@@ -90,11 +90,12 @@ type SearchDoc struct {
 
 // SearchIndex holds corpus-level data for bm25f ranking.
 type SearchIndex struct {
-	Docs       []SearchDoc
-	AttrAvgLen map[string]float64 // average attribute length across corpus
-	DF         map[string]int     // document frequency per term
-	N          int                // total number of docs
-	Sections   []Section
+	Docs        []SearchDoc
+	AttrAvgLen  map[string]float64 // average attribute length across corpus
+	DF          map[string]int     // document frequency per term
+	N           int                // total number of docs
+	Sections    []Section
+	sortedTerms []string // sorted DF keys for prefix binary search
 	// flat mapping from doc index back to section/field indices
 	docSectionIdx []int
 	docFieldIdx   []int
@@ -181,6 +182,13 @@ func NewSearchIndex(sections []Section) *SearchIndex {
 		}
 	}
 
+	// build sorted terms for prefix binary search
+	idx.sortedTerms = make([]string, 0, len(idx.DF))
+	for term := range idx.DF {
+		idx.sortedTerms = append(idx.sortedTerms, term)
+	}
+	sort.Strings(idx.sortedTerms)
+
 	return idx
 }
 
@@ -253,17 +261,16 @@ func (idx *SearchIndex) Search(query string) []SearchResult {
 			}
 		}
 		if !matched {
-			// prefix fallback
-			for term := range idx.DF {
-				if strings.HasPrefix(term, qt) {
-					terms = append(terms, queryTerm{term, expandBoost})
-					matched = true
-				}
+			// prefix fallback via binary search on sorted terms
+			i := sort.SearchStrings(idx.sortedTerms, qt)
+			for ; i < len(idx.sortedTerms) && strings.HasPrefix(idx.sortedTerms[i], qt); i++ {
+				terms = append(terms, queryTerm{idx.sortedTerms[i], expandBoost})
+				matched = true
 			}
 		}
 		if !matched {
 			// contains fallback
-			for term := range idx.DF {
+			for _, term := range idx.sortedTerms {
 				if strings.Contains(term, qt) {
 					terms = append(terms, queryTerm{term, expandBoost})
 				}
