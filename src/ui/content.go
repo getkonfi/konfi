@@ -13,6 +13,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // row represents a navigable item in the field list — either a section header or a field.
@@ -97,6 +98,18 @@ type content struct {
 	// dashboard data (shown when no app is selected)
 	dashboardApps []dashboardApp
 	appVersion    string
+
+	// pre-parsed schema cache (populated at startup by computeNewCounts)
+	schemaCache map[string]*pkg.Schema
+
+	// cached layout styles — recomputed on resize
+	outerStyle lipgloss.Style
+	layoutW    int // width that produced outerStyle
+	layoutH    int // height that produced outerStyle
+
+	// cached content string for schema-less raw view (keyed by config generation)
+	rawContentStr string
+	rawContentGen uint64
 }
 
 // dashboardApp holds summary info for the landing page.
@@ -332,19 +345,20 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 	case ThemeChangedMsg:
 		c.theme = msg.Theme
 		c.detail.theme = msg.Theme
+		c.detail.cachedMD = nil
 		c.breadcrumb.theme = msg.Theme
 		c.diffView.theme = msg.Theme
 
 	case ExternalChangeMsg:
 		if c.config != nil && c.config.Path == msg.Path {
 			if c.config.Dirty() {
-				// don't overwrite unsaved edits — notify user
 				c.fileState = "external change (unsaved edits kept)"
 				return c, nil
 			}
-			if err := c.config.Reload(context.Background()); err == nil {
-				c.refreshValues()
-				c.snapshotOrigValues()
+			cfg := c.config
+			return c, func() tea.Msg {
+				_ = cfg.Reload(context.Background())
+				return reloadResultMsg{source: "external"}
 			}
 		}
 
@@ -719,7 +733,8 @@ func (c *content) showDashboard() {
 	c.diffView.SetEntries(nil)
 }
 
-// loadApp sets the active konfable, loads its config and schema, and reads values.
+// loadApp sets the active konfable, loads its schema (fast, embedded), and
+// dispatches an async config load. the appLoadedMsg handler applies the config.
 func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	// snapshot current header lines for split-flap transition
 	var snapshot []string
@@ -756,48 +771,32 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.undoStack.Clear()
 	c.diffView.SetEntries(nil)
 
-	// detect whether this is a fresh file (before Load potentially creates it)
-	isNewFile := k.ConfigPath() != "" && !pkg.FileExists(k.ConfigPath())
-
-	// load config through the konfable's persister (may fail for uninstalled apps)
-	cf, err := pkg.NewConfigFile(context.Background(), k)
-	if err == nil {
-		c.config = cf
-		c.config.Path = k.ConfigPath()
-		if isNewFile {
-			c.fileState = "new"
+	// load schema — use cache from startup if available, else parse
+	if cached, ok := c.schemaCache[k.Name()]; ok {
+		s := cached
+		if v, ok := c.versions[k.Name()]; ok {
+			s = s.FilterByVersion(v)
 		}
-	}
-
-	// load schema (filter by detected version if known)
-	schemaData, err := k.Schema()
-	if err == nil && schemaData != nil {
-		s, err := pkg.LoadSchema(schemaData)
-		if err == nil {
-			if v, ok := c.versions[k.Name()]; ok {
-				s = s.FilterByVersion(v)
+		c.schema = s
+		c.detail.docsURL = s.DocsURL
+		c.buildFieldList()
+	} else {
+		schemaData, err := k.Schema()
+		if err == nil && schemaData != nil {
+			s, err := pkg.LoadSchema(schemaData)
+			if err == nil {
+				if v, ok := c.versions[k.Name()]; ok {
+					s = s.FilterByVersion(v)
+				}
+				c.schema = s
+				c.detail.docsURL = s.DocsURL
+				c.buildFieldList()
 			}
-			c.schema = s
-			c.detail.docsURL = s.DocsURL
-			c.buildFieldList()
 		}
 	}
 
-	c.refreshValues()
-	c.snapshotOrigValues()
 	c.buildInsights()
 	c.insightGen++
-
-	// start watching if the konfable supports it
-	if c.config != nil && c.program != nil {
-		if w, ok := k.(pkg.Watchable); ok {
-			p := c.program
-			cfPath := c.config.Path
-			_ = w.Watch(func() {
-				p.Send(ExternalChangeMsg{Path: cfPath})
-			})
-		}
-	}
 
 	var cmds []tea.Cmd
 
@@ -818,6 +817,21 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	} else {
 		c.logoAnim = nil
 	}
+
+	// dispatch async config load (slow for gsettings/dconf backends)
+	isNewFile := k.ConfigPath() != "" && !pkg.FileExists(k.ConfigPath())
+	path := k.ConfigPath()
+	appName := k.Name()
+	cmds = append(cmds, func() tea.Msg {
+		cf, loadErr := pkg.NewConfigFile(context.Background(), k)
+		return appLoadedMsg{
+			config:  cf,
+			path:    path,
+			isNew:   isNewFile,
+			err:     loadErr,
+			appName: appName,
+		}
+	})
 
 	return tea.Batch(cmds...)
 }

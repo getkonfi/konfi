@@ -115,6 +115,14 @@ func (c *content) refilterRanked(query string) {
 		return
 	}
 
+	// precompute section offsets for O(1) flat index lookup
+	offsets := make([]int, len(c.schema.Sections))
+	offset := 0
+	for i, sec := range c.schema.Sections {
+		offsets[i] = offset
+		offset += len(sec.Fields)
+	}
+
 	// apply pre-filters and map to flat field indices
 	type rankedField struct {
 		flatIdx    int
@@ -123,12 +131,7 @@ func (c *content) refilterRanked(query string) {
 	}
 	var filtered []rankedField
 	for _, r := range results {
-		// compute flat field index from section/field position
-		flatIdx := 0
-		for si := 0; si < r.SectionIdx; si++ {
-			flatIdx += len(c.schema.Sections[si].Fields)
-		}
-		flatIdx += r.FieldIdx
+		flatIdx := offsets[r.SectionIdx] + r.FieldIdx
 
 		f := &c.fields[flatIdx]
 		if c.configuredOnly {

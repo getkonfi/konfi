@@ -70,7 +70,7 @@ const footerH = 1
 
 // splitWidths computes the field list and detail pane widths for a horizontal split.
 // detail gets a fixed ~35%. returns detailW=0 when hidden.
-func (c content) splitWidths(innerW int) (fieldW, detailW int) {
+func (c *content) splitWidths(innerW int) (fieldW, detailW int) {
 	if c.schema == nil || c.config == nil || len(c.fields) == 0 {
 		return innerW, 0
 	}
@@ -92,7 +92,7 @@ func (c content) splitWidths(innerW int) (fieldW, detailW int) {
 	return fieldW, detailW
 }
 
-func (c content) fieldListHeight() int {
+func (c *content) fieldListHeight() int {
 	bodyH := c.height - logoBlockH - footerH
 	// breadcrumb takes 1 line when an app is loaded
 	if c.breadcrumb.app != "" {
@@ -105,7 +105,7 @@ func (c content) fieldListHeight() int {
 	return h
 }
 
-func (c content) pageSize() int {
+func (c *content) pageSize() int {
 	p := c.fieldListHeight() - 1
 	if p < 1 {
 		p = 1
@@ -115,7 +115,7 @@ func (c content) pageSize() int {
 
 // fieldAreaOverhead returns the number of lines before the first field row
 // in the field area (tabs + search bar). used by cursorLine for scroll.
-func (c content) fieldAreaOverhead() int {
+func (c *content) fieldAreaOverhead() int {
 	h := 0
 	if c.schema != nil && len(c.schema.Sections) > 1 {
 		h++ // tab bar line
@@ -130,13 +130,13 @@ func (c content) fieldAreaOverhead() int {
 }
 
 // filterIndicatorVisible returns true when a filter indicator line should be shown.
-func (c content) filterIndicatorVisible() bool {
+func (c *content) filterIndicatorVisible() bool {
 	return !c.searching && (c.configuredOnly || c.showNewOnly)
 }
 
 // cursorLine returns the rendered line number for the current cursor position
 // within the field area (relative to the scrollable body, not the full view).
-func (c content) cursorLine() int {
+func (c *content) cursorLine() int {
 	if c.schema == nil || len(c.visible) == 0 {
 		return 0
 	}
@@ -156,7 +156,7 @@ func (c content) cursorLine() int {
 
 // labelColumnWidth computes the max label width for the active section.
 // headerLeftLines returns the left column lines for the header.
-func (c content) headerLeftLines() []string {
+func (c *content) headerLeftLines() []string {
 	title := ""
 	if c.konfable != nil {
 		title = c.konfable.Name()
@@ -188,7 +188,7 @@ func (c content) headerLeftLines() []string {
 
 // renderHeader produces the two-column header or narrow fallback.
 // always renders exactly logoBlockH lines + trailing newline.
-func (c content) renderHeader(width int) string {
+func (c *content) renderHeader(width int) string {
 	hh := logoBlockH
 
 	if c.konfable == nil {
@@ -285,11 +285,11 @@ func (c content) renderHeader(width int) string {
 	}
 
 	// build left block with fixed width for alignment
-	leftStyle := lipgloss.NewStyle().Width(leftW)
-	leftBlock := leftStyle.Render(strings.Join(styledLeft[:hh], "\n"))
+	leftBlock := lipgloss.NewStyle().Width(leftW).Render(strings.Join(styledLeft[:hh], "\n"))
 
 	// right-align the right column
 	rightStyle := lipgloss.NewStyle().Width(rightW + 2).Align(lipgloss.Right)
+	// note: these two styles depend on dynamic widths, computed once per renderHeader call
 	rightAligned := rightStyle.Render(rightBlock)
 
 	joined := lipgloss.JoinHorizontal(lipgloss.Top, leftBlock, rightAligned)
@@ -307,7 +307,7 @@ func (c content) renderHeader(width int) string {
 }
 
 // renderDashboard builds the welcome/landing page shown before any app is selected.
-func (c content) renderDashboard(width int) string {
+func (c *content) renderDashboard(width int) string {
 	var b strings.Builder
 
 	// logo
@@ -401,7 +401,7 @@ func (c content) renderDashboard(width int) string {
 }
 
 // renderFooter builds the 1-line preview bar showing key = value for the focused field.
-func (c content) renderFooter(width int) string {
+func (c *content) renderFooter(width int) string {
 	f := c.currentField()
 	if f == nil {
 		return c.theme.Muted.Render(strings.Repeat("─", width))
@@ -481,20 +481,26 @@ func (c content) renderFooter(width int) string {
 	return line
 }
 
-func (c content) View() string {
+func (c *content) View() string {
 	// no border — structural division from sidebar edge and detail's left border
 	innerW := c.width - 2 // 2 padding (1 each side)
 	if innerW < 10 {
 		innerW = 10
 	}
 
-	outerStyle := lipgloss.NewStyle().
-		Padding(0, 1).
-		Width(c.width).
-		MaxWidth(c.width).
-		Height(c.height).
-		MaxHeight(c.height).
-		Align(lipgloss.Left, lipgloss.Top)
+	// recompute outerStyle only when dimensions change
+	if c.layoutW != c.width || c.layoutH != c.height {
+		c.outerStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Width(c.width).
+			MaxWidth(c.width).
+			Height(c.height).
+			MaxHeight(c.height).
+			Align(lipgloss.Left, lipgloss.Top)
+		c.layoutW = c.width
+		c.layoutH = c.height
+	}
+	outerStyle := c.outerStyle
 
 	// body area below header, minus footer
 	bodyH := c.height - logoBlockH - footerH
@@ -518,7 +524,12 @@ func (c content) View() string {
 		var bodyStr string
 		switch {
 		case c.config != nil:
-			bodyStr = c.theme.Text.Render(string(c.config.Content()))
+			// cache the content string — only rebuild when config changes
+			if gen := c.config.Generation(); gen != c.rawContentGen {
+				c.rawContentStr = string(c.config.Content())
+				c.rawContentGen = gen
+			}
+			bodyStr = c.theme.Text.Render(c.rawContentStr)
 		default:
 			msg := c.theme.Muted.Render(c.konfable.Name() + " is not installed")
 			hint := c.theme.Muted.Italic(true).Render("install it to configure")
@@ -661,7 +672,7 @@ func (c content) View() string {
 
 // renderBody produces the scrollable field area: search + field rows.
 // header and no-schema states are handled in View.
-func (c content) renderBody(width int) string {
+func (c *content) renderBody(width int) string {
 	var b strings.Builder
 
 	// search bar (when active or has locked query)
@@ -846,7 +857,7 @@ func (c content) renderBody(width int) string {
 }
 
 // renderFieldValue renders a field value with type-specific formatting.
-func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) string {
+func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) string {
 	// stylestring rendering (widget takes priority)
 	if f.Widget == "stylestring" {
 		sym, sty := parseStyleString(val)
@@ -901,7 +912,7 @@ func (c content) renderFieldValue(f pkg.Field, val string, isDefault bool) strin
 // typeIconStyle returns a per-type color for field type icons.
 // mirrors the type badge colors in detail.go for visual consistency.
 // for color fields, colorHex tints the icon with the actual field value.
-func (c content) typeIconStyle(typ, colorHex string) lipgloss.Style {
+func (c *content) typeIconStyle(typ, colorHex string) lipgloss.Style {
 	switch typ {
 	case "number":
 		return c.theme.Secondary

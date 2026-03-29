@@ -13,6 +13,8 @@ const (
 	splitFlapCharSet  = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-~:_"
 )
 
+var splitFlapRunes = []rune(splitFlapCharSet)
+
 // splitFlapState drives a Solari-board text transition.
 // operates on plain strings — styling applied after frame generation.
 type splitFlapState struct {
@@ -117,8 +119,8 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 			if idx < 0 {
 				out[i] = tgtRunes[i]
 			} else {
-				flipIdx := (idx + splitFlapMaxSteps - charStep) % len([]rune(splitFlapCharSet))
-				out[i] = []rune(splitFlapCharSet)[flipIdx]
+				flipIdx := (idx + splitFlapMaxSteps - charStep) % len(splitFlapRunes)
+				out[i] = splitFlapRunes[flipIdx]
 			}
 		}
 	}

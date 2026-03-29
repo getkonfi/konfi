@@ -9,6 +9,8 @@ import (
 	"github.com/emin/konfigurator/theme"
 
 	"charm.land/lipgloss/v2"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/text"
 )
 
 // detail is a sub-model owned by content that renders the preview/detail pane.
@@ -40,13 +42,19 @@ type detail struct {
 
 	// cached config lines for renderFileSnippet
 	snippetLines []string
-	snippetGen   int64 // config generation that produced snippetLines
+	snippetGen   uint64 // config generation that produced snippetLines
+
+	// cached styles
+	badgeBase  lipgloss.Style
+	cachedMD   *mdRenderer
+	cachedMDW  int
 }
 
 func newDetail(th *theme.Theme) detail {
 	return detail{
 		previewLine: -1,
 		theme:       th,
+		badgeBase:   lipgloss.NewStyle().Bold(true).Padding(0, 1),
 	}
 }
 
@@ -102,20 +110,30 @@ func (d *detail) refreshPreviewLine() {
 }
 
 // renderMarkdown renders markdown using the goldmark-based renderer in markdown.go.
-func (d detail) renderMarkdown(md string, width int) string {
-	return RenderMarkdown(md, width, d.theme)
+func (d *detail) renderMarkdown(md string, width int) string {
+	if d.cachedMD == nil || d.cachedMDW != width {
+		d.cachedMD = newMDRenderer(d.theme, width)
+		d.cachedMDW = width
+	}
+	if md == "" {
+		return ""
+	}
+	source := []byte(md)
+	p := goldmark.DefaultParser()
+	doc := p.Parse(text.NewReader(source))
+	return strings.TrimRight(d.cachedMD.render(doc, source), "\n")
 }
 
 // View renders the detail pane content — always browse mode.
 // editing is handled inline in the field list (content.renderBody).
-func (d detail) View(width, height int) string {
+func (d *detail) View(width, height int) string {
 	return d.viewBrowse(width, height)
 }
 
 // typeBadgeStyle returns a styled badge for the field type with per-type coloring.
 // for color fields, colorHex tints the badge with the actual field value.
-func (d detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
-	base := lipgloss.NewStyle().Bold(true).Padding(0, 1)
+func (d *detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
+	base := d.badgeBase
 	switch typ {
 	case "number":
 		return base.Background(d.theme.Palette.Secondary).Foreground(d.theme.Palette.Base)
@@ -138,7 +156,7 @@ func (d detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
 
 // viewBrowse renders the structured detail panel in browse mode.
 // all sections are rendered unconditionally, then scrolled into the viewport.
-func (d detail) viewBrowse(width, height int) string {
+func (d *detail) viewBrowse(width, height int) string {
 	if d.config == nil {
 		return d.theme.Muted.Render("no preview")
 	}
@@ -307,7 +325,7 @@ func (d detail) viewBrowse(width, height int) string {
 }
 
 // renderTypeVisual returns type-aware visuals for the current field value.
-func (d detail) renderTypeVisual(f *pkg.Field, width int) string {
+func (d *detail) renderTypeVisual(f *pkg.Field, width int) string {
 	val := f.Default
 	if v, ok := d.values[f.Key]; ok {
 		val = v
@@ -352,7 +370,7 @@ func (d detail) renderTypeVisual(f *pkg.Field, width int) string {
 }
 
 // renderRangeBar renders a visual range indicator for number fields.
-func (d detail) renderRangeBar(f *pkg.Field, val string, width int) string {
+func (d *detail) renderRangeBar(f *pkg.Field, val string, width int) string {
 	lo := 0.0
 	hi := 100.0
 	if f.Min != nil {
@@ -386,7 +404,7 @@ func (d detail) renderRangeBar(f *pkg.Field, val string, width int) string {
 }
 
 // renderEnumPills renders available options as pills with current value highlighted.
-func (d detail) renderEnumPills(f *pkg.Field, val string) string {
+func (d *detail) renderEnumPills(f *pkg.Field, val string) string {
 	var parts []string
 	for _, opt := range f.Options {
 		if opt == val {
@@ -399,7 +417,7 @@ func (d detail) renderEnumPills(f *pkg.Field, val string) string {
 }
 
 // renderStylestringPreview renders a stylestring value as symbol + style pills.
-func (d detail) renderStylestringPreview(val string) string {
+func (d *detail) renderStylestringPreview(val string) string {
 	sym, sty := parseStyleString(val)
 	if sty == "" {
 		return d.theme.Text.Bold(true).Render(val)
@@ -410,7 +428,7 @@ func (d detail) renderStylestringPreview(val string) string {
 }
 
 // renderFileSnippet renders the config file snippet centered on the field's line.
-func (d detail) renderFileSnippet(width, height int) string {
+func (d *detail) renderFileSnippet(width, height int) string {
 	if d.config == nil {
 		return ""
 	}
@@ -432,9 +450,10 @@ func (d detail) renderFileSnippet(width, height int) string {
 		return sb.String()
 	}
 
-	if d.snippetLines == nil {
+	if gen := d.config.Generation(); d.snippetLines == nil || d.snippetGen != gen {
 		data := d.config.Content()
 		d.snippetLines = strings.Split(string(data), "\n")
+		d.snippetGen = gen
 	}
 	rawLines := d.snippetLines
 

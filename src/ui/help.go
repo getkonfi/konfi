@@ -18,6 +18,11 @@ type helpGroup struct {
 	Bindings []helpBinding
 }
 
+var helpCardStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
+	Padding(1, 2).
+	Align(lipgloss.Left, lipgloss.Top)
+
 var helpGlobal = helpGroup{
 	Title: "Global",
 	Bindings: []helpBinding{
@@ -172,13 +177,10 @@ func renderHelpCard(width, height int, focus pane, editing bool, th *theme.Theme
 
 	b.WriteString(th.Muted.Italic(true).Render("  press ? or esc to close"))
 
-	card := lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
+	card := helpCardStyle.
 		BorderForeground(th.Palette.Primary).
-		Padding(1, 2).
 		Width(cardW).
 		Height(cardH).
-		Align(lipgloss.Left, lipgloss.Top).
 		Render(b.String())
 
 	return lipgloss.Place(width, height,

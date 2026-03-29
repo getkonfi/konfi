@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/emin/konfigurator/theme"
@@ -34,6 +34,10 @@ type sidebar struct {
 	nerdFont  bool
 	dirtyApps map[string]bool // apps with unsaved changes
 	newCounts map[string]int  // per-app count of "new" fields
+
+	// cached styles
+	collapsedStyle lipgloss.Style
+	itemClipStyle  lipgloss.Style
 }
 
 func newSidebar(items []sidebarItem, th *theme.Theme) sidebar {
@@ -43,10 +47,12 @@ func newSidebar(items []sidebarItem, th *theme.Theme) sidebar {
 	ti.Prompt = ""
 
 	s := sidebar{
-		items:  items,
-		cursor: 0,
-		search: ti,
-		theme:  th,
+		items:          items,
+		cursor:         0,
+		search:         ti,
+		theme:          th,
+		collapsedStyle: lipgloss.NewStyle().Padding(0, 1).Align(lipgloss.Center, lipgloss.Top),
+		itemClipStyle:  lipgloss.NewStyle(),
 	}
 	s.refilter()
 	return s
@@ -56,22 +62,23 @@ func (s *sidebar) refilter() {
 	query := strings.ToLower(s.search.Value())
 	s.filtered = s.filtered[:0]
 
-	// partition: home items first, then regular apps, then system items
+	var home, regular, system []int
 	for i, item := range s.items {
-		if item.home && (query == "" || strings.Contains(strings.ToLower(item.name), query)) {
-			s.filtered = append(s.filtered, i)
+		if query != "" && !strings.Contains(strings.ToLower(item.name), query) {
+			continue
+		}
+		switch {
+		case item.home:
+			home = append(home, i)
+		case item.system:
+			system = append(system, i)
+		default:
+			regular = append(regular, i)
 		}
 	}
-	for i, item := range s.items {
-		if !item.home && !item.system && (query == "" || strings.Contains(strings.ToLower(item.name), query)) {
-			s.filtered = append(s.filtered, i)
-		}
-	}
-	for i, item := range s.items {
-		if item.system && (query == "" || strings.Contains(strings.ToLower(item.name), query)) {
-			s.filtered = append(s.filtered, i)
-		}
-	}
+	s.filtered = append(s.filtered, home...)
+	s.filtered = append(s.filtered, regular...)
+	s.filtered = append(s.filtered, system...)
 
 	if s.cursor >= len(s.filtered) {
 		s.cursor = len(s.filtered) - 1
@@ -274,7 +281,7 @@ func (s *sidebar) setCursorToApp(appIdx int) {
 }
 
 // itemIcon returns the effective icon for an item based on nerd font setting.
-func (s sidebar) itemIcon(item sidebarItem) string {
+func (s *sidebar) itemIcon(item sidebarItem) string {
 	if s.nerdFont && item.icon != "" {
 		return item.icon
 	}
@@ -290,18 +297,18 @@ func (s sidebar) itemIcon(item sidebarItem) string {
 }
 
 // collapsed returns true when the sidebar is in icon-rail mode.
-func (s sidebar) collapsed() bool {
+func (s *sidebar) collapsed() bool {
 	return s.width <= 6
 }
 
-func (s sidebar) View() string {
+func (s *sidebar) View() string {
 	if s.collapsed() {
 		return s.viewCollapsed()
 	}
 	return s.viewExpanded()
 }
 
-func (s sidebar) viewCollapsed() string {
+func (s *sidebar) viewCollapsed() string {
 	var b strings.Builder
 	innerH := s.height
 	if innerH < 1 {
@@ -365,15 +372,13 @@ func (s sidebar) viewCollapsed() string {
 		topStr = topStr + strings.Repeat("\n", gap) + botStr
 	}
 
-	style := lipgloss.NewStyle().
-		Padding(0, 1).
+	style := s.collapsedStyle.
 		Width(s.width).
-		Height(s.height).
-		Align(lipgloss.Center, lipgloss.Top)
+		Height(s.height)
 	return style.Render(topStr)
 }
 
-func (s sidebar) viewExpanded() string {
+func (s *sidebar) viewExpanded() string {
 	var top, bot strings.Builder
 	innerW := s.width - 2 - 2 // border + padding
 	if innerW < 6 {
@@ -445,7 +450,7 @@ func (s sidebar) viewExpanded() string {
 	return s.renderPanel(topStr)
 }
 
-func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
+func (s *sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	name := item.name
 
 	// dirty indicator: themed dot instead of plain *
@@ -457,11 +462,13 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	// "what's new" badge
 	badge := ""
 	if n := s.newCounts[item.name]; n > 0 {
-		badge = fmt.Sprintf(" %d new", n)
+		badge = " " + strconv.Itoa(n) + " new"
 	}
 
 	// icon glyph (shown before name)
 	icon := s.itemIcon(item) + " "
+
+	clipStyle := s.itemClipStyle.Width(width).MaxWidth(width)
 
 	// when sidebar is unfocused, dim all items but keep cursor
 	if !s.focused {
@@ -474,7 +481,7 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 		if badge != "" {
 			body += nameStyle.Render(badge)
 		}
-		return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(prefix + body)
+		return clipStyle.Render(prefix + body)
 	}
 
 	var nameStyle lipgloss.Style
@@ -501,11 +508,11 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	if badge != "" {
 		rendered += s.theme.Muted.Render(badge)
 	}
-	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(rendered)
+	return clipStyle.Render(rendered)
 }
 
 // renderPanel wraps content in the sidebar style with right-edge border.
-func (s sidebar) renderPanel(content string) string {
+func (s *sidebar) renderPanel(content string) string {
 	style := lipgloss.NewStyle().
 		BorderStyle(lipgloss.Border{Right: "│"}).
 		BorderRight(true).

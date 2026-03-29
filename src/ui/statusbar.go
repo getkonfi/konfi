@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/emin/konfigurator/theme"
@@ -23,17 +23,38 @@ type statusbar struct {
 	mode        string // e.g. "NORMAL", "EDIT", "SEARCH"
 	undoCount   int    // number of undoable operations
 	changeCount int    // number of unsaved field changes
+
+	// cached badge styles
+	editBadge   lipgloss.Style
+	searchBadge lipgloss.Style
 }
 
 func newStatusbar(th *theme.Theme) statusbar {
 	return statusbar{
 		themeName: th.Palette.Name,
 		theme:     th,
+		editBadge: lipgloss.NewStyle().
+			Background(th.Palette.Warning).
+			Foreground(th.Palette.Base).
+			Bold(true).Padding(0, 1),
+		searchBadge: lipgloss.NewStyle().
+			Background(th.Palette.Secondary).
+			Foreground(th.Palette.Base).
+			Bold(true).Padding(0, 1),
 	}
 }
 
-func (s *statusbar) SetMode(mode string)     { s.mode = mode }
-func (s *statusbar) SetUndoCount(count int)  { s.undoCount = count }
+func (s *statusbar) SetMode(mode string)    { s.mode = mode }
+func (s *statusbar) SetUndoCount(count int) { s.undoCount = count }
+
+func (s *statusbar) refreshStyles() {
+	s.editBadge = s.editBadge.
+		Background(s.theme.Palette.Warning).
+		Foreground(s.theme.Palette.Base)
+	s.searchBadge = s.searchBadge.
+		Background(s.theme.Palette.Secondary).
+		Foreground(s.theme.Palette.Base)
+}
 
 func (s *statusbar) View() string {
 	style := s.theme.Statusbar.Width(s.width)
@@ -44,15 +65,9 @@ func (s *statusbar) View() string {
 		badgeStyle := s.theme.KeyCap
 		switch s.mode {
 		case "EDIT":
-			badgeStyle = lipgloss.NewStyle().
-				Background(s.theme.Palette.Warning).
-				Foreground(s.theme.Palette.Base).
-				Bold(true).Padding(0, 1)
+			badgeStyle = s.editBadge
 		case "SEARCH":
-			badgeStyle = lipgloss.NewStyle().
-				Background(s.theme.Palette.Secondary).
-				Foreground(s.theme.Palette.Base).
-				Bold(true).Padding(0, 1)
+			badgeStyle = s.searchBadge
 		}
 		modeBadge := badgeStyle.Render("[" + s.mode + "]")
 		leftParts = append(leftParts, modeBadge)
@@ -63,11 +78,11 @@ func (s *statusbar) View() string {
 		leftParts = append(leftParts, s.theme.Muted.Render("ready"))
 	}
 	if s.undoCount > 0 {
-		undoBadge := s.theme.Muted.Render(fmt.Sprintf("↩ %d", s.undoCount))
+		undoBadge := s.theme.Muted.Render("↩ " + strconv.Itoa(s.undoCount))
 		leftParts = append(leftParts, undoBadge)
 	}
 	if s.changeCount > 0 {
-		changeBadge := s.theme.Warning.Render(fmt.Sprintf("%d unsaved", s.changeCount))
+		changeBadge := s.theme.Warning.Render(strconv.Itoa(s.changeCount) + " unsaved")
 		leftParts = append(leftParts, changeBadge)
 	}
 	left := strings.Join(leftParts, "  ")

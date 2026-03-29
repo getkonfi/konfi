@@ -1,6 +1,9 @@
 package ui
 
-import "github.com/emin/konfigurator/theme"
+import (
+	"github.com/emin/konfigurator/pkg"
+	"github.com/emin/konfigurator/theme"
+)
 
 // shared tea.Msg types for the UI layer
 
@@ -97,3 +100,20 @@ type ToggleHelpMsg struct{}
 
 // JumpToFieldMsg requests navigating to a specific field by index.
 type JumpToFieldMsg struct{ FieldIdx int }
+
+// saveResultMsg is sent when an async config save completes.
+type saveResultMsg struct{ err error }
+
+// reloadResultMsg is sent when an async config reload completes.
+type reloadResultMsg struct {
+	source string // "external", "editor", "save-reload"
+}
+
+// appLoadedMsg is sent when async config loading completes.
+type appLoadedMsg struct {
+	config  *pkg.ConfigFile
+	path    string
+	isNew   bool
+	err     error
+	appName string // guards against stale loads after app switch
+}

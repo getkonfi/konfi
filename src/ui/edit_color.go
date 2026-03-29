@@ -2,6 +2,7 @@ package ui
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/emin/konfigurator/pkg"
 	"github.com/emin/konfigurator/theme"
@@ -232,6 +233,8 @@ func (e *colorEditor) viewWithPalette(width int) string {
 	}
 	e.cols = cols
 
+	cellStyle := lipgloss.NewStyle().Width(cellW).MaxWidth(cellW)
+
 	var b strings.Builder
 
 	colPos := 0
@@ -267,7 +270,7 @@ func (e *colorEditor) viewWithPalette(width int) string {
 		} else {
 			cell = " " + sw + " " + e.th.Muted.Render(label) + " "
 		}
-		b.WriteString(lipgloss.NewStyle().Width(cellW).MaxWidth(cellW).Render(cell))
+		b.WriteString(cellStyle.Render(cell))
 		colPos++
 	}
 	b.WriteByte('\n')
@@ -313,14 +316,18 @@ func (e *colorEditor) Height() int {
 	return h
 }
 
+var swatchCache sync.Map // string → string
+
 func swatch(hex string) string {
 	if hex == "" {
 		return "  "
 	}
-	c := lipgloss.Color(hex)
-	return lipgloss.NewStyle().
-		Foreground(c).
-		Render("██")
+	if v, ok := swatchCache.Load(hex); ok {
+		return v.(string)
+	}
+	s := lipgloss.NewStyle().Foreground(lipgloss.Color(hex)).Render("██")
+	swatchCache.Store(hex, s)
+	return s
 }
 
 // normalizeHex prepends # if missing so lipgloss can render it.

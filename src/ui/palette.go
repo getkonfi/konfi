@@ -405,8 +405,6 @@ func (p palette) highlightMatches(label, matchTerms string, matchSet map[int]str
 	}
 
 	// map label chars to matchTerms positions
-	// matchTerms is typically: category + " " + label + " " + description (lowered)
-	// find where label starts in matchTerms
 	lowerLabel := strings.ToLower(label)
 	lowerTerms := strings.ToLower(matchTerms)
 	labelOffset := strings.Index(lowerTerms, lowerLabel)
@@ -414,17 +412,41 @@ func (p palette) highlightMatches(label, matchTerms string, matchSet map[int]str
 		labelOffset = 0
 	}
 
-	var b strings.Builder
-	runes := []rune(label)
-	for i, ch := range runes {
-		if _, ok := matchSet[labelOffset+i]; ok {
-			b.WriteString(p.theme.Accent.Bold(true).Render(string(ch)))
-		} else if selected {
-			b.WriteString(p.theme.Text.Bold(true).Render(string(ch)))
-		} else {
-			b.WriteString(p.theme.Subtext.Render(string(ch)))
-		}
+	// batch consecutive characters with the same style class
+	matchStyle := p.theme.Accent.Bold(true)
+	var normalStyle lipgloss.Style
+	if selected {
+		normalStyle = p.theme.Text.Bold(true)
+	} else {
+		normalStyle = p.theme.Subtext
 	}
+
+	runes := []rune(label)
+	var b strings.Builder
+	var run strings.Builder
+	runIsMatch := false
+
+	flush := func() {
+		if run.Len() == 0 {
+			return
+		}
+		if runIsMatch {
+			b.WriteString(matchStyle.Render(run.String()))
+		} else {
+			b.WriteString(normalStyle.Render(run.String()))
+		}
+		run.Reset()
+	}
+
+	for i, ch := range runes {
+		_, isMatch := matchSet[labelOffset+i]
+		if i > 0 && isMatch != runIsMatch {
+			flush()
+		}
+		runIsMatch = isMatch
+		run.WriteRune(ch)
+	}
+	flush()
 	return b.String()
 }
 

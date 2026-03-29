@@ -67,6 +67,9 @@ type root struct {
 	// per-app count of "new" fields (since == detected version)
 	newCounts map[string]int
 
+	// cached parsed schemas — populated by computeNewCounts, reused by loadApp
+	schemaCache map[string]*pkg.Schema
+
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
 }
@@ -118,8 +121,8 @@ func NewRoot(app *setup.App) tea.Model {
 		}
 	}
 
-	// compute per-app "what's new" field counts
-	newCounts := computeNewCounts(allK, app.Versions)
+	// compute per-app "what's new" field counts + cache parsed schemas
+	newCounts, schemaCache := computeNewCounts(allK, app.Versions)
 
 	sb := newSidebar(items, th)
 	sb.nerdFont = nerdFont
@@ -129,6 +132,7 @@ func NewRoot(app *setup.App) tea.Model {
 	ct.detail.nerdFont = nerdFont
 	ct.versions = app.Versions
 	ct.appVersion = app.AppVersion
+	ct.schemaCache = schemaCache
 
 	// populate dashboard data (skip home item at index 0)
 	for _, k := range allK {
@@ -164,6 +168,7 @@ func NewRoot(app *setup.App) tea.Model {
 		allKonfables: allK,
 		installed:    installed,
 		newCounts:    newCounts,
+		schemaCache:  schemaCache,
 	}
 	r.sidebar.focused = true
 	r.updateHints()
@@ -306,15 +311,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+s":
 			if r.content.config != nil && r.content.config.Dirty() {
-				if err := r.content.config.Save(context.Background()); err != nil {
-					r.status.status = "save failed: " + err.Error()
-				} else {
-					r.content.fileState = "saved"
-					r.content.snapshotOrigValues()
-					r.status.status = "saved"
-					return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-						return fileStateClearMsg{}
-					})
+				r.status.status = "saving..."
+				cfg := r.content.config
+				return r, func() tea.Msg {
+					err := cfg.Save(context.Background())
+					return saveResultMsg{err: err}
 				}
 			}
 			return r, nil
@@ -380,6 +381,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			r.status.theme = r.app.Theme
 			r.status.themeName = r.app.Theme.Palette.Name
+			r.status.refreshStyles()
 			return r, tea.Batch(cmds...)
 
 		case "?":
@@ -498,6 +500,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		r.status.theme = r.app.Theme
 		r.status.themeName = r.app.Theme.Palette.Name
+		r.status.refreshStyles()
 		return r, tea.Batch(cmds...)
 
 	case ToggleNewMsg:
@@ -546,15 +549,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SaveMsg:
 		if r.content.config != nil && r.content.config.Dirty() {
-			if err := r.content.config.Save(context.Background()); err != nil {
-				r.status.status = "save failed: " + err.Error()
-			} else {
-				r.content.fileState = "saved"
-				r.content.snapshotOrigValues()
-				r.status.status = "saved"
-				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-					return fileStateClearMsg{}
-				})
+			r.status.status = "saving..."
+			cfg := r.content.config
+			return r, func() tea.Msg {
+				err := cfg.Save(context.Background())
+				return saveResultMsg{err: err}
 			}
 		}
 		return r, nil
@@ -595,6 +594,63 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.content.fileState = "reloaded"
 		cmds = append(cmds, cmd)
 		return r, tea.Batch(cmds...)
+
+	case appLoadedMsg:
+		// guard against stale loads after rapid app switching
+		if r.content.konfable == nil || r.content.konfable.Name() != msg.appName {
+			return r, nil
+		}
+		if msg.err == nil && msg.config != nil {
+			r.content.config = msg.config
+			r.content.config.Path = msg.path
+			if msg.isNew {
+				r.content.fileState = "new"
+			}
+		}
+		r.content.refreshValues()
+		r.content.snapshotOrigValues()
+		// start watching if the konfable supports it
+		if r.content.config != nil && r.content.program != nil {
+			if w, ok := r.content.konfable.(pkg.Watchable); ok {
+				p := r.content.program
+				cfPath := r.content.config.Path
+				_ = w.Watch(func() {
+					p.Send(ExternalChangeMsg{Path: cfPath})
+				})
+			}
+		}
+		r.updateHints()
+		return r, nil
+
+	case reloadResultMsg:
+		if r.content.config != nil {
+			r.content.refreshValues()
+			r.content.snapshotOrigValues()
+			switch msg.source {
+			case "editor-dirty":
+				r.content.fileState = "reloaded from $EDITOR"
+				r.status.status = "reloaded — in-TUI edits replaced by $EDITOR"
+			case "editor":
+				r.content.fileState = ""
+			case "external":
+				r.content.fileState = "reloaded"
+			}
+		}
+		r.updateHints()
+		return r, nil
+
+	case saveResultMsg:
+		if msg.err != nil {
+			r.status.status = "save failed: " + msg.err.Error()
+		} else {
+			r.content.fileState = "saved"
+			r.content.snapshotOrigValues()
+			r.status.status = "saved"
+			return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+				return fileStateClearMsg{}
+			})
+		}
+		return r, nil
 
 	case fileStateClearMsg:
 		if r.content.config != nil && r.content.config.Dirty() {
@@ -670,28 +726,33 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			r.status.theme = r.app.Theme
 			r.status.themeName = r.app.Theme.Palette.Name
+			r.status.refreshStyles()
 			r.app.Config.Theme = msg.Value
 		case "log_level":
 			r.app.Config.LogLevel = msg.Value
 		case "browse_loads_app":
 			r.app.Config.BrowseLoadsApp = msg.Value == "true"
 		}
-		_ = setup.SaveConfig(r.app.Config)
+		cfg := r.app.Config
+		cmds = append(cmds, func() tea.Msg {
+			_ = setup.SaveConfig(cfg)
+			return nil
+		})
 		return r, tea.Batch(cmds...)
 
 	case EditorExitMsg:
-		// reload config after external editor exits
+		// reload config after external editor exits — async to avoid blocking
 		if r.content.config != nil {
 			wasDirty := r.content.config.Dirty()
-			if err := r.content.config.Reload(context.Background()); err == nil {
-				r.content.refreshValues()
-				r.content.snapshotOrigValues()
+			cfg := r.content.config
+			r.updateHints()
+			return r, func() tea.Msg {
+				_ = cfg.Reload(context.Background())
+				source := "editor"
 				if wasDirty {
-					r.content.fileState = "reloaded from $EDITOR"
-					r.status.status = "reloaded — in-TUI edits replaced by $EDITOR"
-				} else {
-					r.content.fileState = ""
+					source = "editor-dirty"
 				}
+				return reloadResultMsg{source: source}
 			}
 		}
 		r.updateHints()
@@ -1108,24 +1169,27 @@ func (r *root) navForward() tea.Cmd {
 }
 
 // computeNewCounts counts fields with a `since` matching the detected version per app.
-// returns nil map entries for apps without version info — degrades silently.
-func computeNewCounts(allK []konfables.Konfable, versions map[string]string) map[string]int {
+// also populates a schema cache to avoid re-parsing in loadApp.
+func computeNewCounts(allK []konfables.Konfable, versions map[string]string) (map[string]int, map[string]*pkg.Schema) {
 	counts := make(map[string]int)
+	cache := make(map[string]*pkg.Schema)
 	for _, k := range allK {
-		ver, ok := versions[k.Name()]
-		if !ok || ver == "" {
-			continue
-		}
-		nv := pkg.NormalizeSemver(ver)
-		if nv == "" {
-			continue
-		}
 		schemaData, err := k.Schema()
 		if err != nil || schemaData == nil {
 			continue
 		}
 		s, err := pkg.LoadSchema(schemaData)
 		if err != nil {
+			continue
+		}
+		cache[k.Name()] = s
+
+		ver, ok := versions[k.Name()]
+		if !ok || ver == "" {
+			continue
+		}
+		nv := pkg.NormalizeSemver(ver)
+		if nv == "" {
 			continue
 		}
 		count := 0
@@ -1144,7 +1208,7 @@ func computeNewCounts(allK []konfables.Konfable, versions map[string]string) map
 			counts[k.Name()] = count
 		}
 	}
-	return counts
+	return counts, cache
 }
 
 // yankField copies the current field's value to the system clipboard.
