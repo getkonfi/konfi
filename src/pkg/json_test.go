@@ -418,6 +418,26 @@ func TestJSONEmptyData(t *testing.T) {
 	}
 }
 
+func TestJSONMalformedDataReturnsError(t *testing.T) {
+	p := &JSONParser{}
+	malformed := []byte(`{"key": broken}`)
+
+	_, err := p.SetValue(malformed, "key", "val")
+	if err == nil {
+		t.Error("SetValue should return error for malformed JSON")
+	}
+
+	_, err = p.SetValues(malformed, "key", []string{"a"})
+	if err == nil {
+		t.Error("SetValues should return error for malformed JSON")
+	}
+
+	_, err = p.DeleteKey(malformed, "key")
+	if err == nil {
+		t.Error("DeleteKey should return error for malformed JSON")
+	}
+}
+
 func TestJSONKeyOrderPreserved(t *testing.T) {
 	input := `{
   "zeta": 1,

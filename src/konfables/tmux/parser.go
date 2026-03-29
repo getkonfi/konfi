@@ -105,7 +105,6 @@ func parseTmuxSet(line string) (key, value string, ok bool) {
 
 	if i < len(fields) {
 		value = strings.Join(fields[i:], " ")
-		value = stripQuotes(value)
 	}
 
 	return key, value, true
@@ -134,11 +133,3 @@ func replaceTmuxValue(line, newValue string) string {
 	return strings.Join(parts, " ") + " " + newValue
 }
 
-func stripQuotes(s string) string {
-	if len(s) >= 2 {
-		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
-			return s[1 : len(s)-1]
-		}
-	}
-	return s
-}

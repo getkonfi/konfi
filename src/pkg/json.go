@@ -10,8 +10,7 @@ import (
 
 // JSONParser performs surgical edits on JSON config files.
 // keys use dotted paths: "permissions.allow" → {"permissions":{"allow":...}}.
-// satisfies Parser, MultiValueParser, NestedParser, CapabilityReporter
-// via structural typing (no compile-time assertion against konfables).
+// satisfies Parser and MultiValueParser via structural typing.
 type JSONParser struct{}
 
 // Capabilities reports JSON format capabilities.
@@ -57,6 +56,9 @@ func (p *JSONParser) SetValue(data []byte, key, value string) ([]byte, error) {
 func (p *JSONParser) SetValueAtPath(data []byte, path []string, value string) ([]byte, error) {
 	root, err := unmarshalOrdered(data)
 	if err != nil {
+		if len(bytes.TrimSpace(data)) > 0 {
+			return nil, fmt.Errorf("parse json: %w", err)
+		}
 		root = make(orderedMap, 0)
 	}
 
@@ -124,6 +126,9 @@ func (p *JSONParser) SetValues(data []byte, key string, values []string) ([]byte
 	path := splitDotPath(key)
 	root, err := unmarshalOrdered(data)
 	if err != nil {
+		if len(bytes.TrimSpace(data)) > 0 {
+			return nil, fmt.Errorf("parse json: %w", err)
+		}
 		root = make(orderedMap, 0)
 	}
 	root = setPath(root, path, values)

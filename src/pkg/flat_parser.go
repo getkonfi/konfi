@@ -104,9 +104,19 @@ func (p *FlatParser) SetValue(data []byte, key, value string) ([]byte, error) {
 		if s == "" || s[0] == '#' {
 			continue
 		}
-		k, _, ok := p.Split(s)
+		k, oldVal, ok := p.Split(s)
 		if ok && k == key {
-			lines[i] = []byte(p.Format(key, value))
+			// preserve original line format by replacing only the value portion
+			orig := string(line)
+			lead := len(orig) - len(strings.TrimLeft(orig, " \t"))
+			if oldVal != "" {
+				// value sits at end of trimmed content
+				valStart := lead + len(s) - len(oldVal)
+				lines[i] = []byte(orig[:valStart] + value)
+			} else {
+				// empty old value — append after existing content
+				lines[i] = []byte(strings.TrimRight(orig, " \t") + value)
+			}
 			return bytes.Join(lines, []byte("\n")), nil
 		}
 	}

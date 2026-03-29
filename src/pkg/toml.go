@@ -79,10 +79,16 @@ func ReplaceValueOnLine(data []byte, lineIdx int, newValue string) []byte {
 	rest := line[eqIdx+1:]
 	if rest != "" && rest[0] == ' ' {
 		prefix += " "
+		rest = rest[1:]
 	}
 
-	// strip inline comment from original for replacement
-	lines[lineIdx] = prefix + newValue
+	// preserve inline comment
+	comment := ""
+	if idx := findInlineComment(rest); idx >= 0 {
+		comment = " " + strings.TrimSpace(rest[idx:])
+	}
+
+	lines[lineIdx] = prefix + newValue + comment
 	return []byte(strings.Join(lines, "\n"))
 }
 
@@ -150,6 +156,30 @@ func DeleteKeyOnLine(data []byte, lineIdx int) []byte {
 	}
 	lines = append(lines[:lineIdx], lines[lineIdx+1:]...)
 	return []byte(strings.Join(lines, "\n"))
+}
+
+// findInlineComment returns the index of the first '#' in s that is
+// outside of a quoted string, or -1 if none found.
+func findInlineComment(s string) int {
+	var inQuote byte
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if inQuote != 0 {
+			if ch == '\\' {
+				i++ // skip escaped char
+			} else if ch == inQuote {
+				inQuote = 0
+			}
+			continue
+		}
+		switch ch {
+		case '"', '\'':
+			inQuote = ch
+		case '#':
+			return i
+		}
+	}
+	return -1
 }
 
 // --- helpers ---

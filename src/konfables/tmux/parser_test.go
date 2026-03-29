@@ -19,7 +19,7 @@ func TestFindValue(t *testing.T) {
 		want string
 		ok   bool
 	}{
-		{"default-terminal", "tmux-256color", true},
+		{"default-terminal", `"tmux-256color"`, true},
 		{"escape-time", "0", true},
 		{"mouse", "on", true},
 		{"history-limit", "10000", true},

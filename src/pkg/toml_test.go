@@ -85,6 +85,50 @@ func TestReplaceValueOnLine(t *testing.T) {
 	}
 }
 
+func TestReplaceValueOnLine_PreservesInlineComment(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		newVal  string
+		wantLine string
+	}{
+		{
+			name:     "plain comment",
+			input:    "size = 12.0 # font size",
+			newVal:   "14.0",
+			wantLine: "size = 14.0 # font size",
+		},
+		{
+			name:     "hash inside quoted value",
+			input:    `prompt = "C# rocks"`,
+			newVal:   `"Go rocks"`,
+			wantLine: `prompt = "Go rocks"`,
+		},
+		{
+			name:     "quoted value then comment",
+			input:    `font = "Hack" # monospace`,
+			newVal:   `"Iosevka"`,
+			wantLine: `font = "Iosevka" # monospace`,
+		},
+		{
+			name:     "no comment",
+			input:    "enabled = true",
+			newVal:   "false",
+			wantLine: "enabled = false",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := []byte(tt.input)
+			result := string(ReplaceValueOnLine(data, 0, tt.newVal))
+			if result != tt.wantLine {
+				t.Errorf("got %q, want %q", result, tt.wantLine)
+			}
+		})
+	}
+}
+
 func TestDeleteKeyOnLine(t *testing.T) {
 	data := loadTestTOML(t)
 

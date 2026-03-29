@@ -59,11 +59,17 @@ func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {
 
 // Save writes a .bak backup of original, then atomically writes data.
 func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
+	// preserve original file permissions, fall back to 0644 for new files
+	perm := os.FileMode(0o644)
+	if info, err := os.Stat(fp.Path); err == nil {
+		perm = info.Mode().Perm()
+	}
+
 	bakPath := fp.Path + ".bak"
-	if err := os.WriteFile(bakPath, original, 0o644); err != nil {
+	if err := os.WriteFile(bakPath, original, perm); err != nil {
 		return fmt.Errorf("backup %s: %w", bakPath, err)
 	}
-	if err := AtomicWrite(fp.Path, data, 0o644); err != nil {
+	if err := AtomicWrite(fp.Path, data, perm); err != nil {
 		return fmt.Errorf("save %s: %w", fp.Path, err)
 	}
 	fp.mu.Lock()
@@ -104,10 +110,19 @@ func (fp *FilePersister) Watch(onChange func()) error {
 				if !ok {
 					return
 				}
-				if ev.Op&(fsnotify.Write|fsnotify.Create) == 0 {
-					continue
+
+				// react to direct writes/creates and renames that replace the target
+				relevant := ev.Op&(fsnotify.Write|fsnotify.Create) != 0 && ev.Name == fp.Path
+				if !relevant && ev.Op&fsnotify.Rename != 0 && ev.Name == fp.Path {
+					// editor did atomic rename — the old file was renamed away.
+					// a Create event for the new file at our path typically follows,
+					// but some editors (vim with backupcopy=no) only emit Rename.
+					// check if the file exists at our path now.
+					if _, err := os.Stat(fp.Path); err == nil {
+						relevant = true
+					}
 				}
-				if ev.Name != fp.Path {
+				if !relevant {
 					continue
 				}
 
