@@ -28,6 +28,9 @@ type detail struct {
 	// scroll state for browse mode
 	scrollY int
 
+	// nerd font glyphs or ASCII fallback
+	nerdFont bool
+
 	// context synced from content on state changes
 	field    *pkg.Field
 	config   *pkg.ConfigFile
@@ -153,9 +156,10 @@ func (d detail) viewBrowse(width, height int) string {
 	}
 
 	// type badge — color-coded per type (color fields use actual value)
-	icon := fieldTypeIcon[f.Widget]
+	icons := fieldIcons(d.nerdFont)
+	icon := icons[f.Widget]
 	if icon == "" {
-		icon = fieldTypeIcon[f.Type]
+		icon = icons[f.Type]
 	}
 	if icon == "" {
 		icon = " "

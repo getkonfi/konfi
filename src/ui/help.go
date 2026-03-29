@@ -71,10 +71,14 @@ var helpContent = helpGroup{
 var helpEditor = helpGroup{
 	Title: "Editor (Detail Panel)",
 	Bindings: []helpBinding{
-		{"⏎", "confirm edit"},
+		{"⏎ / ctrl+s", "confirm edit"},
 		{"esc", "cancel edit"},
-		{"↑↓", "select (enum/color)"},
-		{"tab", "switch mode (color)"},
+		{"↑↓ / j/k", "navigate options"},
+		{"tab", "switch mode"},
+		{"h/l / ←→", "adjust (slider, style)"},
+		{"␣", "toggle (bool, togglemap)"},
+		{"a", "add item (list, map)"},
+		{"d", "delete item (list, map)"},
 	},
 }
 

@@ -26,16 +26,28 @@ type toggleMapEditor struct {
 	// adding new entry
 	adding bool
 	input  textinput.Model
+
+	// track which keys existed in the original value and which the user changed,
+	// so Value() doesn't materialize absent schema options as explicit false
+	origKeys    map[string]bool
+	userEdited  map[string]bool
 }
 
 func (e *toggleMapEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {
 	e.th = th
 	e.entries = nil
+	e.userEdited = make(map[string]bool)
 
 	// parse JSON object value
 	parsed := make(map[string]bool)
 	if currentValue != "" {
 		_ = json.Unmarshal([]byte(currentValue), &parsed)
+	}
+
+	// record which keys were originally present
+	e.origKeys = make(map[string]bool, len(parsed))
+	for k := range parsed {
+		e.origKeys[k] = true
 	}
 
 	// build entries from parsed map
@@ -76,6 +88,7 @@ func (e *toggleMapEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 				if val != "" {
 					e.entries = append(e.entries, toggleMapEntry{key: val, enabled: true})
 					e.cursor = len(e.entries) - 1
+					e.userEdited[val] = true
 				}
 				e.adding = false
 				e.input.Blur()
@@ -108,6 +121,7 @@ func (e *toggleMapEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	case "space":
 		if len(e.entries) > 0 && e.cursor < len(e.entries) {
 			e.entries[e.cursor].enabled = !e.entries[e.cursor].enabled
+			e.userEdited[e.entries[e.cursor].key] = true
 		}
 	case "a":
 		e.adding = true
@@ -115,10 +129,12 @@ func (e *toggleMapEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		return e.input.Focus(), false, false
 	case "d":
 		if len(e.entries) > 0 && e.cursor < len(e.entries) {
+			deleted := e.entries[e.cursor].key
 			e.entries = append(e.entries[:e.cursor], e.entries[e.cursor+1:]...)
 			if e.cursor >= len(e.entries) && e.cursor > 0 {
 				e.cursor--
 			}
+			e.userEdited[deleted] = true
 		}
 	case "enter", "ctrl+s":
 		return nil, true, false
@@ -174,7 +190,9 @@ func (e *toggleMapEditor) View(width int) string {
 func (e *toggleMapEditor) Value() string {
 	m := make(map[string]bool, len(e.entries))
 	for _, ent := range e.entries {
-		m[ent.key] = ent.enabled
+		if e.origKeys[ent.key] || e.userEdited[ent.key] {
+			m[ent.key] = ent.enabled
+		}
 	}
 	data, _ := json.Marshal(m)
 	return string(data)

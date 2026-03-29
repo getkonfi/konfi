@@ -14,12 +14,14 @@ type KonfConfig struct {
 	Theme          string `yaml:"theme"`
 	LogLevel       string `yaml:"log_level"`
 	BrowseLoadsApp bool   `yaml:"browse_loads_app"`
+	NerdFont       bool   `yaml:"nerd_font"`
 }
 
 func defaultConfig() *KonfConfig {
 	return &KonfConfig{
 		Theme:    "catppuccin",
 		LogLevel: "info",
+		NerdFont: true,
 	}
 }
 

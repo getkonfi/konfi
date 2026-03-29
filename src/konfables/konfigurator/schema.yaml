@@ -18,6 +18,11 @@ sections:
           - tokyonight
           - gruvbox
           - nord
+      - key: nerd_font
+        label: Nerd Font
+        type: bool
+        default: "true"
+        description: use Nerd Font glyphs for icons (disable for plain ASCII fallback)
   - name: Navigation
     key: ""
     fields:

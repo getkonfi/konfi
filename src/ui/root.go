@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/emin/konfigurator/konfables"
@@ -37,8 +38,6 @@ const (
 type navEntry struct {
 	appIndex int
 }
-
-const sidebarWidth = 20
 
 type root struct {
 	app      *setup.App
@@ -92,9 +91,12 @@ func NewRoot(app *setup.App) tea.Model {
 		installed[d.Name()] = true
 	}
 
+	nerdFont := app.Config.NerdFont
+
 	// home item at top of sidebar
 	items := []sidebarItem{{
 		icon:      "\uf015", // nf-fa-home
+		plainIcon: "~",
 		name:      "home",
 		installed: true,
 		home:      true,
@@ -103,12 +105,9 @@ func NewRoot(app *setup.App) tea.Model {
 	for _, ki := range setup.AllKonfablesWithInfo() {
 		if k, ok := ki.Konfable.(konfables.Konfable); ok {
 			info := k.Info()
-			icon := info.NerdIcon
-			if icon == "" {
-				icon = info.Icon
-			}
 			items = append(items, sidebarItem{
-				icon:      icon,
+				icon:      info.NerdIcon,
+				plainIcon: info.Icon,
 				name:      k.Name(),
 				installed: installed[k.Name()],
 				system:    ki.System,
@@ -123,20 +122,26 @@ func NewRoot(app *setup.App) tea.Model {
 	newCounts := computeNewCounts(allK, app.Versions)
 
 	sb := newSidebar(items, th)
+	sb.nerdFont = nerdFont
 	sb.newCounts = newCounts
 	ct := newContent(th)
+	ct.nerdFont = nerdFont
+	ct.detail.nerdFont = nerdFont
 	ct.versions = app.Versions
 	ct.appVersion = app.AppVersion
 
 	// populate dashboard data (skip home item at index 0)
 	for _, k := range allK {
 		info := k.Info()
-		icon := info.NerdIcon
-		if icon == "" {
-			icon = info.Icon
+		nIcon := info.NerdIcon
+		if !nerdFont {
+			nIcon = info.Icon
+		}
+		if nIcon == "" {
+			nIcon = info.Icon
 		}
 		da := dashboardApp{
-			icon:      icon,
+			icon:      nIcon,
 			name:      k.Name(),
 			installed: installed[k.Name()],
 		}
@@ -351,7 +356,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.updateHints()
 				return r, nil
 			}
-			if len(r.content.searchMatches) > 0 {
+			if len(r.content.searchMatches) > 0 || r.content.search.Value() != "" {
 				r.content.search.SetValue("")
 				r.content.searchMatches = r.content.searchMatches[:0]
 				r.content.searchIdx = 0
@@ -383,8 +388,9 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil
 
 		case "ctrl+k":
-			items := r.buildPaletteItems()
-			cmd := r.palette.Open(PaletteModeCommands, items)
+			cmdItems := r.buildPaletteItems()
+			fldItems := r.buildFieldItems()
+			cmd := r.palette.Open(PaletteModeCommands, cmdItems, fldItems)
 			r.palette.width = r.width
 			r.palette.height = r.height
 			return r, cmd
@@ -393,7 +399,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			idx := int(msg.String()[0]-'0') - 1
 			if idx < len(r.allKonfables) {
 				r.pushNav()
-				r.sidebar.cursor = idx
+				r.sidebar.setCursorToApp(idx)
 				return r, func() tea.Msg {
 					return AppSelectedMsg{Index: idx, Confirmed: true}
 				}
@@ -401,25 +407,25 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil
 
 		case "ctrl+n":
-			cur := r.sidebar.cursor
-			if cur < len(r.allKonfables)-1 {
+			cur := r.sidebar.appIndex()
+			if cur >= 0 && cur < len(r.allKonfables)-1 {
 				r.pushNav()
-				r.sidebar.cursor = cur + 1
-				idx := r.sidebar.cursor
+				next := cur + 1
+				r.sidebar.setCursorToApp(next)
 				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: idx, Confirmed: true}
+					return AppSelectedMsg{Index: next, Confirmed: true}
 				}
 			}
 			return r, nil
 
 		case "ctrl+p":
-			cur := r.sidebar.cursor
+			cur := r.sidebar.appIndex()
 			if cur > 0 {
 				r.pushNav()
-				r.sidebar.cursor = cur - 1
-				idx := r.sidebar.cursor
+				prev := cur - 1
+				r.sidebar.setCursorToApp(prev)
 				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: idx, Confirmed: true}
+					return AppSelectedMsg{Index: prev, Confirmed: true}
 				}
 			}
 			return r, nil
@@ -512,10 +518,26 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.updateHints()
 		return r, nil
 
+	case JumpToFieldMsg:
+		if len(r.content.fields) == 0 {
+			return r, nil
+		}
+		// find the visible row matching this field index
+		for vi, row := range r.content.visible {
+			if !row.isSection && row.fieldIdx == msg.FieldIdx {
+				r.content.cursor = vi
+				r.content.syncDetail()
+				r.focusPane(paneContent)
+				r.updateHints()
+				break
+			}
+		}
+		return r, nil
+
 	case SelectAppMsg:
 		if msg.Index >= 0 && msg.Index < len(r.allKonfables) {
 			r.pushNav()
-			r.sidebar.cursor = msg.Index
+			r.sidebar.setCursorToApp(msg.Index)
 			return r, func() tea.Msg {
 				return AppSelectedMsg{Index: msg.Index, Confirmed: true}
 			}
@@ -660,10 +682,16 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case EditorExitMsg:
 		// reload config after external editor exits
 		if r.content.config != nil {
+			wasDirty := r.content.config.Dirty()
 			if err := r.content.config.Reload(context.Background()); err == nil {
 				r.content.refreshValues()
 				r.content.snapshotOrigValues()
-				r.content.fileState = ""
+				if wasDirty {
+					r.content.fileState = "reloaded from $EDITOR"
+					r.status.status = "reloaded — in-TUI edits replaced by $EDITOR"
+				} else {
+					r.content.fileState = ""
+				}
 			}
 		}
 		r.updateHints()
@@ -751,6 +779,17 @@ func (r *root) View() tea.View {
 	return v
 }
 
+// sidebarW returns the sidebar width based on terminal width.
+func (r *root) sidebarW() int {
+	if r.width < 60 {
+		return 14
+	}
+	if r.width >= 120 {
+		return 24
+	}
+	return 20
+}
+
 func (r *root) layout() {
 	// statusbar: 1 line at bottom
 	r.status.width = r.width
@@ -761,11 +800,12 @@ func (r *root) layout() {
 		bodyH = 3
 	}
 
-	r.sidebar.width = sidebarWidth
+	sw := r.sidebarW()
+	r.sidebar.width = sw
 	r.sidebar.height = bodyH
 
 	// content: fill remaining width
-	r.content.width = r.width - sidebarWidth
+	r.content.width = r.width - sw
 	if r.content.width < 10 {
 		r.content.width = 10
 	}
@@ -981,10 +1021,51 @@ func (r *root) buildPaletteItems() []PaletteItem {
 	return items
 }
 
+// buildFieldItems creates palette entries for the current app's schema fields.
+func (r *root) buildFieldItems() []PaletteItem {
+	if len(r.content.fields) == 0 {
+		return nil
+	}
+	app := ""
+	if r.content.konfable != nil {
+		app = r.content.konfable.Name()
+	}
+	items := make([]PaletteItem, 0, len(r.content.fields))
+	for i, f := range r.content.fields {
+		section := ""
+		if r.content.schema != nil && i < len(r.content.fieldSection) {
+			si := r.content.fieldSection[i]
+			if si < len(r.content.schema.Sections) {
+				section = r.content.schema.Sections[si].Name
+			}
+		}
+		desc := f.Type
+		if f.Description != "" {
+			desc = f.Description
+		}
+		terms := f.Key + " " + section + " " + f.Type
+		if f.Description != "" {
+			terms += " " + f.Description
+		}
+		cat := app
+		if section != "" {
+			cat = section
+		}
+		items = append(items, PaletteItem{
+			Label:       f.Key,
+			Description: desc,
+			Category:    cat,
+			MatchTerms:  terms,
+			Action:      JumpToFieldMsg{FieldIdx: i},
+		})
+	}
+	return items
+}
+
 // pushNav records the current position in the navigation history.
 func (r *root) pushNav() {
 	entry := navEntry{
-		appIndex: r.sidebar.cursor,
+		appIndex: r.sidebar.appIndex(),
 	}
 	// truncate forward history when pushing
 	if r.navHistoryPos < len(r.navHistory) {
@@ -999,15 +1080,13 @@ func (r *root) navBack() tea.Cmd {
 	if r.navHistoryPos <= 0 || len(r.navHistory) == 0 {
 		return nil
 	}
-	// save current position for forward nav before moving back
-	r.pushNav()
-	// move back two: one past the push we just did, one to the actual target
-	r.navHistoryPos -= 2
-	if r.navHistoryPos < 0 {
-		r.navHistoryPos = 0
+	// save current position at the tip so forward can return here
+	if r.navHistoryPos >= len(r.navHistory) {
+		r.navHistory = append(r.navHistory, navEntry{appIndex: r.sidebar.appIndex()})
 	}
+	r.navHistoryPos--
 	entry := r.navHistory[r.navHistoryPos]
-	r.sidebar.cursor = entry.appIndex
+	r.sidebar.setCursorToApp(entry.appIndex)
 	idx := entry.appIndex
 	return func() tea.Msg {
 		return AppSelectedMsg{Index: idx, Confirmed: true}
@@ -1021,7 +1100,7 @@ func (r *root) navForward() tea.Cmd {
 	}
 	r.navHistoryPos++
 	entry := r.navHistory[r.navHistoryPos]
-	r.sidebar.cursor = entry.appIndex
+	r.sidebar.setCursorToApp(entry.appIndex)
 	idx := entry.appIndex
 	return func() tea.Msg {
 		return AppSelectedMsg{Index: idx, Confirmed: true}
@@ -1114,9 +1193,30 @@ func (r *root) applyPaste(value string) {
 		return
 	}
 	data := r.content.config.Content()
+
+	// list fields need SetValues for repeated-key formats
+	if f.Type == "list" {
+		if mvp, ok := p.(konfables.MultiValueParser); ok {
+			var vals []string
+			if value != "" {
+				vals = strings.Split(value, "\n")
+			}
+			newData, err := mvp.SetValues(data, f.Key, vals)
+			if err != nil {
+				r.status.status = "paste failed: " + err.Error()
+				return
+			}
+			r.content.config.SetContent(newData)
+			r.content.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldVal, NewValue: value})
+			r.content.refreshValues()
+			return
+		}
+	}
+
 	serialized := formatValue(value, f.Type, r.content.konfable.Info().Format)
 	newData, err := p.SetValue(data, f.Key, serialized)
 	if err != nil {
+		r.status.status = "paste failed: " + err.Error()
 		return
 	}
 	r.content.config.SetContent(newData)

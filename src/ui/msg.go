@@ -94,3 +94,6 @@ type OpenEditorMsg struct{}
 
 // ToggleHelpMsg toggles the help overlay from the palette.
 type ToggleHelpMsg struct{}
+
+// JumpToFieldMsg requests navigating to a specific field by index.
+type JumpToFieldMsg struct{ FieldIdx int }

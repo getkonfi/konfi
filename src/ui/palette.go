@@ -47,15 +47,17 @@ type PaletteClosedMsg struct{}
 
 // palette is the command palette model — an overlay with fuzzy search.
 type palette struct {
-	input    textinput.Model
-	mode     PaletteMode
-	items    []PaletteItem
-	results  []PaletteResult
-	selected int
-	visible  bool
-	width    int
-	height   int
-	theme    *theme.Theme
+	input        textinput.Model
+	mode         PaletteMode
+	commandItems []PaletteItem
+	fieldItems   []PaletteItem
+	items        []PaletteItem
+	results      []PaletteResult
+	selected     int
+	visible      bool
+	width        int
+	height       int
+	theme        *theme.Theme
 }
 
 // matchSource adapts []PaletteItem for github.com/sahilm/fuzzy.
@@ -77,10 +79,16 @@ func newPalette(th *theme.Theme) palette {
 }
 
 // Open shows the palette with the given mode and items.
-func (p *palette) Open(mode PaletteMode, items []PaletteItem) tea.Cmd {
+func (p *palette) Open(mode PaletteMode, cmdItems, fldItems []PaletteItem) tea.Cmd {
 	p.visible = true
 	p.mode = mode
-	p.items = items
+	p.commandItems = cmdItems
+	p.fieldItems = fldItems
+	if mode == PaletteModeFields {
+		p.items = fldItems
+	} else {
+		p.items = cmdItems
+	}
 	p.selected = 0
 	p.input.SetValue("")
 	p.input.Focus()
@@ -93,6 +101,8 @@ func (p *palette) Close() {
 	p.visible = false
 	p.input.Blur()
 	p.items = nil
+	p.commandItems = nil
+	p.fieldItems = nil
 	p.results = nil
 	p.selected = 0
 }
@@ -138,10 +148,13 @@ func (p palette) Update(msg tea.Msg) (palette, tea.Cmd) {
 		case "tab":
 			if p.mode == PaletteModeCommands {
 				p.mode = PaletteModeFields
+				p.items = p.fieldItems
 			} else {
 				p.mode = PaletteModeCommands
+				p.items = p.commandItems
 			}
 			p.selected = 0
+			p.input.SetValue("")
 			p.filter()
 			return p, nil
 

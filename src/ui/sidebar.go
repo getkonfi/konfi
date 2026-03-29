@@ -13,7 +13,8 @@ import (
 
 // sidebarItem holds the icon glyph, name, and install status for a panel entry.
 type sidebarItem struct {
-	icon      string
+	icon      string // nerd font icon
+	plainIcon string // plain unicode/emoji fallback
 	name      string
 	installed bool
 	system    bool // system items render in bottom section
@@ -30,6 +31,7 @@ type sidebar struct {
 	width     int
 	height    int
 	theme     *theme.Theme
+	nerdFont  bool
 	dirtyApps map[string]bool // apps with unsaved changes
 	newCounts map[string]int  // per-app count of "new" fields
 }
@@ -233,6 +235,60 @@ func (s sidebar) selectCurrent(confirmed bool) (sidebar, tea.Cmd) {
 	return s, s.emitSelection(s.filtered[s.cursor], confirmed)
 }
 
+// appIndex returns the konfable index for the current cursor position, or -1 for home.
+func (s sidebar) appIndex() int {
+	if len(s.filtered) == 0 || s.cursor >= len(s.filtered) {
+		return -1
+	}
+	itemIdx := s.filtered[s.cursor]
+	if s.items[itemIdx].home {
+		return -1
+	}
+	ki := itemIdx
+	for i := 0; i < itemIdx; i++ {
+		if s.items[i].home {
+			ki--
+		}
+	}
+	return ki
+}
+
+// setCursorToApp sets the cursor to the filtered position matching the given konfable index.
+func (s *sidebar) setCursorToApp(appIdx int) {
+	for fi, origIdx := range s.filtered {
+		item := s.items[origIdx]
+		if item.home || item.system {
+			continue
+		}
+		ki := origIdx
+		for i := 0; i < origIdx; i++ {
+			if s.items[i].home {
+				ki--
+			}
+		}
+		if ki == appIdx {
+			s.cursor = fi
+			return
+		}
+	}
+}
+
+// itemIcon returns the effective icon for an item based on nerd font setting.
+func (s sidebar) itemIcon(item sidebarItem) string {
+	if s.nerdFont && item.icon != "" {
+		return item.icon
+	}
+	if item.plainIcon != "" {
+		return item.plainIcon
+	}
+	// last resort: first 2 chars of name
+	r := []rune(item.name)
+	if len(r) >= 2 {
+		return string(r[:2])
+	}
+	return item.name
+}
+
 // collapsed returns true when the sidebar is in icon-rail mode.
 func (s sidebar) collapsed() bool {
 	return s.width <= 6
@@ -263,12 +319,7 @@ func (s sidebar) viewCollapsed() string {
 		}
 		isCursor := fi == s.cursor
 
-		var glyph string
-		if item.icon != "" {
-			glyph = item.icon
-		} else {
-			glyph = string([]rune(item.name)[0])
-		}
+		glyph := s.itemIcon(item)
 		if s.dirtyApps[item.name] {
 			glyph = s.theme.Warning.Render("●")
 		}
@@ -293,10 +344,7 @@ func (s sidebar) viewCollapsed() string {
 			continue
 		}
 		item := s.items[origIdx]
-		glyph := string([]rune(item.name)[0])
-		if item.icon != "" {
-			glyph = item.icon
-		}
+		glyph := s.itemIcon(item)
 		isCursor := fi == s.cursor
 		if isCursor {
 			sysLabels = append(sysLabels, s.theme.Primary.Render(glyph))
@@ -413,10 +461,7 @@ func (s sidebar) renderItem(item sidebarItem, isCursor bool, width int) string {
 	}
 
 	// icon glyph (shown before name)
-	icon := ""
-	if item.icon != "" {
-		icon = item.icon + " "
-	}
+	icon := s.itemIcon(item) + " "
 
 	// when sidebar is unfocused, dim all items but keep cursor
 	if !s.focused {
