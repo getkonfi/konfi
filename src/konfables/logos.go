@@ -62,7 +62,7 @@ var ghosttyLogo = pixelart.PixelArt{
 	},
 }
 
-// alacritty — triangle/A mark in orange and yellow (no crossbar)
+// alacritty — A mark in orange and yellow with crossbar
 var alacrittyLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
@@ -73,7 +73,7 @@ var alacrittyLogo = pixelart.PixelArt{
 		{__, __, __, or, or, yl, yl, yl, yl, yl, yl, or, or, __, __, __},
 		{__, __, or, or, yl, yl, yl, __, __, yl, yl, yl, or, or, __, __},
 		{__, or, or, yl, yl, yl, __, __, __, __, yl, yl, yl, or, or, __},
-		{__, or, yl, yl, yl, __, __, __, __, __, __, yl, yl, yl, or, __},
+		{__, or, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, or, __},
 		{or, or, yl, yl, __, __, __, __, __, __, __, __, yl, yl, or, or},
 		{or, yl, yl, __, __, __, __, __, __, __, __, __, __, yl, yl, or},
 		{or, yl, __, __, __, __, __, __, __, __, __, __, __, __, yl, or},
