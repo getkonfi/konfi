@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/emin/konfigurator/konfables"
@@ -326,11 +327,46 @@ func (c *content) renderDashboard(width int) string {
 
 	// app list
 	var installed, notInstalled []dashboardApp
+	var totalDeprecated, totalNew int
 	for _, a := range c.dashboardApps {
 		if a.installed {
 			installed = append(installed, a)
+			totalDeprecated += a.deprecatedCount
+			totalNew += a.newCount
 		} else {
 			notInstalled = append(notInstalled, a)
+		}
+	}
+
+	// sort installed: most configured first, then alphabetical
+	sort.Slice(installed, func(i, j int) bool {
+		if installed[i].configuredCount != installed[j].configuredCount {
+			return installed[i].configuredCount > installed[j].configuredCount
+		}
+		return installed[i].name < installed[j].name
+	})
+	// sort not-detected alphabetically
+	sort.Slice(notInstalled, func(i, j int) bool {
+		return notInstalled[i].name < notInstalled[j].name
+	})
+
+	// aggregate summary — actionable signals only
+	if len(installed) > 0 {
+		var parts []string
+		if totalNew > 0 {
+			parts = append(parts, fmt.Sprintf("%d new", totalNew))
+		}
+		if totalDeprecated > 0 {
+			parts = append(parts, fmt.Sprintf("%d deprecated", totalDeprecated))
+		}
+		if bm := len(c.bookmarks); bm > 0 {
+			parts = append(parts, fmt.Sprintf("%d bookmarked", bm))
+		}
+		if len(parts) > 0 {
+			summary := strings.Join(parts, " · ")
+			b.WriteString(centerLine(c.theme.Muted.Render(summary), width))
+			b.WriteByte('\n')
+			b.WriteByte('\n')
 		}
 	}
 
@@ -342,48 +378,88 @@ func (c *content) renderDashboard(width int) string {
 		ruleW = width
 	}
 
+	// compute column widths across both groups for alignment
+	nameW, verW := 0, 0
+	for _, a := range installed {
+		if len(a.name) > nameW {
+			nameW = len(a.name)
+		}
+		if len(a.version) > verW {
+			verW = len(a.version)
+		}
+	}
+	for _, a := range notInstalled {
+		if len(a.name) > nameW {
+			nameW = len(a.name)
+		}
+	}
+
+	// build all lines first, then left-align the block at a single offset
+	var lines []string
+	maxW := 0
+
 	if len(installed) > 0 {
 		label := "── installed "
 		pad := ruleW - len(label)
 		if pad < 0 {
 			pad = 0
 		}
-		header := c.theme.Muted.Render(label + strings.Repeat("─", pad))
-		b.WriteString(centerLine(header, width))
-		b.WriteByte('\n')
+		hdr := c.theme.Muted.Render(label + strings.Repeat("─", pad))
+		lines = append(lines, hdr)
 		for _, a := range installed {
 			icon := c.theme.Primary.Render(a.icon)
-			name := c.theme.Text.Render(" " + a.name)
-			ver := ""
+			name := c.theme.Text.Render(" " + padRight(a.name, nameW))
+			ver := strings.Repeat(" ", verW+2)
 			if a.version != "" {
-				ver = c.theme.Muted.Render("  " + a.version)
+				ver = "  " + padRight(a.version, verW)
 			}
+			ver = c.theme.Muted.Render(ver)
 			stats := c.dashboardStats(a)
-			b.WriteString(centerLine(icon+name+ver+stats, width))
-			b.WriteByte('\n')
+			lines = append(lines, icon+name+ver+stats)
 		}
 	}
 
 	if len(notInstalled) > 0 {
-		b.WriteByte('\n')
+		lines = append(lines, "") // blank separator
 		label := "── not detected "
 		pad := ruleW - len(label)
 		if pad < 0 {
 			pad = 0
 		}
-		header := c.theme.Muted.Render(label + strings.Repeat("─", pad))
-		b.WriteString(centerLine(header, width))
-		b.WriteByte('\n')
+		hdr := c.theme.Muted.Render(label + strings.Repeat("─", pad))
+		lines = append(lines, hdr)
 		for _, a := range notInstalled {
 			icon := c.theme.Muted.Faint(true).Render(a.icon)
-			name := c.theme.Muted.Faint(true).Render(" " + a.name)
-			total := ""
-			if a.totalFields > 0 {
-				total = c.theme.Muted.Faint(true).Render(fmt.Sprintf("  %d fields", a.totalFields))
+			name := c.theme.Muted.Faint(true).Render(" " + padRight(a.name, nameW))
+			ver := ""
+			if a.minAppVersion != "" && a.maxAppVersion != "" {
+				ver = fmt.Sprintf("  %s – %s", a.minAppVersion, a.maxAppVersion)
+			} else if a.minAppVersion != "" {
+				ver = fmt.Sprintf("  %s+", a.minAppVersion)
+			} else if a.maxAppVersion != "" {
+				ver = fmt.Sprintf("  up to %s", a.maxAppVersion)
 			}
-			b.WriteString(centerLine(icon+name+total, width))
-			b.WriteByte('\n')
+			if ver != "" {
+				ver = c.theme.Muted.Faint(true).Render(ver)
+			}
+			lines = append(lines, icon+name+ver)
 		}
+	}
+
+	// find widest line, then left-align all lines at the same offset
+	for _, l := range lines {
+		if w := lipgloss.Width(l); w > maxW {
+			maxW = w
+		}
+	}
+	leftPad := (width - maxW) / 2
+	if leftPad < 0 {
+		leftPad = 0
+	}
+	prefix := strings.Repeat(" ", leftPad)
+	for _, l := range lines {
+		b.WriteString(prefix + l)
+		b.WriteByte('\n')
 	}
 
 	b.WriteByte('\n')
@@ -980,19 +1056,23 @@ func centerBlock(block string, width int) string {
 	return strings.Join(lines, "\n")
 }
 
-// dashboardStats formats the stats suffix for an installed dashboard app.
+// dashboardStats formats the actionable stats suffix for a dashboard app.
+// configured count is omitted — sort order communicates engagement.
 func (c *content) dashboardStats(a dashboardApp) string {
-	if a.totalFields == 0 {
-		return ""
+	var parts []string
+	if a.newCount > 0 {
+		parts = append(parts, fmt.Sprintf("%d new", a.newCount))
 	}
-	s := fmt.Sprintf("  %d/%d configured", a.configuredCount, a.totalFields)
 	if a.deprecatedCount > 0 {
-		s += fmt.Sprintf(" · %d deprecated", a.deprecatedCount)
+		parts = append(parts, fmt.Sprintf("%d deprecated", a.deprecatedCount))
 	}
 	if a.coverage != "" && a.coverage != "full" {
-		s += " [" + a.coverage + "]"
+		parts = append(parts, a.coverage)
 	}
-	return c.theme.Muted.Render(s)
+	if len(parts) == 0 {
+		return ""
+	}
+	return c.theme.Muted.Render("  " + strings.Join(parts, " · "))
 }
 
 // centerLine centers a single line within the given width using lipgloss.

@@ -136,7 +136,10 @@ type dashboardApp struct {
 	configuredCount int    // fields with non-default values
 	totalFields     int    // total schema fields
 	deprecatedCount int    // deprecated diagnostics
+	newCount        int    // fields added in the detected version
 	coverage        string // from schema.Coverage
+	minAppVersion   string // schema min supported version
+	maxAppVersion   string // schema max supported version
 }
 
 func newContent(th *theme.Theme) content {
