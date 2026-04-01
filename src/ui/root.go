@@ -79,6 +79,9 @@ type root struct {
 	// diff confirmation overlay before saving
 	showDiffPreview bool
 
+	// live preview state — file written to disk but not committed
+	previewing bool
+
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
 }
@@ -186,6 +189,8 @@ func NewRoot(app *setup.App) tea.Model {
 				da.totalFields += len(s.Sections[si].Fields)
 			}
 			da.coverage = s.Coverage
+			da.minAppVersion = s.MinAppVersion
+			da.maxAppVersion = s.MaxAppVersion
 
 			// count configured + deprecated for installed apps
 			if installed[k.Name()] {
@@ -232,6 +237,7 @@ func NewRoot(app *setup.App) tea.Model {
 			}
 		}
 
+		da.newCount = newCounts[k.Name()]
 		ct.dashboardApps = append(ct.dashboardApps, da)
 	}
 	st := newStatusbar(th)
@@ -330,12 +336,48 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					err := cfg.Save(context.Background())
 					return saveResultMsg{err: err}
 				}
+			case "p":
+				info := r.currentAppInfo()
+				if info.AutoReload {
+					r.showDiffPreview = false
+					r.previewing = true
+					r.status.status = "previewing..."
+					cfg := r.content.config
+					return r, func() tea.Msg {
+						err := cfg.Preview(context.Background())
+						return previewResultMsg{err: err}
+					}
+				}
 			case "esc", "n":
 				r.showDiffPreview = false
 				r.status.status = ""
 				return r, nil
 			}
 			return r, nil
+		}
+	}
+
+	// preview mode — esc reverts, ctrl+s keeps
+	if r.previewing {
+		if km, ok := msg.(tea.KeyPressMsg); ok {
+			switch km.String() {
+			case "ctrl+s":
+				r.previewing = false
+				r.status.status = "saving..."
+				cfg := r.content.config
+				return r, func() tea.Msg {
+					err := cfg.Save(context.Background())
+					return saveResultMsg{err: err}
+				}
+			case "esc":
+				r.previewing = false
+				r.status.status = "reverting..."
+				cfg := r.content.config
+				return r, func() tea.Msg {
+					err := cfg.RevertPreview(context.Background())
+					return revertPreviewResultMsg{err: err}
+				}
+			}
 		}
 	}
 
@@ -436,6 +478,12 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "ctrl+c":
+			if r.previewing {
+				r.previewing = false
+				if r.content.config != nil {
+					_ = r.content.config.RevertPreview(context.Background())
+				}
+			}
 			if r.content.config != nil {
 				r.content.stopWatching()
 			}
@@ -444,10 +492,20 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q":
 			if r.content.config != nil && r.content.config.Dirty() && !r.confirmQuit {
 				r.confirmQuit = true
-				r.status.status = "unsaved changes — q to quit, ctrl+s to save"
+				if r.previewing {
+					r.status.status = "previewing — q to quit and revert, ctrl+s to save"
+				} else {
+					r.status.status = "unsaved changes — q to quit, ctrl+s to save"
+				}
 				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
 					return confirmQuitClearMsg{}
 				})
+			}
+			if r.previewing {
+				r.previewing = false
+				if r.content.config != nil {
+					_ = r.content.config.RevertPreview(context.Background())
+				}
 			}
 			if r.content.config != nil {
 				r.content.stopWatching()
@@ -776,6 +834,12 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			r.confirmSwitch = false
 			r.pendingSwitch = nil
+			if r.previewing {
+				r.previewing = false
+				if r.content.config != nil {
+					_ = r.content.config.RevertPreview(context.Background())
+				}
+			}
 			k := r.allKonfables[msg.Index]
 			r.status.status = ""
 			cmd := r.content.loadApp(k)
@@ -881,6 +945,28 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, nil
 
+	case previewResultMsg:
+		if msg.err != nil {
+			r.previewing = false
+			r.status.status = "preview failed: " + msg.err.Error()
+		} else {
+			r.content.fileState = "previewing"
+			r.status.status = "previewing — ctrl+s keep, esc revert"
+		}
+		return r, nil
+
+	case revertPreviewResultMsg:
+		if msg.err != nil {
+			r.status.status = "revert failed: " + msg.err.Error()
+		} else {
+			r.content.fileState = "unsaved"
+			r.status.status = "reverted"
+			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+				return fileStateClearMsg{}
+			})
+		}
+		return r, nil
+
 	case postSaveReloadMsg:
 		if msg.err != nil {
 			r.status.status = "saved (reload failed)"
@@ -892,7 +978,9 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 	case fileStateClearMsg:
-		if r.content.config != nil && r.content.config.Dirty() {
+		if r.previewing {
+			r.content.fileState = "previewing"
+		} else if r.content.config != nil && r.content.config.Dirty() {
 			r.content.fileState = "unsaved"
 		} else {
 			r.content.fileState = ""
@@ -1493,7 +1581,11 @@ func (r *root) renderDiffPreview() string {
 	b.WriteString("\n\n")
 	b.WriteString(r.content.diffView.View())
 	b.WriteString("\n\n")
-	b.WriteString(th.Muted.Italic(true).Render("  enter save  esc cancel"))
+	hints := "  enter save  esc cancel"
+	if r.currentAppInfo().AutoReload {
+		hints = "  enter save  p preview  esc cancel"
+	}
+	b.WriteString(th.Muted.Italic(true).Render(hints))
 
 	card := helpCardStyle.
 		BorderForeground(th.Palette.Primary).

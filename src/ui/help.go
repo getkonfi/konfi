@@ -27,7 +27,7 @@ var helpGlobal = helpGroup{
 	Title: "Global",
 	Bindings: []helpBinding{
 		{"ctrl+c", "quit"},
-		{"ctrl+s", "save config"},
+		{"ctrl+s", "save / keep preview"},
 		{"ctrl+k", "command palette"},
 		{"ctrl+a", "ask ai"},
 		{"ctrl+z / ctrl+y", "undo / redo"},

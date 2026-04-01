@@ -107,6 +107,12 @@ type JumpToFieldMsg struct{ FieldIdx int }
 // saveResultMsg is sent when an async config save completes.
 type saveResultMsg struct{ err error }
 
+// previewResultMsg is sent when an async preview write completes.
+type previewResultMsg struct{ err error }
+
+// revertPreviewResultMsg is sent when a preview revert completes.
+type revertPreviewResultMsg struct{ err error }
+
 // reloadResultMsg is sent when an async config reload completes.
 type reloadResultMsg struct {
 	source string // "external", "editor", "save-reload"

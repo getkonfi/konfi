@@ -108,6 +108,34 @@ func (cf *ConfigFile) Tiers(key string) []string {
 	return nil
 }
 
+// Preview writes the working copy to disk without promoting it to original.
+// dirty state is preserved so the user can still save or revert.
+func (cf *ConfigFile) Preview(ctx context.Context) error {
+	cf.mu.Lock()
+	original := bytes.Clone(cf.original)
+	current := bytes.Clone(cf.current)
+	cf.mu.Unlock()
+
+	if err := cf.persister.Save(ctx, original, current); err != nil {
+		return fmt.Errorf("preview config: %w", err)
+	}
+	// intentionally do NOT update cf.original — dirty stays true
+	return nil
+}
+
+// RevertPreview restores the original content to disk, undoing a preview.
+func (cf *ConfigFile) RevertPreview(ctx context.Context) error {
+	cf.mu.Lock()
+	original := bytes.Clone(cf.original)
+	current := bytes.Clone(cf.current)
+	cf.mu.Unlock()
+
+	if err := cf.persister.Save(ctx, current, original); err != nil {
+		return fmt.Errorf("revert preview: %w", err)
+	}
+	return nil
+}
+
 // Reload re-reads data from the persister, resetting both original and current.
 func (cf *ConfigFile) Reload(ctx context.Context) error {
 	data, err := cf.persister.Load(ctx)
