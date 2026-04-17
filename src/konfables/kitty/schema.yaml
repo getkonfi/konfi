@@ -4,6 +4,10 @@ schema_version: 1.0.0
 min_app_version: "0.35.0"
 max_app_version: "0.40.0"
 docs_url: "https://sw.kovidgoyal.net/kitty/conf/"
+upstream:
+  kind: github
+  repo: kovidgoyal/kitty
+  tag_prefix: v
 hints:
   - "key-value config — one setting per line, space-separated"
   - "live reload with ctrl+shift+f5 or kill -SIGUSR1"

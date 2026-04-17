@@ -4,6 +4,10 @@ schema_version: "0.51.0"
 min_app_version: "0.40.0"
 max_app_version: "0.51.0"
 docs_url: "https://wiki.hyprland.org/Configuring/Variables/"
+upstream:
+  kind: github
+  repo: hyprwm/Hyprland
+  tag_prefix: v
 hints:
   - "hyprctl reload — apply config changes without restart"
   - "hyprctl getoption <key> — inspect live value of any setting"

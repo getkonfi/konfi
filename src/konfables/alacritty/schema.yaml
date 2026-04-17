@@ -4,6 +4,10 @@ schema_version: 1.0.0
 min_app_version: "0.13.0"
 max_app_version: "1.0.0"
 docs_url: "https://alacritty.org/config-alacritty.html"
+upstream:
+  kind: github
+  repo: alacritty/alacritty
+  tag_prefix: v
 hints:
   - "TOML config — sections are [tables], nested via dots"
   - "live reload on save — no restart needed"

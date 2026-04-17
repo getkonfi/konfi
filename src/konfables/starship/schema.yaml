@@ -1,6 +1,10 @@
 app: starship
 format: toml
 docs_url: "https://starship.rs/config/"
+upstream:
+  kind: github
+  repo: starship/starship
+  tag_prefix: v
 hints:
   - "starship explain — show active modules and render time"
   - "starship timings — profile slow modules"
