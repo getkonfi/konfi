@@ -25,19 +25,21 @@ func SerializeSchemas(schemas map[string]*Schema) string {
 	for _, schema := range schemas {
 		app := schema.App
 		for _, sec := range schema.Sections {
-			for _, f := range sec.Fields {
+			for fi := range sec.Fields {
+			f := &sec.Fields[fi]
 				desc := strings.ReplaceAll(f.Description, "\n", " ")
 				if len(desc) > 120 {
 					desc = desc[:120]
 				}
 				opts := ""
-				if len(f.Options) > 0 {
+				switch {
+				case len(f.Options) > 0:
 					opts = strings.Join(f.Options, ",")
-				} else if f.Min != nil && f.Max != nil {
+				case f.Min != nil && f.Max != nil:
 					opts = fmt.Sprintf("%g-%g", *f.Min, *f.Max)
-				} else if f.Min != nil {
+				case f.Min != nil:
 					opts = fmt.Sprintf("%g+", *f.Min)
-				} else if f.Max != nil {
+				case f.Max != nil:
 					opts = fmt.Sprintf("-%g", *f.Max)
 				}
 				fmt.Fprintf(&b, "%s|%s|%s|%s|%s|%s|%s\n",

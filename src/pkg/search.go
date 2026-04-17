@@ -29,7 +29,7 @@ var fieldWeights = map[string]float64{
 // synonym groups — bidirectional lookup
 var synonymGroups = [][]string{
 	{"transparency", "opacity", "alpha"},
-	{"colour", "color"}, //nolint:misspell
+	{"colour", "color"}, //nolint:misspell // intentional synonym for British English
 	{"shortcut", "keybind", "hotkey", "binding"},
 	{"font", "typeface"},
 	{"bg", "background"},
@@ -160,8 +160,9 @@ func NewSearchIndex(sections []Section) *SearchIndex {
 
 	for si, sec := range sections {
 		sectionTokens := tokenize(sec.Name)
-		for fi, f := range sec.Fields {
-			doc := buildDoc(f, sectionTokens)
+		for fi := range sec.Fields {
+			f := &sec.Fields[fi]
+			doc := buildDoc(*f, sectionTokens)
 			idx.Docs = append(idx.Docs, doc)
 			idx.docSectionIdx = append(idx.docSectionIdx, si)
 			idx.docFieldIdx = append(idx.docFieldIdx, fi)

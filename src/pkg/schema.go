@@ -19,7 +19,19 @@ type Schema struct {
 	Coverage      string    `yaml:"coverage,omitempty"`
 	DocsURL       string    `yaml:"docs_url,omitempty"`
 	Hints         []string  `yaml:"hints,omitempty"`
+	Upstream      *Upstream `yaml:"upstream,omitempty"`
 	Sections      []Section `yaml:"sections"`
+}
+
+// Upstream declares where to check for new releases of the app.
+// consumed by cmd/upstreamcheck — unused at runtime.
+// kind: github | gitlab | none. host is required for gitlab (self-hosted varies).
+// tag_prefix is stripped when comparing tags to max_app_version (e.g. "v1.2.3" -> "1.2.3").
+type Upstream struct {
+	Kind      string `yaml:"kind"`
+	Host      string `yaml:"host,omitempty"`
+	Repo      string `yaml:"repo,omitempty"`
+	TagPrefix string `yaml:"tag_prefix,omitempty"`
 }
 
 // Section groups related config fields.
@@ -114,13 +126,13 @@ func (s *Schema) CompatibleWith(appVersion string) (string, bool) {
 	if nv == "" {
 		return "", true
 	}
-	if min := NormalizeSemver(s.MinAppVersion); min != "" {
-		if semver.Compare(nv, min) < 0 {
+	if minVer := NormalizeSemver(s.MinAppVersion); minVer != "" {
+		if semver.Compare(nv, minVer) < 0 {
 			return fmt.Sprintf("schema requires %s %s+, detected %s", s.App, s.MinAppVersion, appVersion), false
 		}
 	}
-	if max := NormalizeSemver(s.MaxAppVersion); max != "" {
-		if semver.Compare(nv, max) > 0 {
+	if maxVer := NormalizeSemver(s.MaxAppVersion); maxVer != "" {
+		if semver.Compare(nv, maxVer) > 0 {
 			return fmt.Sprintf("schema covers %s up to %s, detected %s", s.App, s.MaxAppVersion, appVersion), false
 		}
 	}

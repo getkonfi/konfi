@@ -73,8 +73,8 @@ func TestLoadSchema(t *testing.T) {
 			for _, sec := range s.Sections {
 				total += len(sec.Fields)
 			}
-			if min, ok := minFields[tt.app]; ok && total < min {
-				t.Errorf("%s schema too small: got %d fields, want at least %d", tt.app, total, min)
+			if minCount, ok := minFields[tt.app]; ok && total < minCount {
+				t.Errorf("%s schema too small: got %d fields, want at least %d", tt.app, total, minCount)
 			}
 
 			if tt.app == "ghostty" && len(s.Sections) < 7 {
