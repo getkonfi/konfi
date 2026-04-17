@@ -30,3 +30,6 @@ src/.claude/
 **/*_extra_test.go
 src/pkg/e2e_test.go
 src/pkg/fileutil_test.go
+src/pkg/crossref_test.go
+src/pkg/parser/flat_parser_test.go
+src/pkg/parser/section_parser_test.go
