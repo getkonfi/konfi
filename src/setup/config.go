@@ -11,11 +11,30 @@ import (
 
 // KonfConfig holds konfigurator's own preferences.
 type KonfConfig struct {
-	Theme          string   `yaml:"theme"`
-	LogLevel       string   `yaml:"log_level"`
-	BrowseLoadsApp bool     `yaml:"browse_loads_app"`
-	NerdFont       bool     `yaml:"nerd_font"`
-	Bookmarks      []string `yaml:"bookmarks,omitempty"`
+	Theme          string            `yaml:"theme"`
+	LogLevel       string            `yaml:"log_level"`
+	BrowseLoadsApp bool              `yaml:"browse_loads_app"`
+	NerdFont       bool              `yaml:"nerd_font"`
+	Bookmarks      []string          `yaml:"bookmarks,omitempty"`
+	Upstream       *UpstreamSettings `yaml:"upstream,omitempty"`
+}
+
+// UpstreamSettings controls the upstream-check maintainer tool.
+// optional — unused by the TUI, consumed by cmd/upstreamcheck.
+type UpstreamSettings struct {
+	GitHub *GitHubSettings `yaml:"github,omitempty"`
+	GitLab *GitLabSettings `yaml:"gitlab,omitempty"`
+}
+
+type GitHubSettings struct {
+	Token string `yaml:"token,omitempty"`
+}
+
+// GitLabSettings holds per-host tokens. key is the gitlab hostname
+// (e.g. "gitlab.com", "gitlab.archlinux.org") so self-hosted instances
+// can each have their own credential.
+type GitLabSettings struct {
+	Tokens map[string]string `yaml:"tokens,omitempty"`
 }
 
 func defaultConfig() *KonfConfig {
@@ -26,7 +45,7 @@ func defaultConfig() *KonfConfig {
 	}
 }
 
-// InitConfig loads ~/.config/konfigurator/config.yaml or creates defaults.
+// InitConfig loads ~/.config/konfi/config.yaml or creates defaults.
 func InitConfig(_ context.Context, app *App) error {
 	path := cst.ConfigFilePath()
 	cfg := defaultConfig()
