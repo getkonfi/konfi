@@ -60,7 +60,10 @@ schema-verify: ## full schema verification (network + introspection)
 schema-check: ## quick schema check (offline, no exec)
 	@cd src && go run ./cmd/schemaverify/ --offline --no-exec --strict
 
+upstream-check: ## check supported app versions against upstream releases
+	@cd src && go run ./cmd/upstreamcheck/
+
 clean: ## remove build artifacts
 	rm -f konfigurator
 
-.PHONY: help tools run build test lint clean schema-verify schema-check
+.PHONY: help tools run build test lint clean schema-verify schema-check upstream-check

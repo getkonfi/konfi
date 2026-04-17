@@ -8,6 +8,7 @@ bin/
 
 # local config
 .mcp.json
+config.local.yaml
 
 # claude local state
 .claude/settings.local.json
