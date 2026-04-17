@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func TestFilePersisterLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data) != string(content) {
+	if !bytes.Equal(data, content) {
 		t.Errorf("got %q, want %q", data, content)
 	}
 }
@@ -36,7 +37,7 @@ func TestFilePersisterLoadCreatesDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data) != string(defaultContent) {
+	if !bytes.Equal(data, defaultContent) {
 		t.Errorf("got %q, want %q", data, defaultContent)
 	}
 
@@ -77,7 +78,7 @@ func TestFilePersisterSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != string(updated) {
+	if !bytes.Equal(got, updated) {
 		t.Errorf("main file: got %q, want %q", got, updated)
 	}
 
@@ -86,7 +87,7 @@ func TestFilePersisterSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(bakData) != string(original) {
+	if !bytes.Equal(bakData, original) {
 		t.Errorf("backup: got %q, want %q", bakData, original)
 	}
 }

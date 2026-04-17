@@ -83,24 +83,28 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 // onChange is called (debounced) when an external write is detected.
 func (fp *FilePersister) Watch(onChange func()) error {
 	fp.mu.Lock()
-	defer fp.mu.Unlock()
 
 	if fp.watcher != nil {
+		fp.mu.Unlock()
 		return nil
 	}
 
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
+		fp.mu.Unlock()
 		return fmt.Errorf("create watcher: %w", err)
 	}
 
 	if err := w.Add(filepath.Dir(fp.Path)); err != nil {
+		fp.mu.Unlock()
 		w.Close()
 		return fmt.Errorf("watch %s: %w", fp.Path, err)
 	}
 
 	fp.done = make(chan struct{})
 	fp.watcher = w
+	done := fp.done
+	fp.mu.Unlock()
 
 	go func() {
 		var debounce *time.Timer
@@ -108,7 +112,7 @@ func (fp *FilePersister) Watch(onChange func()) error {
 
 		for {
 			select {
-			case <-fp.done:
+			case <-done:
 				return
 			case ev, ok := <-w.Events:
 				if !ok {
