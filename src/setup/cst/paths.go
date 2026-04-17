@@ -6,14 +6,14 @@ import (
 )
 
 const (
-	AppName    = "konfigurator"
+	AppName    = "konfi"
 	AppVersion = "0.1.0"
 
 	ConfigFileName = "config.yaml"
-	LogFileName    = "konfigurator.log"
+	LogFileName    = "konfi.log"
 )
 
-// ConfigDir returns ~/.config/konfigurator.
+// ConfigDir returns ~/.config/konfi.
 func ConfigDir() string {
 	base := os.Getenv("XDG_CONFIG_HOME")
 	if base == "" {
