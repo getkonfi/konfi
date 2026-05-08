@@ -236,9 +236,9 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			}
 			if f := c.currentField(); f != nil {
 				if f.Type == "bool" {
-					c.toggleBool(*f)
-					cmd := c.drainErr()
-					return c, cmd
+					settingCmd := c.toggleBool(*f)
+					errCmd := c.drainErr()
+					return c, tea.Batch(settingCmd, errCmd)
 				}
 				cmd := c.openEditor()
 				return c, cmd
@@ -563,10 +563,7 @@ func (c *content) commitEdit(value string) tea.Cmd {
 	// list fields use MultiValueParser
 	if f.Type == "list" {
 		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
-			var vals []string
-			if value != "" {
-				vals = strings.Split(value, "\n")
-			}
+			vals := splitListValue(value)
 			newData, err := mvp.SetValues(data, f.Key, vals)
 			if err != nil {
 				return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
@@ -601,10 +598,11 @@ func (c *content) settingChangedCmd(key, value string) tea.Cmd {
 	}
 }
 
-// toggleBool flips a boolean field value immediately.
-func (c *content) toggleBool(f pkg.Field) {
+// toggleBool flips a boolean field value immediately and returns a cmd
+// that propagates konfigurator setting changes (e.g. nerd_font, browse_loads_app).
+func (c *content) toggleBool(f pkg.Field) tea.Cmd {
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
-		return
+		return nil
 	}
 
 	cur := c.values[f.Key]
@@ -621,11 +619,12 @@ func (c *content) toggleBool(f pkg.Field) {
 	newData, err := c.konfable.Parser().SetValue(data, f.Key, serialized)
 	if err != nil {
 		c.lastErr = "toggle failed: " + err.Error()
-		return
+		return nil
 	}
 	c.config.SetContent(newData)
 	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: cur, NewValue: next})
 	c.refreshValues()
+	return c.settingChangedCmd(f.Key, next)
 }
 
 // deleteField removes a field's key from the config file.
@@ -658,10 +657,7 @@ func (c *content) revertField(f pkg.Field, origVal string) {
 	// list fields need SetValues for repeated-key formats
 	if f.Type == "list" {
 		if mvp, ok := p.(konfables.MultiValueParser); ok {
-			var vals []string
-			if origVal != "" {
-				vals = strings.Split(origVal, "\n")
-			}
+			vals := splitListValue(origVal)
 			newData, err := mvp.SetValues(data, f.Key, vals)
 			if err != nil {
 				c.lastErr = "revert failed: " + err.Error()
@@ -729,7 +725,7 @@ func (c *content) applyFieldByKey(key, value string) {
 		// list fields need SetValues for repeated-key formats
 		if fieldType == "list" {
 			if mvp, ok := p.(konfables.MultiValueParser); ok {
-				vals := strings.Split(value, "\n")
+				vals := splitListValue(value)
 				newData, err := mvp.SetValues(data, key, vals)
 				if err != nil {
 					c.lastErr = "undo/redo failed: " + err.Error()

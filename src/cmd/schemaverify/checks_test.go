@@ -31,6 +31,7 @@ func TestValidSchema(t *testing.T) {
 	path := writeTempSchema(t, `
 app: testapp
 format: toml
+docs_url: https://example.com/docs
 sections:
   - name: General
     key: ""
@@ -50,6 +51,59 @@ sections:
 	r := checkStructural(path)
 	if r.MaxSeverity() > Pass {
 		t.Errorf("expected pass, got findings: %+v", r.Findings)
+	}
+}
+
+func TestMissingDocsURL(t *testing.T) {
+	path := writeTempSchema(t, `
+app: testapp
+format: toml
+sections:
+  - name: General
+    fields:
+      - key: x
+        label: X
+        type: string
+        default: ""
+        description: test
+`)
+	r := checkStructural(path)
+	warns := findSeverity(r.Findings, Warn)
+	found := false
+	for _, f := range warns {
+		if contains(f.Message, "docs_url") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected warn for missing top-level docs_url, got: %+v", r.Findings)
+	}
+}
+
+func TestMissingFieldDescription(t *testing.T) {
+	path := writeTempSchema(t, `
+app: testapp
+format: toml
+docs_url: https://example.com/docs
+sections:
+  - name: General
+    fields:
+      - key: x
+        label: X
+        type: string
+        default: ""
+        description: ""
+`)
+	r := checkStructural(path)
+	warns := findSeverity(r.Findings, Warn)
+	found := false
+	for _, f := range warns {
+		if contains(f.Message, "missing description") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected warn for missing field description, got: %+v", r.Findings)
 	}
 }
 

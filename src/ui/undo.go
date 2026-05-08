@@ -1,5 +1,38 @@
 package ui
 
+import "strings"
+
+// splitListValue parses a list-field value into items, accepting either the
+// canonical "\n"-joined form (produced by listEditor.Value and used in the
+// editor pipeline) or the display ", "-joined form stored in c.values.
+//
+// EditOp.OldValue is captured from c.values for some write paths (delete,
+// revert, paste) and from the editor for others (commit), so the apply path
+// must accept both. choosing one canonical form universally would require
+// also recanonicalising c.values for list fields, which would ripple into
+// every renderer that reads it — out of scope for this fix.
+//
+// items are trimmed and empties dropped, matching listEditor.Init's behavior.
+func splitListValue(s string) []string {
+	if s == "" {
+		return nil
+	}
+	var raw []string
+	if strings.Contains(s, "\n") {
+		raw = strings.Split(s, "\n")
+	} else {
+		raw = strings.Split(s, ", ")
+	}
+	out := raw[:0]
+	for _, item := range raw {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
 // EditOp represents a single field edit that can be undone/redone.
 type EditOp struct {
 	FieldKey string

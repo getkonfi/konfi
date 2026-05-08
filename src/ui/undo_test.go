@@ -1,6 +1,44 @@
 package ui
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+// regression: list-field undo used to corrupt repeated keys because the
+// EditOp's OldValue was display-form (", "-joined) while the apply path
+// split on "\n" — collapsing every item into a single comma-laden string.
+func TestSplitListValueAcceptsBothSeparators(t *testing.T) {
+	want := []string{"foo", "bar", "baz"}
+
+	cases := map[string]string{
+		"newline-joined":     "foo\nbar\nbaz",
+		"comma-space-joined": "foo, bar, baz",
+		"with-trim":          "  foo \n  bar\nbaz  ",
+		"with-empties":       "foo\n\nbar\nbaz\n",
+	}
+	for name, in := range cases {
+		t.Run(name, func(t *testing.T) {
+			got := splitListValue(in)
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("splitListValue(%q) = %v, want %v", in, got, want)
+			}
+		})
+	}
+
+	if got := splitListValue(""); got != nil {
+		t.Errorf("splitListValue(\"\") = %v, want nil", got)
+	}
+
+	// when the value carries the canonical "\n", we must NOT also try
+	// to re-split on ", ", or commas inside an item would split it.
+	in := "ctrl+a, copy\nctrl+v, paste"
+	got := splitListValue(in)
+	wantPair := []string{"ctrl+a, copy", "ctrl+v, paste"}
+	if !reflect.DeepEqual(got, wantPair) {
+		t.Errorf("splitListValue(%q) = %v, want %v", in, got, wantPair)
+	}
+}
 
 func TestPushUndoRedo(t *testing.T) {
 	s := NewUndoStack(50)
