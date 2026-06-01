@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/emin/konfigurator/pkg"
 )
@@ -20,6 +21,7 @@ func main() {
 		asJSON  bool
 		strict  bool
 		verbose bool
+		color   string
 	)
 
 	flag.StringVar(&app, "app", "", "verify only this app (repeatable via multiple --app flags)")
@@ -28,6 +30,7 @@ func main() {
 	flag.BoolVar(&asJSON, "json", false, "json output")
 	flag.BoolVar(&strict, "strict", false, "treat warnings as failures")
 	flag.BoolVar(&verbose, "v", false, "verbose output")
+	flag.StringVar(&color, "color", "auto", "color output: auto, always, never")
 	flag.Parse()
 
 	schemas, err := discoverSchemas(app)
@@ -43,6 +46,17 @@ func main() {
 
 	ctx := context.Background()
 	var report Report
+	var text *textReportWriter
+
+	if !asJSON {
+		useColor, err := resolveColor(color, os.Stdout)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(2)
+		}
+		text = newTextReportWriter(os.Stdout, verbose, useColor)
+		text.WriteHeader()
+	}
 
 	for _, path := range schemas {
 		ar := checkStructural(path)
@@ -53,12 +67,15 @@ func main() {
 			ar.Findings = append(ar.Findings, checkURLs(ctx, schema, defaultURLConcurrency)...)
 		}
 
-		// phase 3: config dump introspection
+		// phase 3: observed config introspection
 		if !noExec && schema != nil {
 			ar.Findings = append(ar.Findings, checkDump(ctx, schema)...)
 		}
 
 		report.Apps = append(report.Apps, ar)
+		if text != nil {
+			text.WriteApp(ar)
+		}
 	}
 
 	if asJSON {
@@ -67,7 +84,7 @@ func main() {
 			os.Exit(2)
 		}
 	} else {
-		report.WriteText(os.Stdout, verbose)
+		text.WriteSummary(report)
 	}
 
 	if report.HasFail() {
@@ -76,6 +93,36 @@ func main() {
 	if strict && report.HasWarn() {
 		os.Exit(1)
 	}
+}
+
+func resolveColor(mode string, out *os.File) (bool, error) {
+	switch strings.ToLower(mode) {
+	case "always":
+		return true, nil
+	case "never":
+		return false, nil
+	case "auto":
+		return shouldColor(out), nil
+	default:
+		return false, fmt.Errorf("invalid --color value %q, want auto, always, or never", mode)
+	}
+}
+
+func shouldColor(out *os.File) bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	if os.Getenv("CLICOLOR_FORCE") != "" && os.Getenv("CLICOLOR_FORCE") != "0" {
+		return true
+	}
+	if os.Getenv("CLICOLOR") == "0" || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	info, err := out.Stat()
+	if err != nil {
+		return false
+	}
+	return info.Mode()&os.ModeCharDevice != 0
 }
 
 // loadSchemaQuiet loads and parses a schema file, returning nil on error.

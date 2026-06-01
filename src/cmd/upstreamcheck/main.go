@@ -72,7 +72,7 @@ func main() {
 			os.Exit(2)
 		}
 	} else {
-		report.WriteText(os.Stdout, verbose)
+		report.WriteText(os.Stdout)
 	}
 
 	if report.HasError() {

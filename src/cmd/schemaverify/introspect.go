@@ -14,6 +14,7 @@ import (
 )
 
 const dumpTimeout = 30 * time.Second
+const observedConfigCategory = "observed_config"
 
 // Introspector extracts known config keys from an app.
 type Introspector interface {
@@ -104,11 +105,11 @@ func introspectorFor(app string) Introspector {
 func checkDump(ctx context.Context, schema *pkg.Schema) []Finding {
 	intr := introspectorFor(schema.App)
 	if intr == nil {
-		return []Finding{{Info, "dump", fmt.Sprintf("no introspector for %s", schema.App)}}
+		return []Finding{{Info, observedConfigCategory, fmt.Sprintf("no introspector for %s", schema.App)}}
 	}
 
 	if !intr.Available() {
-		return []Finding{{Info, "dump", fmt.Sprintf("%s not available in PATH", schema.App)}}
+		return []Finding{{Info, observedConfigCategory, fmt.Sprintf("%s not available in PATH", schema.App)}}
 	}
 
 	// probe version for version-filtered comparison
@@ -123,7 +124,7 @@ func checkDump(ctx context.Context, schema *pkg.Schema) []Finding {
 
 	dumpKeys, err := intr.DumpKeys(dctx)
 	if err != nil {
-		return []Finding{{Warn, "dump", fmt.Sprintf("%s dump failed: %v", schema.App, err)}}
+		return []Finding{{Warn, observedConfigCategory, fmt.Sprintf("%s config introspection failed: %v", schema.App, err)}}
 	}
 
 	schemaKeys := filtered.SchemaKeys()
@@ -136,32 +137,32 @@ func checkDump(ctx context.Context, schema *pkg.Schema) []Finding {
 
 	var findings []Finding
 
-	// missing: in dump but not in schema
+	// missing: observed in local config but not in schema
 	for _, k := range dumpKeys {
 		if _, ok := schemaKeys[k]; !ok {
 			sev := Warn
 			if isPartial {
 				sev = Info
 			}
-			findings = append(findings, Finding{sev, "dump",
-				fmt.Sprintf("%s: key %q in dump but not schema", schema.App, k)})
+			findings = append(findings, Finding{sev, observedConfigCategory,
+				fmt.Sprintf("%s: key %q in observed config but not schema", schema.App, k)})
 		}
 	}
 
-	// extra: in schema but not in dump
+	// extra: in schema but not observed locally
 	for k := range schemaKeys {
 		if _, ok := dumpSet[k]; !ok {
 			sev := Warn
 			if isPartial {
 				sev = Info
 			}
-			findings = append(findings, Finding{sev, "dump",
-				fmt.Sprintf("%s: key %q in schema but not dump", schema.App, k)})
+			findings = append(findings, Finding{sev, observedConfigCategory,
+				fmt.Sprintf("%s: key %q in schema but not observed config", schema.App, k)})
 		}
 	}
 
 	if len(findings) == 0 {
-		findings = append(findings, Finding{Pass, "dump",
+		findings = append(findings, Finding{Pass, observedConfigCategory,
 			fmt.Sprintf("%s: %d keys match", schema.App, len(schemaKeys))})
 	}
 

@@ -43,15 +43,6 @@ type Report struct {
 	Results []AppResult `json:"results"`
 }
 
-func (r *Report) HasBehind() bool {
-	for _, a := range r.Results {
-		if a.Status == StatusBehind {
-			return true
-		}
-	}
-	return false
-}
-
 func (r *Report) HasError() bool {
 	for _, a := range r.Results {
 		if a.Status == StatusError {
@@ -99,7 +90,7 @@ func classify(res *AppResult, info *ReleaseInfo, tagPrefix string) {
 	}
 }
 
-func (r *Report) WriteText(w io.Writer, verbose bool) {
+func (r *Report) WriteText(w io.Writer) {
 	const format = "%-14s %-12s %-12s %-8s  %s\n"
 	fmt.Fprintf(w, format, "APP", "SUPPORTED", "LATEST", "STATUS", "LINK")
 	fmt.Fprintln(w, strings.Repeat("─", 70))
