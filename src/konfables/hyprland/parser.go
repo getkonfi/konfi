@@ -89,7 +89,6 @@ func (p *parser) ListKeys(data []byte) []string {
 	lines := bytes.Split(data, []byte("\n"))
 	var keys []string
 	var stack []string
-	depth := 0
 
 	for _, line := range lines {
 		trimmed := bytes.TrimSpace(line)
@@ -104,13 +103,11 @@ func (p *parser) ListKeys(data []byte) []string {
 			if name != "" {
 				stack = append(stack, name)
 			}
-			depth++
 			continue
 		}
 
 		// closing brace
 		if bytes.Equal(trimmed, []byte("}")) {
-			depth--
 			if len(stack) > 0 {
 				stack = stack[:len(stack)-1]
 			}
@@ -126,7 +123,6 @@ func (p *parser) ListKeys(data []byte) []string {
 			}
 		}
 	}
-	_ = depth // not needed beyond tracking
 
 	return keys
 }

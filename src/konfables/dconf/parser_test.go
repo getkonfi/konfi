@@ -267,35 +267,6 @@ func TestRoundTripGolden(t *testing.T) {
 }
 
 func TestPersisterHelpers(t *testing.T) {
-	t.Run("parseFlat", func(t *testing.T) {
-		data := []byte(`/org/gnome/desktop/wm/preferences/focus-mode = click
-# comment line
-/org/gnome/desktop/peripherals/touchpad/speed = 0.5
-`)
-		m := parseFlat(data)
-		if len(m) != 2 {
-			t.Fatalf("got %d entries, want 2", len(m))
-		}
-		if m["/org/gnome/desktop/wm/preferences/focus-mode"] != "click" {
-			t.Errorf("focus-mode = %q", m["/org/gnome/desktop/wm/preferences/focus-mode"])
-		}
-	})
-
-	t.Run("parseFlat empty", func(t *testing.T) {
-		m := parseFlat([]byte(""))
-		if len(m) != 0 {
-			t.Errorf("expected empty map, got %d entries", len(m))
-		}
-	})
-
-	t.Run("parseFlat skips comments", func(t *testing.T) {
-		data := []byte("# comment\nkey = val\n")
-		m := parseFlat(data)
-		if len(m) != 1 {
-			t.Errorf("expected 1 entry, got %d", len(m))
-		}
-	})
-
 	t.Run("stripQuotes", func(t *testing.T) {
 		tests := []struct {
 			input string
@@ -371,35 +342,6 @@ func TestPersisterHelpers(t *testing.T) {
 			t.Error("empty should not be float")
 		}
 	})
-}
-
-func TestCutKV(t *testing.T) {
-	tests := []struct {
-		input string
-		key   string
-		val   string
-		ok    bool
-	}{
-		{"/org/gnome/desktop/wm/preferences/focus-mode = click", "/org/gnome/desktop/wm/preferences/focus-mode", "click", true},
-		{"key = value with spaces", "key", "value with spaces", true},
-		{"no-equals-sign", "", "", false},
-		{"key=no-spaces", "", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			k, v, ok := cutKV(tt.input)
-			if ok != tt.ok {
-				t.Fatalf("ok = %v, want %v", ok, tt.ok)
-			}
-			if k != tt.key {
-				t.Errorf("key = %q, want %q", k, tt.key)
-			}
-			if v != tt.val {
-				t.Errorf("val = %q, want %q", v, tt.val)
-			}
-		})
-	}
 }
 
 func FuzzParser(f *testing.F) {

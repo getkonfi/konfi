@@ -13,7 +13,7 @@ set -g prefix C-a
 `
 
 func TestFindValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	tests := []struct {
 		key  string
 		want string
@@ -35,7 +35,7 @@ func TestFindValue(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 
 	// replace existing
 	data, err := p.SetValue([]byte(testConfig), "escape-time", "10")
@@ -59,7 +59,7 @@ func TestSetValue(t *testing.T) {
 }
 
 func TestDeleteKey(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	data, err := p.DeleteKey([]byte(testConfig), "mouse")
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestDeleteKey(t *testing.T) {
 }
 
 func TestListKeys(t *testing.T) {
-	p := &parser{}
+	p := newParser()
 	keys := p.ListKeys([]byte(testConfig))
 	expected := map[string]bool{
 		"default-terminal": true,

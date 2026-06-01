@@ -1,14 +1,12 @@
 package dconf
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
-	"sort"
 	"strings"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/emin/konfigurator/pkg"
 )
 
 // managedPath is a dconf absolute path to a managed key.
@@ -38,76 +36,17 @@ var managedKeys = []managedPath{
 	"/org/gnome/desktop/peripherals/mouse/accel-profile",
 }
 
-// DconfPersister implements pkg.Persister for the dconf database.
-// it does NOT implement pkg.Watchable — there's no cheap way to watch dconf changes.
-type DconfPersister struct{}
-
-// Load runs dconf read for each managed key concurrently and assembles synthetic bytes.
-// format: "/path/to/key = value\n" per line (matches schema.yaml keys).
-func (dp *DconfPersister) Load(ctx context.Context) ([]byte, error) {
-	type result struct {
-		val string
-		ok  bool
+// NewPersister builds the dconf-backed persister. it reads each key with
+// dconf read and writes changed keys with dconf write, encoding values as
+// GVariant. Load emits "/path/to/key = value\n" lines matching schema.yaml.
+func NewPersister() pkg.Persister {
+	return &pkg.CommandPersister[managedPath]{
+		Keys:      managedKeys,
+		LineKey:   func(p managedPath) string { return string(p) },
+		Read:      func(ctx context.Context, p managedPath) (string, error) { return dconfRead(ctx, string(p)) },
+		Write:     dconfWrite,
+		ErrPrefix: "dconf write",
 	}
-	results := make([]result, len(managedKeys))
-
-	g, gctx := errgroup.WithContext(ctx)
-	for i, path := range managedKeys {
-		g.Go(func() error {
-			val, err := dconfRead(gctx, string(path))
-			if err != nil {
-				return nil
-			}
-			results[i] = result{val: val, ok: true}
-			return nil
-		})
-	}
-	_ = g.Wait()
-
-	var buf bytes.Buffer
-	for i, path := range managedKeys {
-		if results[i].ok {
-			fmt.Fprintf(&buf, "%s = %s\n", path, results[i].val)
-		}
-	}
-	return buf.Bytes(), nil
-}
-
-// Save diffs original vs data and calls dconf write only for changed keys.
-func (dp *DconfPersister) Save(ctx context.Context, original, data []byte) error {
-	origMap := parseFlat(original)
-	newMap := parseFlat(data)
-
-	var errs []string
-	for key, newVal := range newMap {
-		if origVal, ok := origMap[key]; ok && origVal == newVal {
-			continue
-		}
-		if err := dconfWrite(ctx, key, newVal); err != nil {
-			errs = append(errs, fmt.Sprintf("%s: %v", key, err))
-		}
-	}
-	if len(errs) > 0 {
-		sort.Strings(errs)
-		return fmt.Errorf("dconf write failed: %s", strings.Join(errs, "; "))
-	}
-	return nil
-}
-
-// parseFlat parses "path/key = value" lines into a map.
-func parseFlat(data []byte) map[string]string {
-	m := make(map[string]string)
-	for _, line := range bytes.Split(data, []byte("\n")) {
-		s := strings.TrimSpace(string(line))
-		if s == "" || s[0] == '#' {
-			continue
-		}
-		k, v, ok := cutKV(s)
-		if ok {
-			m[k] = v
-		}
-	}
-	return m
 }
 
 // dconfRead runs dconf read and strips wrapping quotes.

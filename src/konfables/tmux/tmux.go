@@ -37,7 +37,7 @@ func (t *Tmux) Info() konfables.AppInfo {
 
 func (t *Tmux) Name() string             { return "tmux" }
 func (t *Tmux) ConfigPath() string       { return t.Path }
-func (t *Tmux) Parser() konfables.Parser { return &parser{} }
+func (t *Tmux) Parser() konfables.Parser { return newParser() }
 func (t *Tmux) Schema() ([]byte, error)  { return schemaData, nil }
 
 // Version runs "tmux -V" and parses "tmux X.Y".

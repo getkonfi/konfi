@@ -63,10 +63,10 @@ var allKonfables = []konfableEntry{
 		))
 	}, true, nil},
 	{"gsettings", func() Konfable {
-		return gnome.New(&gnome.GsettingsPersister{})
+		return gnome.New(gnome.NewPersister())
 	}, false, probeGsettings},
 	{"dconf", func() Konfable {
-		return dconf.New(&dconf.DconfPersister{})
+		return dconf.New(dconf.NewPersister())
 	}, false, probeDconf},
 	{"kitty", func() Konfable {
 		return kitty.New(pkg.NewFilePersister(pkg.XDGConfigPath("kitty", "kitty.conf")))

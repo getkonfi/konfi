@@ -1,14 +1,11 @@
 package gnome
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
-	"sort"
 	"strings"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/emin/konfigurator/pkg"
 )
 
 // managedKey describes a gsettings schema + key pair.
@@ -41,90 +38,23 @@ var managedKeys = []managedKey{
 	{"org.gnome.desktop.background", "secondary-color"},
 }
 
-// GsettingsPersister implements pkg.Persister for GNOME gsettings.
-// it does NOT implement pkg.Watchable — there's no cheap way to watch dconf changes.
-type GsettingsPersister struct{}
-
-// Load runs gsettings get for each managed key concurrently and assembles synthetic bytes.
-// format: "schema/key = value\n" per line.
-func (gp *GsettingsPersister) Load(ctx context.Context) ([]byte, error) {
-	type result struct {
-		val string
-		ok  bool
-	}
-	results := make([]result, len(managedKeys))
-
-	g, gctx := errgroup.WithContext(ctx)
-	for i, mk := range managedKeys {
-		g.Go(func() error {
-			val, err := gsettingsGet(gctx, mk.Schema, mk.Key)
-			if err != nil {
-				return nil // skip keys that don't exist on this system
+// NewPersister builds the gsettings-backed persister. it reads each key with
+// gsettings get and writes changed keys with gsettings set. Load emits
+// "schema/key = value\n" lines; Save addresses each key by splitting that form.
+func NewPersister() pkg.Persister {
+	return &pkg.CommandPersister[managedKey]{
+		Keys:    managedKeys,
+		LineKey: func(mk managedKey) string { return mk.Schema + "/" + mk.Key },
+		Read:    func(ctx context.Context, mk managedKey) (string, error) { return gsettingsGet(ctx, mk.Schema, mk.Key) },
+		Write: func(ctx context.Context, lineKey, value string) error {
+			schema, key, ok := splitFlatKey(lineKey)
+			if !ok {
+				return nil
 			}
-			results[i] = result{val: val, ok: true}
-			return nil
-		})
+			return gsettingsSet(ctx, schema, key, value)
+		},
+		ErrPrefix: "gsettings set",
 	}
-	_ = g.Wait() // individual errors are swallowed above
-
-	var buf bytes.Buffer
-	for i, mk := range managedKeys {
-		if results[i].ok {
-			fmt.Fprintf(&buf, "%s/%s = %s\n", mk.Schema, mk.Key, results[i].val)
-		}
-	}
-	return buf.Bytes(), nil
-}
-
-// Save diffs original vs data and calls gsettings set only for changed keys.
-func (gp *GsettingsPersister) Save(ctx context.Context, original, data []byte) error {
-	origMap := parseFlat(original)
-	newMap := parseFlat(data)
-
-	// collect changed keys
-	var errs []string
-	for key, newVal := range newMap {
-		if origVal, ok := origMap[key]; ok && origVal == newVal {
-			continue
-		}
-		schema, gsKey, ok := splitFlatKey(key)
-		if !ok {
-			continue
-		}
-		if err := gsettingsSet(ctx, schema, gsKey, newVal); err != nil {
-			errs = append(errs, fmt.Sprintf("%s/%s: %v", schema, gsKey, err))
-		}
-	}
-	if len(errs) > 0 {
-		sort.Strings(errs)
-		return fmt.Errorf("gsettings set failed: %s", strings.Join(errs, "; "))
-	}
-	return nil
-}
-
-// parseFlat parses "schema/key = value" lines into a map.
-func parseFlat(data []byte) map[string]string {
-	m := make(map[string]string)
-	for _, line := range bytes.Split(data, []byte("\n")) {
-		s := strings.TrimSpace(string(line))
-		if s == "" || s[0] == '#' {
-			continue
-		}
-		k, v, ok := cutKV(s)
-		if ok {
-			m[k] = v
-		}
-	}
-	return m
-}
-
-// cutKV splits "key = value" into (key, value, true).
-func cutKV(s string) (string, string, bool) {
-	idx := strings.Index(s, " = ")
-	if idx < 0 {
-		return "", "", false
-	}
-	return s[:idx], s[idx+3:], true
 }
 
 // splitFlatKey splits "org.gnome.desktop.interface/color-scheme" into (schema, key, true).
