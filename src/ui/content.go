@@ -114,9 +114,6 @@ type content struct {
 	// pre-parsed schema cache (populated at startup by computeNewCounts)
 	schemaCache map[string]*pkg.Schema
 
-	// cross-app equivalent field lookup
-	crossRef *pkg.CrossRefIndex
-
 	// cached layout styles — recomputed on resize
 	outerStyle lipgloss.Style
 	layoutW    int // width that produced outerStyle
@@ -1133,12 +1130,6 @@ func (c *content) snapshotOrigValues() {
 
 // syncDetail pushes content state into the detail sub-model and updates breadcrumb.
 func (c *content) syncDetail() {
-	c.detail.crossRef = c.crossRef
-	if c.konfable != nil {
-		c.detail.appName = c.konfable.Name()
-	} else {
-		c.detail.appName = ""
-	}
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
 
 	// update breadcrumb path

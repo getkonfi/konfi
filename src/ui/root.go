@@ -15,7 +15,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"golang.org/x/mod/semver"
 )
 
 type pane int
@@ -150,13 +149,6 @@ func NewRoot(app *setup.App) tea.Model {
 	ct.versions = app.Versions
 	ct.appVersion = app.AppVersion
 	ct.schemaCache = schemaCache
-
-	// build cross-app equivalent field index
-	var installedNames []string
-	for name := range installed {
-		installedNames = append(installedNames, name)
-	}
-	ct.crossRef = pkg.NewCrossRefIndex(schemaCache, installedNames)
 
 	// parse bookmarks from config
 	ct.bookmarks = make(map[string]bool)
@@ -522,11 +514,11 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg { return fileStateClearMsg{} })
 
 		case "tab":
-			r.cyclePane(1)
+			r.cyclePane()
 			return r, nil
 
 		case "shift+tab":
-			r.cyclePane(-1)
+			r.cyclePane()
 			return r, nil
 
 		case "left":
@@ -1237,17 +1229,12 @@ func (r *root) focusPane(p pane) {
 	r.updateHints()
 }
 
-func (r *root) cyclePane(dir int) {
-	panes := []pane{paneSidebar, paneContent}
-	cur := 0
-	for i, p := range panes {
-		if p == r.focus {
-			cur = i
-			break
-		}
+func (r *root) cyclePane() {
+	if r.focus == paneSidebar {
+		r.focusPane(paneContent)
+	} else {
+		r.focusPane(paneSidebar)
 	}
-	next := (cur + dir + len(panes)) % len(panes)
-	r.focusPane(panes[next])
 }
 
 func (r *root) updateHints() {
@@ -1620,18 +1607,13 @@ func computeNewCounts(allK []konfables.Konfable, versions map[string]string) (ma
 		if !ok || ver == "" {
 			continue
 		}
-		nv := pkg.NormalizeSemver(ver)
-		if nv == "" {
+		if pkg.NormalizeSemver(ver) == "" {
 			continue
 		}
 		count := 0
 		for si := range s.Sections {
 			for fi := range s.Sections[si].Fields {
-				ns := pkg.NormalizeSemver(s.Sections[si].Fields[fi].Since)
-				if ns == "" {
-					continue
-				}
-				if semver.MajorMinor(ns) == semver.MajorMinor(nv) {
+				if pkg.FieldIsNewIn(s.Sections[si].Fields[fi], ver) {
 					count++
 				}
 			}

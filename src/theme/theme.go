@@ -7,9 +7,7 @@ type Theme struct {
 	Palette Palette
 
 	// semantic styles
-	Base    lipgloss.Style
-	Surface lipgloss.Style
-	Overlay lipgloss.Style
+	Base lipgloss.Style
 
 	Text        lipgloss.Style
 	Subtext     lipgloss.Style
@@ -29,25 +27,19 @@ type Theme struct {
 	BorderFocus lipgloss.Style
 
 	// composite styles
-	Title     lipgloss.Style
 	Statusbar lipgloss.Style
-	Sidebar   lipgloss.Style
 	Content   lipgloss.Style
 
 	// detail panel
 	Detail         lipgloss.Style
 	FaintSeparator lipgloss.Style
-	TabUnderline   lipgloss.Style
 
 	// icon rail + dashboard styles
 	Badge        lipgloss.Style
 	FieldLabel   lipgloss.Style
 	FieldValue   lipgloss.Style
 	FieldDefault lipgloss.Style
-	Rail         lipgloss.Style
 	PreviewHL    lipgloss.Style
-	RowActive    lipgloss.Style
-	RowActiveDim lipgloss.Style
 	KeyCap       lipgloss.Style
 }
 
@@ -68,8 +60,6 @@ func (t *Theme) recompute() {
 	p := t.Palette
 
 	t.Base = lipgloss.NewStyle().Background(p.Base).Foreground(p.Text)
-	t.Surface = lipgloss.NewStyle().Background(p.Surface).Foreground(p.Text)
-	t.Overlay = lipgloss.NewStyle().Background(p.Overlay).Foreground(p.Text)
 
 	t.Text = lipgloss.NewStyle().Foreground(p.Text)
 	t.Subtext = lipgloss.NewStyle().Foreground(p.Subtext)
@@ -92,17 +82,8 @@ func (t *Theme) recompute() {
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(p.BorderFocus)
 
-	t.Title = lipgloss.NewStyle().
-		Foreground(p.Primary).
-		Bold(true)
-
 	t.Statusbar = lipgloss.NewStyle().
 		Foreground(p.Subtext).
-		Padding(0, 1)
-
-	t.Sidebar = lipgloss.NewStyle().
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(p.Border).
 		Padding(0, 1)
 
 	t.Content = lipgloss.NewStyle().
@@ -119,11 +100,6 @@ func (t *Theme) recompute() {
 	t.FaintSeparator = lipgloss.NewStyle().
 		Foreground(p.Muted)
 
-	t.TabUnderline = lipgloss.NewStyle().
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderBottom(true).
-		BorderForeground(p.BorderFocus)
-
 	t.Badge = lipgloss.NewStyle().
 		Background(p.Surface).
 		Foreground(p.Text).
@@ -139,20 +115,9 @@ func (t *Theme) recompute() {
 	t.FieldDefault = lipgloss.NewStyle().
 		Foreground(p.Muted)
 
-	t.Rail = lipgloss.NewStyle().
-		Background(p.Surface).
-		Padding(1, 0)
-
 	t.PreviewHL = lipgloss.NewStyle().
 		Foreground(p.Accent).
 		Bold(true)
-
-	t.RowActive = lipgloss.NewStyle().
-		Background(p.Overlay).
-		Bold(true)
-
-	t.RowActiveDim = lipgloss.NewStyle().
-		Background(p.Surface)
 
 	t.KeyCap = lipgloss.NewStyle().
 		Background(p.Surface).

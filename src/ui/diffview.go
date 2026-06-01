@@ -24,8 +24,8 @@ func newDiffView(th *theme.Theme) *diffView {
 
 func (d *diffView) SetEntries(entries []pendingChange) { d.entries = entries }
 func (d *diffView) SetSize(w, h int)                   { d.width = w; d.height = h }
-func (d *diffView) HasChanges() bool                    { return len(d.entries) > 0 }
-func (d *diffView) Count() int                          { return len(d.entries) }
+func (d *diffView) HasChanges() bool                   { return len(d.entries) > 0 }
+func (d *diffView) Count() int                         { return len(d.entries) }
 
 func (d *diffView) View() string {
 	if !d.HasChanges() {
@@ -53,21 +53,21 @@ func (d *diffView) View() string {
 			th.Muted.Render("/") +
 			th.Text.Render(ch.Key)
 
-		var old, new string
+		var old, n string
 
 		switch {
 		case ch.Deleted:
 			old = th.Error.Render("  - " + truncate(ch.OldVal, maxValWidth))
-			new = th.Muted.Render("  + ∅")
+			n = th.Muted.Render("  + ∅")
 		case ch.IsNew:
 			old = th.Muted.Render("  - ∅")
-			new = th.Accent.Render("  + " + truncate(ch.NewVal, maxValWidth))
+			n = th.Accent.Render("  + " + truncate(ch.NewVal, maxValWidth))
 		default:
 			old = th.Error.Render("  - " + truncate(ch.OldVal, maxValWidth))
-			new = th.Accent.Render("  + " + truncate(ch.NewVal, maxValWidth))
+			n = th.Accent.Render("  + " + truncate(ch.NewVal, maxValWidth))
 		}
 
-		block := fmt.Sprintf("  %s\n%s\n%s", header, old, new)
+		block := fmt.Sprintf("  %s\n%s\n%s", header, old, n)
 		blocks = append(blocks, block)
 
 		if i < len(d.entries)-1 {

@@ -599,39 +599,6 @@ sections:
 	}
 }
 
-// --- FieldsAddedSince tests ---
-
-func TestFieldsAddedSince_Basic(t *testing.T) {
-	s := makeVersionSchema()
-	// new-field has Since=2.0.0, should appear when base is 1.0.0
-	added := s.FieldsAddedSince("1.0.0")
-	found := false
-	for _, f := range added {
-		if f.Key == "new-field" {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("new-field (since=2.0.0) should be in FieldsAddedSince(1.0.0)")
-	}
-}
-
-func TestFieldsAddedSince_NoneNew(t *testing.T) {
-	s := makeVersionSchema()
-	added := s.FieldsAddedSince("99.0.0")
-	if len(added) != 0 {
-		t.Errorf("expected 0 new fields at v99, got %d", len(added))
-	}
-}
-
-func TestFieldsAddedSince_EmptyVersion(t *testing.T) {
-	s := makeVersionSchema()
-	added := s.FieldsAddedSince("")
-	if added != nil {
-		t.Error("empty version should return nil")
-	}
-}
-
 // --- Coverage + FormatSince YAML round-trip ---
 
 func TestLoadSchema_NewMetadataFields(t *testing.T) {

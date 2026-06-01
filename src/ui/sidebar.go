@@ -215,7 +215,7 @@ func (s sidebar) moveTo(pos int) (sidebar, tea.Cmd) {
 }
 
 // emitSelection builds an AppSelectedMsg for the item at the given sidebar item index.
-// home items get Index -1; regular items get their konfable index (item index minus home count).
+// home items get Index -1; regular items get their konfable index.
 func (s sidebar) emitSelection(itemIdx int, confirmed bool) tea.Cmd {
 	item := s.items[itemIdx]
 	if item.home {
@@ -223,13 +223,8 @@ func (s sidebar) emitSelection(itemIdx int, confirmed bool) tea.Cmd {
 			return AppSelectedMsg{Index: -1, Name: item.name, Confirmed: confirmed}
 		}
 	}
-	// konfable index = item index minus number of home items before it
-	ki := itemIdx
-	for i := 0; i < itemIdx; i++ {
-		if s.items[i].home {
-			ki--
-		}
-	}
+	// the single home item sits at index 0, so konfable index = itemIdx - 1
+	ki := itemIdx - 1
 	return func() tea.Msg {
 		return AppSelectedMsg{Index: ki, Name: item.name, Confirmed: confirmed}
 	}
@@ -251,13 +246,7 @@ func (s sidebar) appIndex() int {
 	if s.items[itemIdx].home {
 		return -1
 	}
-	ki := itemIdx
-	for i := 0; i < itemIdx; i++ {
-		if s.items[i].home {
-			ki--
-		}
-	}
-	return ki
+	return itemIdx - 1
 }
 
 // setCursorToApp sets the cursor to the filtered position matching the given konfable index.
@@ -267,13 +256,7 @@ func (s *sidebar) setCursorToApp(appIdx int) {
 		if item.home || item.system {
 			continue
 		}
-		ki := origIdx
-		for i := 0; i < origIdx; i++ {
-			if s.items[i].home {
-				ki--
-			}
-		}
-		if ki == appIdx {
+		if origIdx-1 == appIdx {
 			s.cursor = fi
 			return
 		}

@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/emin/konfigurator/pkg"
-
-	"golang.org/x/mod/semver"
 )
 
 func (c *content) buildFieldList() {
@@ -68,9 +66,8 @@ func (c *content) refilter() {
 				continue
 			}
 			if c.konfable != nil {
-				nv := pkg.NormalizeSemver(c.versions[c.konfable.Name()])
-				ns := pkg.NormalizeSemver(f.Since)
-				if nv != "" && ns != "" && semver.MajorMinor(ns) != semver.MajorMinor(nv) {
+				ver := c.versions[c.konfable.Name()]
+				if pkg.NormalizeSemver(ver) != "" && pkg.NormalizeSemver(f.Since) != "" && !pkg.FieldIsNewIn(*f, ver) {
 					continue
 				}
 			}
@@ -150,9 +147,8 @@ func (c *content) refilterRanked(query string) {
 				continue
 			}
 			if c.konfable != nil {
-				nv := pkg.NormalizeSemver(c.versions[c.konfable.Name()])
-				ns := pkg.NormalizeSemver(f.Since)
-				if nv != "" && ns != "" && semver.MajorMinor(ns) != semver.MajorMinor(nv) {
+				ver := c.versions[c.konfable.Name()]
+				if pkg.NormalizeSemver(ver) != "" && pkg.NormalizeSemver(f.Since) != "" && !pkg.FieldIsNewIn(*f, ver) {
 					continue
 				}
 			}

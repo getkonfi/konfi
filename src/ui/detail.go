@@ -44,10 +44,6 @@ type detail struct {
 	snippetLines []string
 	snippetGen   uint64 // config generation that produced snippetLines
 
-	// cross-app equivalent field lookup
-	crossRef *pkg.CrossRefIndex
-	appName  string
-
 	// cached styles
 	badgeBase  lipgloss.Style
 	cachedMD   *mdRenderer
@@ -297,27 +293,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	// file snippet (generous — 12 lines context)
 	b.WriteByte('\n')
 	b.WriteString(d.renderFileSnippet(width, 12))
-
-	// cross-app equivalents
-	if d.crossRef != nil && d.appName != "" {
-		matches := d.crossRef.FindEquivalents(d.appName, f.Key, f.Label, 4)
-		if len(matches) > 0 {
-			b.WriteByte('\n')
-			simLabel := "── similar "
-			simPad := width/2 - len(simLabel)
-			if simPad < 0 {
-				simPad = 0
-			}
-			b.WriteString(d.theme.Muted.Render(simLabel + strings.Repeat("─", simPad)))
-			b.WriteByte('\n')
-			for _, m := range matches {
-				app := d.theme.Primary.Render(m.App)
-				key := d.theme.Subtext.Render(" " + m.Key)
-				b.WriteString(app + key)
-				b.WriteByte('\n')
-			}
-		}
-	}
 
 	// apply scroll + viewport clipping
 	full := b.String()

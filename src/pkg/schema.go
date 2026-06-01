@@ -228,25 +228,15 @@ func LoadSchema(data []byte) (*Schema, error) {
 	return &s, nil
 }
 
-// FieldsAddedSince returns fields whose Since version is > baseVersion.
-// useful for "what's new" annotations. empty baseVersion returns nil.
-func (s *Schema) FieldsAddedSince(baseVersion string) []Field {
-	nv := NormalizeSemver(baseVersion)
-	if nv == "" {
-		return nil
+// FieldIsNewIn reports whether f was added in the same major.minor as version.
+// returns false when either f.Since or version is empty or non-semver.
+func FieldIsNewIn(f Field, version string) bool {
+	ns := NormalizeSemver(f.Since)
+	nv := NormalizeSemver(version)
+	if ns == "" || nv == "" {
+		return false
 	}
-	var added []Field
-	for si := range s.Sections {
-		for fi := range s.Sections[si].Fields {
-			f := s.Sections[si].Fields[fi]
-			if ns := NormalizeSemver(f.Since); ns != "" {
-				if semver.Compare(ns, nv) > 0 {
-					added = append(added, f)
-				}
-			}
-		}
-	}
-	return added
+	return semver.MajorMinor(ns) == semver.MajorMinor(nv)
 }
 
 // NormalizeSemver prepends "v" if missing and validates via semver.
