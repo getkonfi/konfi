@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 type FilePersister struct {
 	Path           string
 	defaultContent []byte
+	missingContent []byte
 
 	watcher   *fsnotify.Watcher
 	done      chan struct{}
@@ -29,6 +31,13 @@ type FilePersisterOption func(*FilePersister)
 func WithDefaultContent(data []byte) FilePersisterOption {
 	return func(fp *FilePersister) {
 		fp.defaultContent = data
+	}
+}
+
+// WithMissingContent returns content for a missing file without creating it.
+func WithMissingContent(data []byte) FilePersisterOption {
+	return func(fp *FilePersister) {
+		fp.missingContent = data
 	}
 }
 
@@ -51,6 +60,9 @@ func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {
 			return nil, fmt.Errorf("create default %s: %w", fp.Path, err)
 		}
 	}
+	if !FileExists(fp.Path) && fp.missingContent != nil {
+		return bytes.Clone(fp.missingContent), nil
+	}
 	data, err := os.ReadFile(fp.Path)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", fp.Path, err)
@@ -67,6 +79,9 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 	}
 
 	bakPath := fp.Path + ".bak"
+	if err := EnsureDir(filepath.Dir(fp.Path)); err != nil {
+		return fmt.Errorf("ensure dir for %s: %w", fp.Path, err)
+	}
 	if err := os.WriteFile(bakPath, original, perm); err != nil {
 		return fmt.Errorf("backup %s: %w", bakPath, err)
 	}

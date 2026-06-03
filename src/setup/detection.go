@@ -12,23 +12,23 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/emin/konfigurator/konfables/alacritty"
-	"github.com/emin/konfigurator/konfables/claude"
-	"github.com/emin/konfigurator/konfables/dconf"
-	"github.com/emin/konfigurator/konfables/ghostty"
-	"github.com/emin/konfigurator/konfables/git"
-	"github.com/emin/konfigurator/konfables/gnome"
-	"github.com/emin/konfigurator/konfables/helix"
-	"github.com/emin/konfigurator/konfables/hyprland"
-	"github.com/emin/konfigurator/konfables/kitty"
-	"github.com/emin/konfigurator/konfables/pacman"
-	"github.com/emin/konfigurator/konfables/konfigurator"
-	"github.com/emin/konfigurator/konfables/rio"
-	"github.com/emin/konfigurator/konfables/ssh"
-	"github.com/emin/konfigurator/konfables/starship"
-	"github.com/emin/konfigurator/konfables/tmux"
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/setup/cst"
+	"github.com/eminert/konfi/konfables/alacritty"
+	"github.com/eminert/konfi/konfables/claude"
+	"github.com/eminert/konfi/konfables/dconf"
+	"github.com/eminert/konfi/konfables/ghostty"
+	"github.com/eminert/konfi/konfables/git"
+	"github.com/eminert/konfi/konfables/gnome"
+	"github.com/eminert/konfi/konfables/helix"
+	"github.com/eminert/konfi/konfables/hyprland"
+	"github.com/eminert/konfi/konfables/kitty"
+	"github.com/eminert/konfi/konfables/konfigurator"
+	"github.com/eminert/konfi/konfables/pacman"
+	"github.com/eminert/konfi/konfables/rio"
+	"github.com/eminert/konfi/konfables/ssh"
+	"github.com/eminert/konfi/konfables/starship"
+	"github.com/eminert/konfi/konfables/tmux"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/setup/cst"
 )
 
 // versioned matches konfables.Versioned — defined locally to avoid import cycle.
@@ -39,7 +39,7 @@ type versioned interface {
 type konfableEntry struct {
 	binary string
 	create func() Konfable
-	system bool // virtual konfable, skip PATH detection
+	system bool        // virtual konfable, skip PATH detection
 	probe  func() bool // optional detection beyond PATH check
 }
 
@@ -84,7 +84,7 @@ var allKonfables = []konfableEntry{
 		return tmux.New(pkg.NewFilePersister(tmux.DefaultConfigPath()))
 	}, false, nil},
 	{"ssh", func() Konfable {
-		return ssh.New(pkg.NewFilePersister(ssh.DefaultConfigPath()))
+		return ssh.New(pkg.NewFilePersister(ssh.DefaultConfigPath(), pkg.WithMissingContent([]byte(""))))
 	}, false, nil},
 	{"pacman", func() Konfable {
 		return pacman.New(pkg.NewFilePersister("/etc/pacman.conf"))
@@ -221,4 +221,3 @@ func InitDetection(ctx context.Context, app *App) error {
 
 	return nil
 }
-

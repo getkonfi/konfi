@@ -47,6 +47,24 @@ func TestFilePersisterLoadCreatesDefault(t *testing.T) {
 	}
 }
 
+func TestFilePersisterLoadMissingContentDoesNotCreateFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sub", "new.conf")
+	content := []byte("")
+
+	fp := NewFilePersister(path, WithMissingContent(content))
+	data, err := fp.Load(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, content) {
+		t.Errorf("got %q, want %q", data, content)
+	}
+	if FileExists(path) {
+		t.Error("missing content should not create the file on load")
+	}
+}
+
 func TestFilePersisterLoadMissingNoDefault(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "nonexistent.conf")
@@ -89,6 +107,33 @@ func TestFilePersisterSave(t *testing.T) {
 	}
 	if !bytes.Equal(bakData, original) {
 		t.Errorf("backup: got %q, want %q", bakData, original)
+	}
+}
+
+func TestFilePersisterSaveCreatesMissingDir(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sub", "new.conf")
+
+	fp := NewFilePersister(path, WithMissingContent([]byte("")))
+	original, err := fp.Load(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updated := []byte("key value\n")
+	if err := fp.Save(context.Background(), original, updated); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, updated) {
+		t.Errorf("main file: got %q, want %q", got, updated)
+	}
+	if !FileExists(path + ".bak") {
+		t.Error("expected backup for missing file save")
 	}
 }
 

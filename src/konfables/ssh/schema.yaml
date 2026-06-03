@@ -9,28 +9,60 @@ hints:
   - "`ssh-add -l` to list keys loaded in the agent"
 
 sections:
+  - name: Host Aliases
+    fields:
+      - key: Hosts
+        label: Host Entries
+        type: list
+        widget: structlist
+        default: ""
+        description: named OpenSSH client `Host` stanzas
+        example: "Host github.com\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/gh_ed25519"
+        hint: "edits non-`Host *` stanzas; defaults for all hosts are in the sections below"
+        item_schema:
+          - name: patterns
+            label: Host
+            type: string
+            required: true
+            placeholder: "e.g. github.com"
+          - name: hostname
+            label: HostName
+            type: string
+            placeholder: "e.g. github.com"
+          - name: user
+            label: User
+            type: string
+            placeholder: "git"
+          - name: port
+            label: Port
+            type: number
+            placeholder: "22"
+          - name: identity_file
+            label: IdentityFile
+            type: string
+            placeholder: "~/.ssh/id_ed25519"
+          - name: proxy_jump
+            label: ProxyJump
+            type: string
+            placeholder: "bastion"
+        separator: " | "
+
   - name: Connection
     fields:
-      - key: Hostname
-        label: Hostname
-        type: string
-        default: ""
-        description: real hostname (allows aliasing via Host block)
-        example: "Host dev\n  Hostname 10.0.1.50"
       - key: Port
         label: Port
         type: number
         default: "22"
         min: 1
         max: 65535
-        description: remote port to connect to
-        example: "Host dev\n  Port 2222"
+        description: default remote port to connect to
+        example: "Host *\n  Port 22"
       - key: User
         label: User
         type: string
         default: ""
-        description: remote login username
-        example: "Host github.com\n  User git"
+        description: default remote login username
+        example: "Host *\n  User dev"
       - key: ServerAliveInterval
         label: Server Alive Interval
         type: number
