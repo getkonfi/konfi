@@ -1,4 +1,4 @@
-package konfigurator
+package konfi
 
 import (
 	"bytes"

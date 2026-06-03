@@ -21,7 +21,7 @@ import (
 	"github.com/eminert/konfi/konfables/helix"
 	"github.com/eminert/konfi/konfables/hyprland"
 	"github.com/eminert/konfi/konfables/kitty"
-	"github.com/eminert/konfi/konfables/konfigurator"
+	"github.com/eminert/konfi/konfables/konfi"
 	"github.com/eminert/konfi/konfables/pacman"
 	"github.com/eminert/konfi/konfables/rio"
 	"github.com/eminert/konfi/konfables/ssh"
@@ -57,7 +57,7 @@ var allKonfables = []konfableEntry{
 		return hyprland.New(pkg.NewFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf")))
 	}, false, nil},
 	{"", func() Konfable {
-		return konfigurator.New(pkg.NewFilePersister(
+		return konfi.New(pkg.NewFilePersister(
 			cst.ConfigFilePath(),
 			pkg.WithDefaultContent([]byte("theme: catppuccin\nlog_level: info\n")),
 		))

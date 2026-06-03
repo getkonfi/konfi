@@ -23,7 +23,7 @@ func TestLoadSchema(t *testing.T) {
 		{"../konfables/helix/schema.yaml", "helix"},
 		{"../konfables/hyprland/schema.yaml", "hyprland"},
 		{"../konfables/kitty/schema.yaml", "kitty"},
-		{"../konfables/konfigurator/schema.yaml", "konfigurator"},
+		{"../konfables/konfi/schema.yaml", "konfigurator"},
 		{"../konfables/pacman/schema.yaml", "pacman"},
 		{"../konfables/rio/schema.yaml", "rio"},
 		{"../konfables/ssh/schema.yaml", "ssh"},
