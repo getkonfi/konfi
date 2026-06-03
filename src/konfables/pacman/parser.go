@@ -3,7 +3,7 @@ package pacman
 import (
 	"strings"
 
-	cfgparse "github.com/emin/konfigurator/pkg/parser"
+	cfgparse "github.com/eminert/konfi/pkg/parser"
 )
 
 // parser handles pacman.conf INI format: [section] headers, key = value pairs,

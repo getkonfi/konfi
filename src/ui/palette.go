@@ -3,7 +3,7 @@ package ui
 import (
 	"strings"
 
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/theme"
 	"github.com/sahilm/fuzzy"
 
 	"charm.land/bubbles/v2/textinput"
@@ -363,7 +363,7 @@ func (p palette) renderResult(r PaletteResult, selected bool, maxW int) string {
 	// category prefix
 	var cat string
 	if r.Item.Category != "" {
-		cat = p.theme.Muted.Render("["+r.Item.Category+"] ")
+		cat = p.theme.Muted.Render("[" + r.Item.Category + "] ")
 	}
 
 	// label with highlighted match chars

@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -29,8 +29,8 @@ type toggleMapEditor struct {
 
 	// track which keys existed in the original value and which the user changed,
 	// so Value() doesn't materialize absent schema options as explicit false
-	origKeys    map[string]bool
-	userEdited  map[string]bool
+	origKeys   map[string]bool
+	userEdited map[string]bool
 }
 
 func (e *toggleMapEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {

@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 )
 
 // shared tea.Msg types for the UI layer

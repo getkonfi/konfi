@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/emin/konfigurator/setup/cst"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/setup/cst"
+	"github.com/eminert/konfi/theme"
 
 	"github.com/rs/zerolog"
 )
@@ -180,4 +180,3 @@ func readableDur(d time.Duration) string {
 		return fmt.Sprintf("%dns", d.Nanoseconds())
 	}
 }
-

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/lipgloss/v2"
 	"github.com/yuin/goldmark"
@@ -45,9 +45,9 @@ type detail struct {
 	snippetGen   uint64 // config generation that produced snippetLines
 
 	// cached styles
-	badgeBase  lipgloss.Style
-	cachedMD   *mdRenderer
-	cachedMDW  int
+	badgeBase lipgloss.Style
+	cachedMD  *mdRenderer
+	cachedMDW int
 }
 
 func newDetail(th *theme.Theme) detail {

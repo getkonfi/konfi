@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -501,7 +501,7 @@ func (s *sidebar) renderPanel(content string) string {
 		BorderRight(true).
 		BorderForeground(s.theme.Palette.Border).
 		Padding(0, 1).
-		Width(s.width - 1). // subtract border char
+		Width(s.width-1). // subtract border char
 		Height(s.height).
 		Align(lipgloss.Left, lipgloss.Top)
 

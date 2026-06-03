@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 
 	tea "charm.land/bubbletea/v2"
 )

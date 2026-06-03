@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/emin/konfigurator/pkg/parser"
+	"github.com/eminert/konfi/pkg/parser"
 )
 
 func setupTiers(t *testing.T) (global, local, project string) {

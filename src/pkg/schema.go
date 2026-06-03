@@ -24,7 +24,7 @@ type Schema struct {
 }
 
 // Upstream declares where to check for new releases of the app.
-// consumed by cmd/upstreamcheck — unused at runtime.
+// consumed by tools/upstreamcheck; unused at runtime.
 // kind: github | gitlab | none. host is required for gitlab (self-hosted varies).
 // tag_prefix is stripped when comparing tags to max_app_version (e.g. "v1.2.3" -> "1.2.3").
 type Upstream struct {
@@ -45,7 +45,7 @@ type Section struct {
 type FieldPart struct {
 	Name        string   `yaml:"name"`
 	Label       string   `yaml:"label,omitempty"`
-	Type        string   `yaml:"type"`                  // string, enum, number, bool
+	Type        string   `yaml:"type"` // string, enum, number, bool
 	Required    bool     `yaml:"required,omitempty"`
 	Default     string   `yaml:"default,omitempty"`
 	Options     []string `yaml:"options,omitempty"`
@@ -253,4 +253,3 @@ func NormalizeSemver(v string) string {
 	}
 	return v
 }
-

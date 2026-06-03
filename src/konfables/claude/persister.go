@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/pkg/parser"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/pkg/parser"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -428,4 +428,3 @@ func copyTierMap(m map[string][]string) map[string][]string {
 	}
 	return out
 }
-

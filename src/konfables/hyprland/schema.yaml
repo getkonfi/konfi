@@ -3,7 +3,7 @@ format: hyprland
 schema_version: "0.51.0"
 min_app_version: "0.40.0"
 max_app_version: "0.51.0"
-docs_url: "https://wiki.hyprland.org/Configuring/Variables/"
+docs_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/"
 upstream:
   kind: github
   repo: hyprwm/Hyprland
@@ -24,7 +24,7 @@ sections:
         min: 0
         max: 20
         example: "border_size = 2"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.gaps_in
         label: Inner Gaps
         type: number
@@ -34,7 +34,7 @@ sections:
         max: 200
         example: "gaps_in = 5,10,15,20"
         hint: "hyprctl keyword general:gaps_in 8 — test at runtime"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.gaps_out
         label: Outer Gaps
         type: number
@@ -44,7 +44,7 @@ sections:
         max: 200
         example: "gaps_out = 10,20,10,20"
         hint: "accepts single value or top,right,bottom,left"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.layout
         label: Layout
         type: enum
@@ -53,20 +53,20 @@ sections:
         options: [dwindle, master, scrolling, monocle]
         example: "layout = dwindle"
         hint: "hyprctl keyword general:layout master — switch at runtime"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.no_focus_fallback
         label: No Focus Fallback
         type: bool
         default: "false"
         description: disable focus fallback
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.resize_on_border
         label: Resize on Border
         type: bool
         default: "false"
         description: click-drag resize on window borders
         example: "resize_on_border = true"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.extend_border_grab_area
         label: Border Grab Area
         type: number
@@ -75,20 +75,20 @@ sections:
         min: 0
         max: 100
         hint: "increase for easier border-drag resizing"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.hover_icon_on_border
         label: Hover Icon on Border
         type: bool
         default: "true"
         description: show resize cursor on border hover
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.allow_tearing
         label: Allow Tearing
         type: bool
         default: "false"
         description: allow screen tearing for lower latency
         hint: "also needs: windowrulev2 = immediate,class:^(game)$"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.resize_corner
         label: Resize Corner
         type: number
@@ -96,7 +96,7 @@ sections:
         description: force resize corner for floating windows (0 = disable)
         min: 0
         max: 4
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.col.active_border
         label: Active Border Color
         type: color
@@ -104,14 +104,14 @@ sections:
         description: active window border color
         example: "col.active_border = rgba(33ccffee) rgba(00ff99ee) 45deg"
         hint: "supports gradients: rgba(...) rgba(...) <angle>deg"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.col.inactive_border
         label: Inactive Border Color
         type: color
         default: "0xff444444"
         description: inactive window border color
         example: "col.inactive_border = rgba(595959aa)"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
       - key: general.gaps_workspaces
         label: Workspace Gaps
         type: number
@@ -119,7 +119,7 @@ sections:
         description: gaps between workspaces (stacks with gaps_out)
         min: 0
         max: 200
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#general"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#general"
 
   - name: Decoration
     key: decoration
@@ -132,7 +132,7 @@ sections:
         min: 0
         max: 50
         example: "rounding = 10"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.rounding_power
         label: Rounding Power
         type: number
@@ -140,7 +140,7 @@ sections:
         description: rounding curve shape
         min: 1
         max: 10
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.active_opacity
         label: Active Opacity
         type: number
@@ -151,7 +151,7 @@ sections:
         hint: "hyprctl keyword decoration:active_opacity 0.9 — preview live"
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.inactive_opacity
         label: Inactive Opacity
         type: number
@@ -161,7 +161,7 @@ sections:
         example: "inactive_opacity = 0.85"
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.fullscreen_opacity
         label: Fullscreen Opacity
         type: number
@@ -170,14 +170,14 @@ sections:
         description: fullscreen window opacity (0.0-1.0)
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.dim_inactive
         label: Dim Inactive
         type: bool
         default: "false"
         description: dim unfocused windows
         example: "dim_inactive = true"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.dim_strength
         label: Dim Strength
         type: number
@@ -186,7 +186,7 @@ sections:
         description: inactive window dim amount
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.dim_special
         label: Dim Special
         type: number
@@ -195,7 +195,7 @@ sections:
         description: dim amount for special workspace
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.dim_around
         label: Dim Around
         type: number
@@ -204,7 +204,7 @@ sections:
         description: dim_around window rule strength
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.screen_shader
         label: Screen Shader
         type: string
@@ -212,13 +212,13 @@ sections:
         default: ""
         description: custom GLSL screen shader path
         example: "screen_shader = ~/.config/hypr/shaders/vibrance.glsl"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#decoration"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#decoration"
       - key: decoration.shadow.enabled
         label: Shadows Enabled
         type: bool
         default: "true"
         description: enable window shadows
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.shadow.range
         label: Shadow Range
         type: number
@@ -227,7 +227,7 @@ sections:
         example: "range = 20"
         min: 1
         max: 100
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.shadow.render_power
         label: Shadow Render Power
         type: number
@@ -235,26 +235,26 @@ sections:
         description: shadow falloff power (1-4)
         min: 1
         max: 4
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.shadow.sharp
         label: Sharp Shadow
         type: bool
         default: "false"
         description: sharp shadows (no falloff)
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.shadow.color
         label: Shadow Color
         type: color
         default: "0xee1a1a1a"
         description: shadow color (alpha channel controls opacity)
         example: "color = rgba(1a1a1aee)"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.shadow.color_inactive
         label: Shadow Color Inactive
         type: color
         default: ""
         description: inactive shadow color
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.shadow.scale
         label: Shadow Scale
         type: number
@@ -263,14 +263,14 @@ sections:
         description: shadow scale factor
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#shadow"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#shadow"
       - key: decoration.blur.enabled
         label: Blur Enabled
         type: bool
         default: "true"
         description: enable kawase background blur
         hint: "hyprctl keyword decoration:blur:enabled false — toggle at runtime"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.size
         label: Blur Size
         type: number
@@ -280,7 +280,7 @@ sections:
         hint: "increase passes alongside size to avoid banding"
         min: 1
         max: 30
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.passes
         label: Blur Passes
         type: number
@@ -289,25 +289,25 @@ sections:
         example: "passes = 3"
         min: 1
         max: 10
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.ignore_opacity
         label: Blur Ignore Opacity
         type: bool
         default: "true"
         description: blur ignores window opacity
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.new_optimizations
         label: Blur Optimizations
         type: bool
         default: "true"
         description: extra blur optimizations
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.xray
         label: Blur X-Ray
         type: bool
         default: "false"
         description: floating windows blur through tiled windows
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.noise
         label: Blur Noise
         type: number
@@ -316,7 +316,7 @@ sections:
         description: blur noise amount
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.contrast
         label: Blur Contrast
         type: number
@@ -325,7 +325,7 @@ sections:
         description: blur contrast
         min: 0
         max: 2
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.brightness
         label: Blur Brightness
         type: number
@@ -334,7 +334,7 @@ sections:
         description: blur brightness
         min: 0
         max: 2
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.vibrancy
         label: Blur Vibrancy
         type: number
@@ -343,7 +343,7 @@ sections:
         description: blur vibrancy (saturation boost)
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.vibrancy_darkness
         label: Vibrancy Darkness
         type: number
@@ -352,19 +352,19 @@ sections:
         description: vibrancy in dark areas
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.special
         label: Blur Special WS
         type: bool
         default: "false"
         description: blur special workspace background (GPU-heavy)
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
       - key: decoration.blur.popups
         label: Blur Popups
         type: bool
         default: "false"
         description: blur popups
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#blur"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#blur"
 
   - name: Animations
     key: animations
@@ -375,13 +375,13 @@ sections:
         default: "true"
         description: enable window/workspace animations
         hint: "hyprctl keyword animations:enabled false — disable at runtime"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#animations"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#animations"
       - key: animations.workspace_wraparound
         label: Workspace Wraparound
         type: bool
         default: "false"
         description: wrap animations between first/last workspace
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#animations"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#animations"
 
   - name: Input
     key: input
@@ -396,7 +396,7 @@ sections:
         hint: "hyprctl getoption input:sensitivity — check current value"
         min: -1
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.accel_profile
         label: Accel Profile
         type: enum
@@ -405,26 +405,26 @@ sections:
         options: ["", adaptive, flat, custom]
         example: "accel_profile = flat"
         hint: "flat = raw input, adaptive = speed-dependent"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.force_no_accel
         label: Force No Accel
         type: bool
         default: "false"
         description: bypass libinput acceleration entirely
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.left_handed
         label: Left Handed
         type: bool
         default: "false"
         description: swap mouse buttons
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.scroll_method
         label: Scroll Method
         type: enum
         default: ""
         description: scroll method
         options: ["", 2fg, edge, on_button_down, no_scroll]
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.scroll_button
         label: Scroll Button
         type: number
@@ -432,13 +432,13 @@ sections:
         description: button code for on_button_down scroll
         min: 0
         max: 999
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.scroll_button_lock
         label: Scroll Button Lock
         type: bool
         default: "false"
         description: toggle scroll button (no hold needed)
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.scroll_factor
         label: Scroll Factor
         type: number
@@ -446,13 +446,13 @@ sections:
         description: scroll speed multiplier
         min: 0.1
         max: 10
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.natural_scroll
         label: Natural Scroll
         type: bool
         default: "false"
         description: natural (inverted) scrolling
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.follow_mouse
         label: Follow Mouse
         type: enum
@@ -461,26 +461,26 @@ sections:
         options: ["0", "1", "2", "3"]
         example: "follow_mouse = 1"
         hint: "0=click 1=always 2=loose(no-kb) 3=always+keyboard"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.mouse_refocus
         label: Mouse Refocus
         type: bool
         default: "true"
         description: refocus only on window boundary crossing
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.float_switch_override_focus
         label: Float Switch Focus
         type: enum
         default: "1"
         description: focus behavior on tiled/float toggle
         options: ["0", "1", "2"]
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.special_fallthrough
         label: Special Fallthrough
         type: bool
         default: "false"
         description: focus through special ws with only floats
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.kb_layout
         label: Keyboard Layout
         type: string
@@ -488,20 +488,20 @@ sections:
         description: XKB keyboard layout
         example: "kb_layout = us,de"
         hint: "localectl list-x11-keymap-layouts — list available layouts"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.kb_variant
         label: Keyboard Variant
         type: string
         default: ""
         description: XKB layout variant
         example: "kb_variant = ,nodeadkeys"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.kb_model
         label: Keyboard Model
         type: string
         default: ""
         description: XKB keyboard model
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.kb_options
         label: Keyboard Options
         type: string
@@ -509,13 +509,13 @@ sections:
         description: XKB keyboard options
         example: "kb_options = caps:escape,compose:ralt"
         hint: "localectl list-x11-keymap-options — list all options"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.kb_rules
         label: Keyboard Rules
         type: string
         default: ""
         description: XKB keyboard rules
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.kb_file
         label: Keyboard File
         type: string
@@ -523,13 +523,13 @@ sections:
         default: ""
         description: custom .xkb keymap file (overrides all kb_ settings)
         example: "kb_file = ~/.config/hypr/keymap.xkb"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.numlock_by_default
         label: Numlock by Default
         type: bool
         default: "false"
         description: numlock on at startup
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.repeat_rate
         label: Repeat Rate
         type: number
@@ -538,7 +538,7 @@ sections:
         example: "repeat_rate = 50"
         min: 1
         max: 100
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.repeat_delay
         label: Repeat Delay
         type: number
@@ -547,20 +547,20 @@ sections:
         example: "repeat_delay = 300"
         min: 100
         max: 2000
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#input"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#input"
       - key: input.touchpad.disable_while_typing
         label: Disable While Typing
         type: bool
         default: "true"
         description: disable while typing
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: input.touchpad.natural_scroll
         label: Natural Scroll
         type: bool
         default: "false"
         description: natural (inverted) scroll direction
         example: "natural_scroll = true"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: input.touchpad.scroll_factor
         label: Scroll Factor
         type: number
@@ -568,31 +568,31 @@ sections:
         description: touchpad scroll multiplier
         min: 0.1
         max: 10
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: input.touchpad.middle_button_emulation
         label: Middle Button Emulation
         type: bool
         default: "false"
         description: LMB+RMB = middle click
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: input.touchpad.tap-to-click
         label: Tap to Click
         type: bool
         default: "true"
         description: 1/2/3-finger tap = LMB/RMB/MMB
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: input.touchpad.tap-and-drag
         label: Tap and Drag
         type: bool
         default: "true"
         description: tap-and-drag gesture
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: input.touchpad.clickfinger_behavior
         label: Clickfinger Behavior
         type: bool
         default: "false"
         description: clickfinger button mapping
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#touchpad"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#touchpad"
       - key: gestures.workspace_swipe_distance
         label: Swipe Distance
         type: number
@@ -601,19 +601,19 @@ sections:
         example: "workspace_swipe_distance = 200"
         min: 50
         max: 1000
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_touch
         label: Swipe Touch
         type: bool
         default: "false"
         description: touchscreen edge swipe
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_invert
         label: Swipe Invert
         type: bool
         default: "true"
         description: invert swipe direction
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_min_speed_to_force
         label: Swipe Min Speed
         type: number
@@ -621,7 +621,7 @@ sections:
         description: min speed to force ws change
         min: 0
         max: 200
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_cancel_ratio
         label: Swipe Cancel Ratio
         type: number
@@ -630,25 +630,25 @@ sections:
         description: swipe commit threshold
         min: 0
         max: 1
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_create_new
         label: Swipe Create New
         type: bool
         default: "true"
         description: swipe past last ws creates new
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_direction_lock
         label: Direction Lock
         type: bool
         default: "true"
         description: lock direction after threshold
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
       - key: gestures.workspace_swipe_forever
         label: Swipe Forever
         type: bool
         default: "false"
         description: continuous swipe through workspaces
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#gestures"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#gestures"
 
   - name: Misc
     key: misc
@@ -658,13 +658,13 @@ sections:
         type: bool
         default: "false"
         description: disable hyprland logo background
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.disable_splash_rendering
         label: Disable Splash
         type: bool
         default: "false"
         description: disable splash text
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.force_default_wallpaper
         label: Default Wallpaper
         type: number
@@ -672,14 +672,14 @@ sections:
         description: default wallpaper (-1 = random)
         min: -1
         max: 2
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.vfr
         label: VFR
         type: bool
         default: "true"
         description: variable frame rate (skip frames when idle)
         hint: "reduces GPU usage — disable only for debugging"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.vrr
         label: VRR
         type: enum
@@ -688,39 +688,39 @@ sections:
         options: ["0", "1", "2", "3"]
         example: "vrr = 2"
         hint: "0=off 1=always 2=fullscreen-only 3=fullscreen+game-adaptive"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.mouse_move_enables_dpms
         label: Mouse Wakes DPMS
         type: bool
         default: "false"
         description: mouse movement wakes display from DPMS
         hint: "pair with hyprctl dispatch dpms off to use DPMS"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.key_press_enables_dpms
         label: Key Wakes DPMS
         type: bool
         default: "false"
         description: keypress wakes display from DPMS
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.animate_manual_resizes
         label: Animate Manual Resizes
         type: bool
         default: "false"
         description: animate manual resizes
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.animate_mouse_windowdragging
         label: Animate Mouse Drag
         type: bool
         default: "false"
         description: animate mouse-dragged windows
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.enable_swallow
         label: Enable Swallow
         type: bool
         default: "false"
         description: terminal window swallowing (hide term behind child)
         example: "enable_swallow = true"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.swallow_regex
         label: Swallow Regex
         type: string
@@ -728,56 +728,56 @@ sections:
         description: window class regex for swallowing terminals
         example: "swallow_regex = ^(kitty|Alacritty|foot)$"
         hint: "hyprctl clients — list window classes to match"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.swallow_exception_regex
         label: Swallow Exception Regex
         type: string
         default: ""
         description: swallow exception title regex
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.focus_on_activate
         label: Focus on Activate
         type: bool
         default: "false"
         description: focus apps on activation request
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.mouse_move_focuses_monitor
         label: Mouse Focuses Monitor
         type: bool
         default: "true"
         description: mouse movement focuses monitor
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.close_special_on_empty
         label: Close Special on Empty
         type: bool
         default: "true"
         description: close special ws when empty
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.background_color
         label: Background Color
         type: color
         default: "0x111111"
         description: fallback background color
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.disable_autoreload
         label: Disable Autoreload
         type: bool
         default: "false"
         description: disable config file-watch autoreload
         hint: "when true, use hyprctl reload to apply changes manually"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.layers_hog_keyboard_focus
         label: Layers Hog Focus
         type: bool
         default: "true"
         description: layers retain keyboard focus on mouse move
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.middle_click_paste
         label: Middle Click Paste
         type: bool
         default: "true"
         description: middle-click paste (primary selection)
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.render_unfocused_fps
         label: Unfocused FPS
         type: number
@@ -787,7 +787,7 @@ sections:
         hint: "lower values save GPU, increase if video playback stutters"
         min: 1
         max: 120
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"
       - key: misc.initial_workspace_tracking
         label: Initial WS Tracking
         type: enum
@@ -796,4 +796,4 @@ sections:
         options: ["0", "1", "2"]
         example: "initial_workspace_tracking = 1"
         hint: "0=off 1=single-shot(default) 2=persistent tracking"
-        doc_url: "https://wiki.hyprland.org/Configuring/Variables/#misc"
+        doc_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/#misc"

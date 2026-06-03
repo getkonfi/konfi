@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 func (c *content) buildFieldList() {
@@ -233,4 +233,3 @@ func (c *content) refilterRanked(query string) {
 		c.cursor = 0
 	}
 }
-

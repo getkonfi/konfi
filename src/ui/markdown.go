@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/lipgloss/v2"
 	"github.com/yuin/goldmark"
@@ -30,11 +30,11 @@ type mdRenderer struct {
 
 func newMDRenderer(th *theme.Theme, width int) *mdRenderer {
 	return &mdRenderer{
-		width: width,
-		theme: th,
-		bold:  lipgloss.NewStyle().Foreground(th.Palette.Text).Bold(true),
+		width:  width,
+		theme:  th,
+		bold:   lipgloss.NewStyle().Foreground(th.Palette.Text).Bold(true),
 		italic: lipgloss.NewStyle().Foreground(th.Palette.Subtext).Italic(true),
-		code: lipgloss.NewStyle().Foreground(th.Palette.Accent),
+		code:   lipgloss.NewStyle().Foreground(th.Palette.Accent),
 		codeBlock: lipgloss.NewStyle().Foreground(th.Palette.Muted).
 			PaddingLeft(2),
 		heading:    lipgloss.NewStyle().Foreground(th.Palette.Primary).Bold(true).Underline(true),

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/emin/konfigurator/setup/cst"
+	"github.com/eminert/konfi/setup/cst"
 
 	"github.com/rs/zerolog"
 )

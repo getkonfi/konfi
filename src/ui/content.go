@@ -7,10 +7,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/pkg/pixelart"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/pkg/pixelart"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -25,26 +25,26 @@ type row struct {
 }
 
 type content struct {
-	title    string
-	konfable konfables.Konfable
-	config   *pkg.ConfigFile
-	schema   *pkg.Schema
-	values   map[string]string
-	cursor   int
-	fields       []pkg.Field // flattened field list across all sections
-	fieldSection []int       // len == len(c.fields), maps field → section index
-	visible      []row       // navigable rows (section headers + fields)
-	searchIndex  *pkg.SearchIndex
-	collapsed map[int]bool // section index → collapsed
+	title          string
+	konfable       konfables.Konfable
+	config         *pkg.ConfigFile
+	schema         *pkg.Schema
+	values         map[string]string
+	cursor         int
+	fields         []pkg.Field // flattened field list across all sections
+	fieldSection   []int       // len == len(c.fields), maps field → section index
+	visible        []row       // navigable rows (section headers + fields)
+	searchIndex    *pkg.SearchIndex
+	collapsed      map[int]bool // section index → collapsed
 	configuredOnly bool
 	searching      bool
 	search         textinput.Model
-	scrollY int
-	focused bool
-	width   int
-	height  int
-	theme   *theme.Theme
-	program *tea.Program
+	scrollY        int
+	focused        bool
+	width          int
+	height         int
+	theme          *theme.Theme
+	program        *tea.Program
 
 	// nerd font glyphs or ASCII fallback
 	nerdFont bool
@@ -81,13 +81,13 @@ type content struct {
 	diffView   *diffView
 
 	// cached pending changes — invalidated on value mutation
-	cachedChanges    []pendingChange
+	cachedChanges      []pendingChange
 	cachedChangesDirty bool
 
 	// search match tracking for n/N navigation
-	searchMatches  []int            // indices into c.visible for matched rows
-	searchIdx      int              // current position in searchMatches
-	searchMatchInfo map[int]string  // visible row index → match explanation
+	searchMatches   []int          // indices into c.visible for matched rows
+	searchIdx       int            // current position in searchMatches
+	searchMatchInfo map[int]string // visible row index → match explanation
 
 	// "what's new" filter — toggled by root via n key
 	showNewOnly bool
@@ -148,7 +148,7 @@ func newContent(th *theme.Theme) content {
 	return content{
 		title:         "konfigurator",
 		values:        make(map[string]string),
-		collapsed: make(map[int]bool),
+		collapsed:     make(map[int]bool),
 		search:        ti,
 		theme:         th,
 		detail:        newDetail(th),
@@ -909,7 +909,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-
 // currentField returns the field under the cursor, or nil if empty.
 func (c *content) currentField() *pkg.Field {
 	if len(c.visible) == 0 || c.cursor < 0 || c.cursor >= len(c.visible) {
@@ -1156,10 +1155,6 @@ func (c content) Editing() bool {
 	return c.detail.editing
 }
 
-
-
-
-
 // buildInsights computes the cycling insight lines from current state.
 // linter warnings come first, then stats and schema hints.
 func (c *content) buildInsights() {
@@ -1216,11 +1211,3 @@ func (c *content) buildInsights() {
 	c.insightLines = append(c.insightLines, stat)
 	c.insightLines = append(c.insightLines, c.schema.Hints...)
 }
-
-
-
-
-
-
-
-

@@ -3,7 +3,7 @@ package tmux
 import (
 	"strings"
 
-	"github.com/emin/konfigurator/pkg/parser"
+	"github.com/eminert/konfi/pkg/parser"
 )
 
 // newParser handles the tmux config format: `set -g key value`,

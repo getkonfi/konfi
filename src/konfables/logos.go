@@ -1,6 +1,6 @@
 package konfables
 
-import "github.com/emin/konfigurator/pkg/pixelart"
+import "github.com/eminert/konfi/pkg/pixelart"
 
 // Logos maps app names to their pixel art representations.
 // each logo is 16×12 pixels using 256-color indices (0 = transparent).

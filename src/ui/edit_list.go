@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
 
 type listEditor struct {
-	items   []string
-	cursor  int
-	th      *theme.Theme
-	field   pkg.Field
+	items  []string
+	cursor int
+	th     *theme.Theme
+	field  pkg.Field
 
 	// sub-editing state
-	editing  bool
-	input    textinput.Model
-	editIdx  int // index being edited, or len(items) for append
+	editing bool
+	input   textinput.Model
+	editIdx int // index being edited, or len(items) for append
 
 	// widget-aware sub-editor (e.g. fontEditor for widget: font)
 	subEditor FieldEditor

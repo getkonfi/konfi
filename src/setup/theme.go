@@ -3,7 +3,7 @@ package setup
 import (
 	"context"
 
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/theme"
 )
 
 // InitTheme creates the Theme from the configured palette preference.

@@ -3,7 +3,7 @@ package konfables
 import (
 	"context"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 // AppInfo describes a konfable application.

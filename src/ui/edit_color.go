@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -23,9 +23,9 @@ type colorEditor struct {
 	val       string
 	oldHex    string
 	th        *theme.Theme
-	palette   []string        // hex values
-	labels    []string        // display labels (same length as palette)
-	groups    []paletteGroup  // separator positions for each palette
+	palette   []string       // hex values
+	labels    []string       // display labels (same length as palette)
+	groups    []paletteGroup // separator positions for each palette
 	palCursor int
 	inPalette bool
 	cols      int // grid columns, computed on first View

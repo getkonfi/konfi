@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/theme"
 
 	"charm.land/lipgloss/v2"
 )

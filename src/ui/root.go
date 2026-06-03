@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/setup"
-	"github.com/emin/konfigurator/theme"
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/setup"
+	"github.com/eminert/konfi/theme"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -39,19 +39,19 @@ type navEntry struct {
 }
 
 type root struct {
-	app      *setup.App
-	sidebar  sidebar
-	content  content
-	status   statusbar
-	palette  palette
-	focus    pane
-	mode     AppMode
-	width    int
-	height   int
-	ready    bool
-	showHelp     bool
-	confirmQuit  bool
-	confirmSwitch bool          // dirty-state guard for app switching
+	app           *setup.App
+	sidebar       sidebar
+	content       content
+	status        statusbar
+	palette       palette
+	focus         pane
+	mode          AppMode
+	width         int
+	height        int
+	ready         bool
+	showHelp      bool
+	confirmQuit   bool
+	confirmSwitch bool            // dirty-state guard for app switching
 	pendingSwitch *AppSelectedMsg // deferred app switch awaiting confirmation
 
 	// all konfables (indexed by sidebar item order)

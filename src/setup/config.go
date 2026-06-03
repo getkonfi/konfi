@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/emin/konfigurator/setup/cst"
+	"github.com/eminert/konfi/setup/cst"
 
 	"gopkg.in/yaml.v3"
 )
@@ -20,7 +20,7 @@ type KonfConfig struct {
 }
 
 // UpstreamSettings controls the upstream-check maintainer tool.
-// optional — unused by the TUI, consumed by cmd/upstreamcheck.
+// optional: unused by the tui, consumed by tools/upstreamcheck.
 type UpstreamSettings struct {
 	GitHub *GitHubSettings `yaml:"github,omitempty"`
 	GitLab *GitLabSettings `yaml:"gitlab,omitempty"`

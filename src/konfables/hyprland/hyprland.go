@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
 )
 
 //go:embed schema.yaml

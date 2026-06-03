@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/emin/konfigurator/konfables"
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
 )
 
 //go:embed schema.yaml
@@ -33,7 +33,7 @@ func (k *Kitty) Info() konfables.AppInfo {
 	}
 }
 
-func (k *Kitty) Name() string            { return "kitty" }
+func (k *Kitty) Name() string             { return "kitty" }
 func (k *Kitty) ConfigPath() string       { return k.Path }
 func (k *Kitty) Parser() konfables.Parser { return newParser() }
 func (k *Kitty) Schema() ([]byte, error)  { return schemaData, nil }
