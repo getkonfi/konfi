@@ -1,5 +1,6 @@
 app: konfigurator
 format: yaml
+docs_url: https://github.com/eminert/konfi/blob/main/README.md
 hints:
   - konfigurator's own settings
   - theme changes apply immediately

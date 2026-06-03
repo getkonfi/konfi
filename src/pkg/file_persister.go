@@ -50,18 +50,25 @@ func NewFilePersister(path string, opts ...FilePersisterOption) *FilePersister {
 	return fp
 }
 
-// Load reads the file from disk. if missing and defaultContent is set, creates it first.
+// Load reads the file from disk.
+// if the file is missing and defaultContent is set, materialises it on disk first.
+// if missing with no defaultContent, returns empty bytes (no error) so the konfable is
+// editable as a brand-new config; the first Save will create the file on disk.
 func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {
-	if !FileExists(fp.Path) && fp.defaultContent != nil {
-		if err := EnsureDir(filepath.Dir(fp.Path)); err != nil {
-			return nil, fmt.Errorf("ensure dir for %s: %w", fp.Path, err)
+	if !FileExists(fp.Path) {
+		switch {
+		case fp.defaultContent != nil:
+			if err := EnsureDir(filepath.Dir(fp.Path)); err != nil {
+				return nil, fmt.Errorf("ensure dir for %s: %w", fp.Path, err)
+			}
+			if err := os.WriteFile(fp.Path, fp.defaultContent, 0o644); err != nil {
+				return nil, fmt.Errorf("create default %s: %w", fp.Path, err)
+			}
+		case fp.missingContent != nil:
+			return bytes.Clone(fp.missingContent), nil
+		default:
+			return []byte{}, nil
 		}
-		if err := os.WriteFile(fp.Path, fp.defaultContent, 0o644); err != nil {
-			return nil, fmt.Errorf("create default %s: %w", fp.Path, err)
-		}
-	}
-	if !FileExists(fp.Path) && fp.missingContent != nil {
-		return bytes.Clone(fp.missingContent), nil
 	}
 	data, err := os.ReadFile(fp.Path)
 	if err != nil {
@@ -71,19 +78,25 @@ func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {
 }
 
 // Save writes a .bak backup of original, then atomically writes data.
+// when the target file does not yet exist (first save of a new config), the backup
+// step is skipped — there is nothing to back up and the parent dir may not exist yet.
 func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 	// preserve original file permissions, fall back to 0644 for new files
 	perm := os.FileMode(0o644)
+	exists := false
 	if info, err := os.Stat(fp.Path); err == nil {
 		perm = info.Mode().Perm()
+		exists = true
 	}
 
-	bakPath := fp.Path + ".bak"
 	if err := EnsureDir(filepath.Dir(fp.Path)); err != nil {
 		return fmt.Errorf("ensure dir for %s: %w", fp.Path, err)
 	}
-	if err := os.WriteFile(bakPath, original, perm); err != nil {
-		return fmt.Errorf("backup %s: %w", bakPath, err)
+	if exists {
+		bakPath := fp.Path + ".bak"
+		if err := os.WriteFile(bakPath, original, perm); err != nil {
+			return fmt.Errorf("backup %s: %w", bakPath, err)
+		}
 	}
 	fp.mu.Lock()
 	fp.selfWrite = time.Now().UnixNano()

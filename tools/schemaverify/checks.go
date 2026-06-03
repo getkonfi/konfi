@@ -62,6 +62,13 @@ func checkStructural(path string) AppReport {
 	if len(schema.Sections) == 0 {
 		report.Findings = append(report.Findings, Finding{Fail, "structural", "no sections defined"})
 	}
+	// goal-1 quality bar: every schema should point at upstream docs.
+	// warn-level (passes by default; --strict turns it into a failure).
+	if schema.DocsURL == "" {
+		report.Findings = append(report.Findings, Finding{
+			Warn, "structural", "missing top-level 'docs_url'",
+		})
+	}
 
 	// validate semver fields
 	for _, pair := range []struct{ name, val string }{
@@ -122,6 +129,14 @@ func checkStructural(path string) AppReport {
 			if f.Type == "enum" && len(f.Options) == 0 {
 				report.Findings = append(report.Findings, Finding{
 					Fail, "structural", fmt.Sprintf("%s (%s): enum type without options", loc, f.Key),
+				})
+			}
+
+			// goal-1 quality bar: every field must explain itself.
+			// warn-level (passes by default; --strict turns it into a failure).
+			if f.Description == "" {
+				report.Findings = append(report.Findings, Finding{
+					Warn, "structural", fmt.Sprintf("%s (%s): missing description", loc, f.Key),
 				})
 			}
 

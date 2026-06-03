@@ -50,7 +50,7 @@ func TestFilePersisterLoadCreatesDefault(t *testing.T) {
 func TestFilePersisterLoadMissingContentDoesNotCreateFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sub", "new.conf")
-	content := []byte("")
+	content := []byte("seed = true\n")
 
 	fp := NewFilePersister(path, WithMissingContent(content))
 	data, err := fp.Load(context.Background())
@@ -70,9 +70,47 @@ func TestFilePersisterLoadMissingNoDefault(t *testing.T) {
 	path := filepath.Join(dir, "nonexistent.conf")
 
 	fp := NewFilePersister(path)
-	_, err := fp.Load(context.Background())
-	if err == nil {
-		t.Fatal("expected error for missing file without default")
+	data, err := fp.Load(context.Background())
+	if err != nil {
+		t.Fatalf("missing file with no default should not error: %v", err)
+	}
+	if len(data) != 0 {
+		t.Errorf("missing file with no default should return empty bytes, got %q", data)
+	}
+	// the load itself must not create the file — first Save is what materialises it.
+	if FileExists(path) {
+		t.Error("Load must not create the file when no default is set")
+	}
+}
+
+func TestFilePersisterSaveCreatesNewFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sub", "fresh.conf")
+	content := []byte("key = value\n")
+
+	fp := NewFilePersister(path)
+	// load returns empty for a missing file
+	original, err := fp.Load(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(original) != 0 {
+		t.Fatalf("expected empty original, got %q", original)
+	}
+
+	// first save creates the file (and its parent dir) without writing a stale .bak
+	if err := fp.Save(context.Background(), original, content); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, content) {
+		t.Errorf("got %q, want %q", got, content)
+	}
+	if FileExists(path + ".bak") {
+		t.Error("first save should not create a .bak (nothing to back up)")
 	}
 }
 
@@ -132,8 +170,8 @@ func TestFilePersisterSaveCreatesMissingDir(t *testing.T) {
 	if !bytes.Equal(got, updated) {
 		t.Errorf("main file: got %q, want %q", got, updated)
 	}
-	if !FileExists(path + ".bak") {
-		t.Error("expected backup for missing file save")
+	if FileExists(path + ".bak") {
+		t.Error("first save should not create a .bak (nothing to back up)")
 	}
 }
 

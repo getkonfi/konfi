@@ -6,7 +6,13 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 )
+
+// askDefaultTimeout caps any AskClaude call whose caller forgot to set a
+// deadline on the context. without this, a hung claude subprocess would
+// block the TUI's loading spinner indefinitely.
+const askDefaultTimeout = 30 * time.Second
 
 // AISuggestion represents a single AI-recommended config option.
 type AISuggestion struct {
@@ -71,7 +77,14 @@ rules:
 intent: %s`
 
 // AskClaude runs claude -p with schema context and a user query.
+// when ctx has no deadline, a 30s default is applied so the TUI can't hang.
 func AskClaude(ctx context.Context, schemas map[string]*Schema, query string) ([]AISuggestion, error) {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, askDefaultTimeout)
+		defer cancel()
+	}
+
 	schemaText := SerializeSchemas(schemas)
 	prompt := fmt.Sprintf(askPrompt, schemaText, query)
 

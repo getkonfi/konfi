@@ -1062,6 +1062,16 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.app.Config.LogLevel = msg.Value
 		case "browse_loads_app":
 			r.app.Config.BrowseLoadsApp = msg.Value == "true"
+		case "nerd_font":
+			// flip the cached flag everywhere it gates icon rendering. sidebar
+			// and detail re-read on each frame, so the change is visible
+			// immediately. dashboard tiles are baked at startup and stay on
+			// their original icon until the next launch.
+			on := msg.Value == "true"
+			r.app.Config.NerdFont = on
+			r.sidebar.nerdFont = on
+			r.content.nerdFont = on
+			r.content.detail.nerdFont = on
 		}
 		cfg := r.app.Config
 		cmds = append(cmds, func() tea.Msg {
@@ -1675,10 +1685,7 @@ func (r *root) applyPaste(value string) {
 	// list fields need SetValues for repeated-key formats
 	if f.Type == "list" {
 		if mvp, ok := p.(konfables.MultiValueParser); ok {
-			var vals []string
-			if value != "" {
-				vals = strings.Split(value, "\n")
-			}
+			vals := splitListValue(value)
 			newData, err := mvp.SetValues(data, f.Key, vals)
 			if err != nil {
 				r.status.status = "paste failed: " + err.Error()
@@ -1720,6 +1727,8 @@ func (r *root) toggleNewFilter() {
 }
 
 // openInEditor launches $EDITOR (or $VISUAL, fallback vim) on the config file.
+// honors multi-token EDITOR values like "code --wait" or "nvim --noplugin".
+// quoted arguments containing whitespace are not supported — wrap in a script if you need them.
 func (r *root) openInEditor() tea.Cmd {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
@@ -1731,15 +1740,25 @@ func (r *root) openInEditor() tea.Cmd {
 		}
 	}
 
+	tokens := strings.Fields(editor)
+	if len(tokens) == 0 {
+		return func() tea.Msg {
+			return StatusMsg{Text: "$EDITOR is blank"}
+		}
+	}
+	bin, editorArgs := tokens[0], tokens[1:]
+
 	path := r.content.config.Path
-	args := []string{path}
+	args := make([]string, 0, len(editorArgs)+2)
+	args = append(args, editorArgs...)
 
 	// pass +LINE for editors that support it (vim, nvim, nano, emacs, etc.)
 	if r.content.detail.previewFound && r.content.detail.previewLine >= 0 {
-		args = []string{fmt.Sprintf("+%d", r.content.detail.previewLine+1), path}
+		args = append(args, fmt.Sprintf("+%d", r.content.detail.previewLine+1))
 	}
+	args = append(args, path)
 
-	cmd := exec.Command(editor, args...)
+	cmd := exec.Command(bin, args...)
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return EditorExitMsg{Err: err}
 	})

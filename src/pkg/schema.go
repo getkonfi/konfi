@@ -2,11 +2,17 @@ package pkg
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 )
+
+// versionPattern matches the first semver-shaped fragment in a banner like
+// "Ghostty 1.1.3" or "kitty 0.39.1 created by Kovid Goyal", with optional
+// prerelease and build metadata. captures only the bare version.
+var versionPattern = regexp.MustCompile(`\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9.]+)?(?:\+[A-Za-z0-9.]+)?`)
 
 // Schema describes the configurable fields of an application.
 type Schema struct {
@@ -237,6 +243,14 @@ func FieldIsNewIn(f Field, version string) bool {
 		return false
 	}
 	return semver.MajorMinor(ns) == semver.MajorMinor(nv)
+}
+
+// ExtractSemver pulls the first semver-shaped substring from arbitrary banner
+// text (e.g. "kitty 0.39.1 created by Kovid Goyal") and returns it bare.
+// returns "" when no match is found, in which case the caller should keep
+// using the original banner text for display purposes.
+func ExtractSemver(s string) string {
+	return versionPattern.FindString(s)
 }
 
 // NormalizeSemver prepends "v" if missing and validates via semver.

@@ -675,3 +675,28 @@ func searchString(s, sub string) bool {
 	}
 	return false
 }
+
+func TestExtractSemver(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"Ghostty 1.1.3", "1.1.3"},
+		{"kitty 0.39.1 created by Kovid Goyal", "0.39.1"},
+		{"v2.10", "2.10"},
+		{"foo 1.2.3-rc.1+build.5 bar", "1.2.3-rc.1+build.5"},
+		{"no version here", ""},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := ExtractSemver(c.in); got != c.want {
+			t.Errorf("ExtractSemver(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+
+	// the extracted form must round-trip through NormalizeSemver, otherwise
+	// schema-level since/until gating stays disabled.
+	if got := NormalizeSemver(ExtractSemver("Ghostty 1.1.3")); got != "v1.1.3" {
+		t.Errorf("normalize(extract(...)) = %q, want v1.1.3", got)
+	}
+}
