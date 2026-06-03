@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emin/konfigurator/pkg"
-	"github.com/emin/konfigurator/setup"
+	"github.com/eminert/konfi/pkg"
 )
 
 const (
@@ -61,10 +60,10 @@ func main() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Duration(len(schemas)))
-	defer cancel()
 
 	client := &http.Client{Timeout: timeout}
 	report := runChecks(ctx, client, cfg, schemas, verbose)
+	cancel()
 
 	if asJSON {
 		if err := report.WriteJSON(os.Stdout); err != nil {
@@ -81,13 +80,14 @@ func main() {
 }
 
 func discoverSchemas(appFilter string) ([]string, error) {
-	pattern := filepath.Join("konfables", "*", "schema.yaml")
+	root := schemaRoot()
+	pattern := filepath.Join(root, "*", "schema.yaml")
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("glob: %w", err)
 	}
 	if appFilter != "" {
-		specific := filepath.Join("konfables", appFilter, "schema.yaml")
+		specific := filepath.Join(root, appFilter, "schema.yaml")
 		if slices.Contains(matches, specific) {
 			return []string{specific}, nil
 		}
@@ -97,9 +97,23 @@ func discoverSchemas(appFilter string) ([]string, error) {
 	return matches, nil
 }
 
+func schemaRoot() string {
+	for _, dir := range []string{
+		"konfables",
+		filepath.Join("src", "konfables"),
+		filepath.Join("..", "src", "konfables"),
+		filepath.Join("..", "..", "src", "konfables"),
+	} {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+	}
+	return "konfables"
+}
+
 // runChecks loads each schema, dispatches fetchers concurrently, and
 // assembles a report. schemas without an upstream block are marked skipped.
-func runChecks(ctx context.Context, client *http.Client, cfg *setup.KonfConfig, schemaPaths []string, includeSkipped bool) *Report {
+func runChecks(ctx context.Context, client *http.Client, cfg *upstreamConfig, schemaPaths []string, includeSkipped bool) *Report {
 	sem := make(chan struct{}, defaultConcurrency)
 	var wg sync.WaitGroup
 	results := make([]AppResult, len(schemaPaths))
@@ -126,7 +140,7 @@ func runChecks(ctx context.Context, client *http.Client, cfg *setup.KonfConfig, 
 	return out
 }
 
-func checkOne(ctx context.Context, client *http.Client, cfg *setup.KonfConfig, path string) AppResult {
+func checkOne(ctx context.Context, client *http.Client, cfg *upstreamConfig, path string) AppResult {
 	appName := filepath.Base(filepath.Dir(path))
 	res := AppResult{App: appName}
 
@@ -161,7 +175,7 @@ func checkOne(ctx context.Context, client *http.Client, cfg *setup.KonfConfig, p
 	return res
 }
 
-func fetchLatest(ctx context.Context, client *http.Client, cfg *setup.KonfConfig, up *pkg.Upstream) (*ReleaseInfo, error) {
+func fetchLatest(ctx context.Context, client *http.Client, cfg *upstreamConfig, up *pkg.Upstream) (*ReleaseInfo, error) {
 	switch up.Kind {
 	case "github":
 		return fetchGitHubLatest(ctx, client, up, githubToken(cfg))

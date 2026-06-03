@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 const dumpTimeout = 30 * time.Second
@@ -82,7 +82,7 @@ func introspectorFor(app string) Introspector {
 		return &staticIntrospector{
 			app: "ssh",
 			keys: []string{
-				"Hostname", "Port", "User",
+				"HostName", "Port", "User",
 				"ServerAliveInterval", "ServerAliveCountMax",
 				"ConnectTimeout", "ConnectionAttempts", "TCPKeepAlive",
 				"ProxyJump", "ProxyCommand", "RequestTTY", "BatchMode",
@@ -265,8 +265,8 @@ type staticIntrospector struct {
 	keys []string
 }
 
-func (s *staticIntrospector) Name() string      { return s.app }
-func (s *staticIntrospector) Available() bool    { return true }
+func (s *staticIntrospector) Name() string    { return s.app }
+func (s *staticIntrospector) Available() bool { return true }
 func (s *staticIntrospector) DumpKeys(_ context.Context) ([]string, error) {
 	return s.keys, nil
 }

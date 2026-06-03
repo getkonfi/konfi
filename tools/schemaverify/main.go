@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 func main() {
@@ -139,14 +139,15 @@ func loadSchemaQuiet(path string) *pkg.Schema {
 }
 
 func discoverSchemas(appFilter string) ([]string, error) {
-	pattern := filepath.Join("konfables", "*", "schema.yaml")
+	root := schemaRoot()
+	pattern := filepath.Join(root, "*", "schema.yaml")
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("glob: %w", err)
 	}
 
 	if appFilter != "" {
-		specific := filepath.Join("konfables", appFilter, "schema.yaml")
+		specific := filepath.Join(root, appFilter, "schema.yaml")
 		if slices.Contains(matches, specific) {
 			return []string{specific}, nil
 		}
@@ -155,4 +156,18 @@ func discoverSchemas(appFilter string) ([]string, error) {
 
 	sort.Strings(matches)
 	return matches, nil
+}
+
+func schemaRoot() string {
+	for _, dir := range []string{
+		"konfables",
+		filepath.Join("src", "konfables"),
+		filepath.Join("..", "src", "konfables"),
+		filepath.Join("..", "..", "src", "konfables"),
+	} {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+	}
+	return "konfables"
 }

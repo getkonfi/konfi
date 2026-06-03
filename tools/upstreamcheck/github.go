@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 const githubAPI = "https://api.github.com"
@@ -27,7 +27,7 @@ func fetchGitHubLatest(ctx context.Context, client *http.Client, up *pkg.Upstrea
 	}
 
 	url := fmt.Sprintf("%s/repos/%s/releases/latest", githubAPI, up.Repo)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

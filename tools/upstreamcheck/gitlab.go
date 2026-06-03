@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 type glRelease struct {
@@ -35,7 +35,7 @@ func fetchGitLabLatest(ctx context.Context, client *http.Client, up *pkg.Upstrea
 	projectPath := url.PathEscape(up.Repo)
 	apiURL := fmt.Sprintf("https://%s/api/v4/projects/%s/releases?per_page=1", up.Host, projectPath)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

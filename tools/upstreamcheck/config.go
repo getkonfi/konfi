@@ -5,12 +5,29 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 
-	"github.com/emin/konfigurator/setup"
-	"github.com/emin/konfigurator/setup/cst"
+	"github.com/eminert/konfi/setup/cst"
 
 	"gopkg.in/yaml.v3"
 )
+
+type upstreamConfig struct {
+	Upstream *upstreamSettings `yaml:"upstream,omitempty"`
+}
+
+type upstreamSettings struct {
+	GitHub *githubSettings `yaml:"github,omitempty"`
+	GitLab *gitlabSettings `yaml:"gitlab,omitempty"`
+}
+
+type githubSettings struct {
+	Token string `yaml:"token,omitempty"`
+}
+
+type gitlabSettings struct {
+	Tokens map[string]string `yaml:"tokens,omitempty"`
+}
 
 // configSearchPaths returns the ordered list of files to merge into config.
 // later paths override earlier ones at the top-level field granularity
@@ -18,20 +35,24 @@ import (
 // keep your tokens in one file).
 //
 // order:
-//  1. ~/.config/konfi/config.yaml  — deployed user config
-//  2. ./config.yaml                — repo-committed dev base
-//  3. ./config.local.yaml          — gitignored dev overrides
+//  1. ~/.config/konfi/config.yaml   - deployed user config
+//  2. ./config.yaml, ../config.yaml, or ../../config.yaml - repo dev base
+//  3. ./config.local.yaml, ../config.local.yaml, or ../../config.local.yaml - local dev overrides
 func configSearchPaths() []string {
 	return []string{
 		cst.ConfigFilePath(),
 		"config.yaml",
+		filepath.Join("..", "config.yaml"),
+		filepath.Join("..", "..", "config.yaml"),
 		"config.local.yaml",
+		filepath.Join("..", "config.local.yaml"),
+		filepath.Join("..", "..", "config.local.yaml"),
 	}
 }
 
 // loadConfig reads every path that exists and overlays them in order.
-func loadConfig() (*setup.KonfConfig, []string, error) {
-	cfg := &setup.KonfConfig{}
+func loadConfig() (*upstreamConfig, []string, error) {
+	cfg := &upstreamConfig{}
 	var loaded []string
 
 	for _, p := range configSearchPaths() {
@@ -52,7 +73,7 @@ func loadConfig() (*setup.KonfConfig, []string, error) {
 }
 
 // gitlabTokenFor returns the token for a gitlab host, or "" if not configured.
-func gitlabTokenFor(cfg *setup.KonfConfig, host string) string {
+func gitlabTokenFor(cfg *upstreamConfig, host string) string {
 	if cfg == nil || cfg.Upstream == nil || cfg.Upstream.GitLab == nil {
 		return ""
 	}
@@ -60,7 +81,7 @@ func gitlabTokenFor(cfg *setup.KonfConfig, host string) string {
 }
 
 // githubToken returns the configured github token, or "".
-func githubToken(cfg *setup.KonfConfig) string {
+func githubToken(cfg *upstreamConfig) string {
 	if cfg == nil || cfg.Upstream == nil || cfg.Upstream.GitHub == nil {
 		return ""
 	}

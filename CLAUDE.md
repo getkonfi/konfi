@@ -7,7 +7,7 @@ go TUI for editing dotfiles (ghostty, starship, alacritty, hyprland) with ASCII 
 - zerolog (file-only — TUI owns stdout), yaml.v3, go-toml/v2, fsnotify
 
 ## structure
-follows gomono single-app conventions: everything under `src/`, flat domain packages, setup units for DI, no `internal/`.
+follows gomono single-app conventions: app code under `src/`, maintenance tools under `tools/`, flat domain packages, setup units for DI, no `internal/`.
 
 ```
 src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
@@ -20,6 +20,7 @@ src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
 - `pkg/` — shared foundation: config file, schema types, search, file utils
 - `pkg/parser/` — format parsers: flat key-value, section/INI, JSON, TOML helpers
 - `pkg/pixelart/` — pixel art rendering and logo animations
+- `tools/` — maintainer commands; each tool owns a small module that depends on `src/`
 
 ## import flow (no cycles)
 ```

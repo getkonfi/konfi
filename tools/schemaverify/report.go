@@ -79,7 +79,7 @@ func (r *Report) HasWarn() bool {
 	return false
 }
 
-func (r *Report) WriteText(w io.Writer, verbose bool, color bool) {
+func (r *Report) WriteText(w io.Writer, verbose, color bool) {
 	text := newTextReportWriter(w, verbose, color)
 	text.WriteHeader()
 	for _, app := range r.Apps {
@@ -95,7 +95,7 @@ type textReportWriter struct {
 	wroteApp bool
 }
 
-func newTextReportWriter(w io.Writer, verbose bool, color bool) *textReportWriter {
+func newTextReportWriter(w io.Writer, verbose, color bool) *textReportWriter {
 	return &textReportWriter{
 		w:       w,
 		verbose: verbose,

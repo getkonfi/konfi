@@ -49,19 +49,25 @@ build: ## build binary
 
 test: ## clean cache and run all tests with gotestsum
 	@cd src && go clean -testcache
+	@cd tools/schemaverify && go clean -testcache
+	@cd tools/upstreamcheck && go clean -testcache
 	@cd src && ../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
+	@cd tools/schemaverify && ../../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
+	@cd tools/upstreamcheck && ../../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
 
 lint: ## run golangci-lint
 	@cd src && ../$(LINTER) run ./...
+	@cd tools/schemaverify && ../../$(LINTER) run ./...
+	@cd tools/upstreamcheck && ../../$(LINTER) run ./...
 
 schema-verify: ## full schema verification (network + introspection)
-	@cd src && go run ./cmd/schemaverify/
+	@cd tools/schemaverify && go run .
 
 schema-check: ## quick schema check (offline, no exec)
-	@cd src && go run ./cmd/schemaverify/ --offline --no-exec --strict
+	@cd tools/schemaverify && go run . --offline --no-exec --strict
 
 upstream-check: ## check supported app versions against upstream releases
-	@cd src && go run ./cmd/upstreamcheck/
+	@cd tools/upstreamcheck && go run .
 
 clean: ## remove build artifacts
 	rm -f konfigurator

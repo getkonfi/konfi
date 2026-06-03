@@ -1,3 +1,7 @@
 go 1.26
 
-use ./src
+use (
+	./src
+	./tools/schemaverify
+	./tools/upstreamcheck
+)

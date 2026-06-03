@@ -10,18 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emin/konfigurator/pkg"
+	"github.com/eminert/konfi/pkg"
 )
 
 const (
 	defaultURLConcurrency = 10
 	urlRequestTimeout     = 10 * time.Second
+	urlUserAgent          = "Mozilla/5.0 (compatible; konfi-schemaverify/1.0)"
 )
 
 type urlResult struct {
-	url     string
-	status  int
-	err     error
+	url      string
+	status   int
+	err      error
 	location string // redirect target if 3xx
 }
 
@@ -100,21 +101,29 @@ func checkURLs(ctx context.Context, schema *pkg.Schema, concurrency int) []Findi
 	return findings
 }
 
-// headURL performs a HEAD request with one retry on timeout.
+// headURL performs a HEAD request, falling back to GET when HEAD is rejected.
 func headURL(ctx context.Context, client *http.Client, rawURL string) urlResult {
-	r := doHead(ctx, client, rawURL)
+	r := doURLRequest(ctx, client, http.MethodHead, rawURL)
 	if r.err != nil && isTimeout(r.err) {
-		r = doHead(ctx, client, rawURL)
+		r = doURLRequest(ctx, client, http.MethodHead, rawURL)
+	}
+	if r.err == nil && r.status >= 400 {
+		g := doURLRequest(ctx, client, http.MethodGet, rawURL)
+		if g.err != nil && isTimeout(g.err) {
+			g = doURLRequest(ctx, client, http.MethodGet, rawURL)
+		}
+		return g
 	}
 	return r
 }
 
-func doHead(ctx context.Context, client *http.Client, rawURL string) urlResult {
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, rawURL, http.NoBody)
+func doURLRequest(ctx context.Context, client *http.Client, method, rawURL string) urlResult {
+	req, err := http.NewRequestWithContext(ctx, method, rawURL, http.NoBody)
 	if err != nil {
 		return urlResult{url: rawURL, err: err}
 	}
-	req.Header.Set("User-Agent", "konfi-schemaverify/1.0")
+	req.Header.Set("User-Agent", urlUserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 
 	resp, err := client.Do(req)
 	if err != nil {
