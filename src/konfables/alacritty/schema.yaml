@@ -2,7 +2,7 @@ app: alacritty
 format: toml
 schema_version: 1.0.0
 min_app_version: "0.13.0"
-max_app_version: "1.0.0"
+max_app_version: "0.17.0"
 docs_url: "https://alacritty.org/config-alacritty.html"
 upstream:
   kind: github

@@ -85,12 +85,12 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 	if err := os.WriteFile(bakPath, original, perm); err != nil {
 		return fmt.Errorf("backup %s: %w", bakPath, err)
 	}
-	if err := AtomicWrite(fp.Path, data, perm); err != nil {
-		return fmt.Errorf("save %s: %w", fp.Path, err)
-	}
 	fp.mu.Lock()
 	fp.selfWrite = time.Now().UnixNano()
 	fp.mu.Unlock()
+	if err := AtomicWrite(fp.Path, data, perm); err != nil {
+		return fmt.Errorf("save %s: %w", fp.Path, err)
+	}
 	return nil
 }
 

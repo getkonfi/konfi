@@ -2,7 +2,7 @@ app: rio
 format: toml
 schema_version: 1.0.0
 min_app_version: "0.1.0"
-max_app_version: "0.2.0"
+max_app_version: "0.4.5"
 docs_url: "https://rioterm.com/docs/config"
 upstream:
   kind: github

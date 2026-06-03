@@ -86,20 +86,20 @@ func (tp *TieredPersister) Save(_ context.Context, original, data []byte) error 
 		tierData[t.Name] = raw
 	}
 
-	parser := &parser.JSONParser{}
+	prs := &parser.JSONParser{}
 	dirty := make(map[string]bool)
 
 	// handle changed/added keys
 	for _, key := range newKeys {
-		oldVal, hadOld := parser.FindValue(original, key)
-		newVal, _ := parser.FindValue(data, key)
+		oldVal, hadOld := prs.FindValue(original, key)
+		newVal, _ := prs.FindValue(data, key)
 		if hadOld && oldVal == newVal {
 			continue
 		}
 
 		tier := tp.routeKey(key, tierMap)
 		td := tierData[tier]
-		updated, err := parser.SetValue(td, key, newVal)
+		updated, err := prs.SetValue(td, key, newVal)
 		if err != nil {
 			return fmt.Errorf("set %s in tier %s: %w", key, tier, err)
 		}
@@ -121,7 +121,7 @@ func (tp *TieredPersister) Save(_ context.Context, original, data []byte) error 
 			continue
 		}
 		td := tierData[tier]
-		updated, err := parser.DeleteKey(td, key)
+		updated, err := prs.DeleteKey(td, key)
 		if err != nil {
 			// key might not exist in this specific tier file, skip
 			continue

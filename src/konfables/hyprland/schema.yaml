@@ -2,7 +2,7 @@ app: hyprland
 format: hyprland
 schema_version: "0.51.0"
 min_app_version: "0.40.0"
-max_app_version: "0.51.0"
+max_app_version: "0.55.2"
 docs_url: "https://wiki.hypr.land/0.51.0/Configuring/Variables/"
 upstream:
   kind: github

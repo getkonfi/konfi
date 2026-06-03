@@ -1,5 +1,6 @@
 app: starship
 format: toml
+max_app_version: "1.25.1"
 docs_url: "https://starship.rs/config/"
 upstream:
   kind: github
