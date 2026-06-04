@@ -22,7 +22,7 @@ endif
 GOLANGCI_LINT_URL := https://github.com/golangci/golangci-lint/releases/download/v$(GOLANGCI_VERSION)/golangci-lint-$(GOLANGCI_VERSION)-$(GOOS)-$(GOARCH).tar.gz
 
 help: ## show help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[38;2;139;171;73m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[38;2;139;171;73m%-20s\033[0m %s\n", $$1, $$2}'
 
 tools: ## install golangci-lint and gotestsum into bin/
 	@mkdir -p $(BIN_DIR)
@@ -69,7 +69,10 @@ schema-check: ## quick schema check (offline, no exec)
 upstream-check: ## check supported app versions against upstream releases
 	@cd tools/upstreamcheck && go run .
 
+e2e-arch-container: ## run Arch container parser/editing e2e suite
+	@e2e/arch-container/run.sh
+
 clean: ## remove build artifacts
 	rm -f konfigurator
 
-.PHONY: help tools run build test lint clean schema-verify schema-check upstream-check
+.PHONY: help tools run build test lint clean schema-verify schema-check upstream-check e2e-arch-container
