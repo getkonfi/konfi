@@ -98,8 +98,11 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 	// start in palette mode if palette is available
 	if len(e.palette) > 0 {
 		e.inPalette = true
+		currentRenderHex := colorRenderHex(currentValue)
+		currentDisplay := normalizeHex(currentValue)
 		for i, hex := range e.palette {
-			if hex == currentValue || normalizeHex(hex) == normalizeHex(currentValue) {
+			if hex == currentValue || normalizeHex(hex) == currentDisplay ||
+				(currentRenderHex != "" && colorRenderHex(hex) == currentRenderHex) {
 				e.palCursor = i
 				break
 			}
@@ -147,7 +150,7 @@ func (e *colorEditor) updatePalette(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 			e.palCursor += cols
 		}
 	case "enter":
-		e.val = e.palette[e.palCursor]
+		e.val = formatPaletteColor(e.input.Value(), e.palette[e.palCursor])
 		return nil, true, false
 	case "esc":
 		return nil, true, true
@@ -320,34 +323,153 @@ func (e *colorEditor) Height() int {
 var swatchCache sync.Map // string → string
 
 func swatch(hex string) string {
-	if hex == "" {
+	renderHex := colorRenderHex(hex)
+	if renderHex == "" {
 		return "  "
 	}
-	if v, ok := swatchCache.Load(hex); ok {
+	if v, ok := swatchCache.Load(renderHex); ok {
 		return v.(string)
 	}
-	s := lipgloss.NewStyle().Foreground(lipgloss.Color(hex)).Render("██")
-	swatchCache.Store(hex, s)
+	s := lipgloss.NewStyle().Foreground(lipgloss.Color(renderHex)).Render("██")
+	swatchCache.Store(renderHex, s)
 	return s
 }
 
 func colorValue(hex string) string {
-	if hex == "" {
+	display := colorDisplayValue(hex)
+	if display == "" {
 		return "##"
 	}
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
-	return style.Render("##") + " " + style.Render(hex)
+	renderHex := colorRenderHex(hex)
+	if renderHex == "" {
+		return "## " + display
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(renderHex))
+	return style.Render("##") + " " + style.Render(display)
 }
 
-// normalizeHex prepends # if missing so lipgloss can render it.
-// returns "" for empty input — callers must handle that.
+// normalizeHex returns the color value used for display.
 func normalizeHex(s string) string {
+	return colorDisplayValue(s)
+}
+
+func colorDisplayValue(s string) string {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return ""
 	}
-	if s[0] != '#' {
-		return "#" + s
+	lower := strings.ToLower(s)
+	if strings.HasPrefix(lower, "#0x") && len(lower) == 11 && isHex(lower[3:]) {
+		return lower[1:]
+	}
+	if strings.HasPrefix(lower, "#") {
+		digits := lower[1:]
+		if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
+			return "#" + digits
+		}
+		return s
+	}
+	if (len(lower) == 6 || len(lower) == 8) && isHex(lower) {
+		return "#" + lower
 	}
 	return s
+}
+
+func colorRenderHex(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if hex := colorRenderHexToken(s); hex != "" {
+		return hex
+	}
+	if fields := strings.Fields(s); len(fields) > 0 {
+		return colorRenderHexToken(fields[0])
+	}
+	return ""
+}
+
+func colorRenderHexToken(s string) string {
+	lower := strings.ToLower(strings.TrimSpace(s))
+	if lower == "" {
+		return ""
+	}
+	if strings.HasPrefix(lower, "#0x") {
+		lower = lower[1:]
+	}
+	if strings.HasPrefix(lower, "0x") {
+		digits := lower[2:]
+		if len(digits) == 8 && isHex(digits) {
+			return "#" + digits[2:]
+		}
+		return ""
+	}
+	for _, prefix := range []string{"rgba(", "rgb("} {
+		if strings.HasPrefix(lower, prefix) {
+			closeIdx := strings.IndexByte(lower, ')')
+			if closeIdx < len(prefix) {
+				return ""
+			}
+			digits := strings.TrimSpace(lower[len(prefix):closeIdx])
+			if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
+				return "#" + digits[:6]
+			}
+			return ""
+		}
+	}
+	if strings.HasPrefix(lower, "#") {
+		digits := lower[1:]
+		if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
+			return "#" + digits[:6]
+		}
+		return ""
+	}
+	if (len(lower) == 6 || len(lower) == 8) && isHex(lower) {
+		return "#" + lower[:6]
+	}
+	return ""
+}
+
+func formatPaletteColor(template, selected string) string {
+	rgb := strings.TrimPrefix(colorRenderHex(selected), "#")
+	if rgb == "" {
+		return selected
+	}
+	t := strings.TrimSpace(template)
+	lower := strings.ToLower(t)
+	if strings.HasPrefix(lower, "#0x") {
+		lower = lower[1:]
+	}
+	if strings.HasPrefix(lower, "0x") {
+		digits := lower[2:]
+		if len(digits) == 8 && isHex(digits) {
+			return "0x" + digits[:2] + rgb
+		}
+	}
+	for _, prefix := range []string{"rgba(", "rgb("} {
+		if strings.HasPrefix(lower, prefix) {
+			closeIdx := strings.IndexByte(lower, ')')
+			if closeIdx != len(lower)-1 {
+				return selected
+			}
+			digits := strings.TrimSpace(lower[len(prefix):closeIdx])
+			switch {
+			case prefix == "rgba(" && len(digits) == 8 && isHex(digits):
+				return "rgba(" + rgb + digits[6:] + ")"
+			case prefix == "rgb(" && len(digits) == 6 && isHex(digits):
+				return "rgb(" + rgb + ")"
+			}
+		}
+	}
+	return selected
+}
+
+func isHex(s string) bool {
+	for _, r := range s {
+		if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') {
+			continue
+		}
+		return false
+	}
+	return s != ""
 }

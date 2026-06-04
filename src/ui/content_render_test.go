@@ -31,6 +31,24 @@ func TestRenderFieldValueBoolUsesTextOnly(t *testing.T) {
 	}
 }
 
+func TestSplitWidthsGivesDetailMoreContentArea(t *testing.T) {
+	c := &content{
+		schema: &pkg.Schema{},
+		config: &pkg.ConfigFile{},
+		fields: []pkg.Field{{Key: "field"}},
+	}
+
+	fieldW, detailW := c.splitWidths(100)
+	if fieldW != 55 || detailW != 45 {
+		t.Fatalf("splitWidths(100) = (%d, %d), want (55, 45)", fieldW, detailW)
+	}
+
+	fieldW, detailW = c.splitWidths(50)
+	if fieldW != 30 || detailW != 20 {
+		t.Fatalf("splitWidths(50) = (%d, %d), want minimum field/detail split (30, 20)", fieldW, detailW)
+	}
+}
+
 func TestRenderFieldValueColorUsesHashMarkerAndHex(t *testing.T) {
 	c := &content{theme: testTheme()}
 	f := pkg.Field{Type: "color"}
@@ -41,6 +59,71 @@ func TestRenderFieldValueColorUsesHashMarkerAndHex(t *testing.T) {
 	}
 	if strings.Contains(got, "██") {
 		t.Fatalf("color field value should not render block swatches: %q", got)
+	}
+}
+
+func TestRenderFieldValueColorKeepsHyprlandARGB(t *testing.T) {
+	c := &content{theme: testTheme()}
+	f := pkg.Field{Type: "color"}
+
+	for _, value := range []string{"0xee1a1a1a", "#0xee1a1a1a"} {
+		t.Run(value, func(t *testing.T) {
+			got := stripANSI(c.renderFieldValue(f, value, false))
+			if got != "## 0xee1a1a1a" {
+				t.Fatalf("renderFieldValue() = %q, want %q", got, "## 0xee1a1a1a")
+			}
+			if strings.Contains(got, "#0x") {
+				t.Fatalf("hyprland argb color should not be displayed as rgb hex: %q", got)
+			}
+		})
+	}
+}
+
+func TestColorRenderHexParsesAlphaFormats(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "bare rgb", value: "aabbcc", want: "#aabbcc"},
+		{name: "hash rgb", value: "#aabbcc", want: "#aabbcc"},
+		{name: "hash rgba", value: "#aabbccdd", want: "#aabbcc"},
+		{name: "hyprland argb", value: "0xee1a1a1a", want: "#1a1a1a"},
+		{name: "legacy prefixed argb", value: "#0xee1a1a1a", want: "#1a1a1a"},
+		{name: "hyprland rgb", value: "rgb(33ccff)", want: "#33ccff"},
+		{name: "hyprland rgba", value: "rgba(33ccffee)", want: "#33ccff"},
+		{name: "hyprland gradient", value: "rgba(33ccffee) rgba(00ff99ee) 45deg", want: "#33ccff"},
+		{name: "named color", value: "bright", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := colorRenderHex(tt.value); got != tt.want {
+				t.Fatalf("colorRenderHex(%q) = %q, want %q", tt.value, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatPaletteColorPreservesHyprlandAlpha(t *testing.T) {
+	tests := []struct {
+		name     string
+		template string
+		selected string
+		want     string
+	}{
+		{name: "argb", template: "0xee1a1a1a", selected: "#cba6f7", want: "0xeecba6f7"},
+		{name: "rgba", template: "rgba(1a1a1aee)", selected: "#cba6f7", want: "rgba(cba6f7ee)"},
+		{name: "rgb", template: "rgb(1a1a1a)", selected: "#cba6f7", want: "rgb(cba6f7)"},
+		{name: "gradient unchanged", template: "rgba(1a1a1aee) rgba(333333ee) 45deg", selected: "#cba6f7", want: "#cba6f7"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatPaletteColor(tt.template, tt.selected); got != tt.want {
+				t.Fatalf("formatPaletteColor(%q, %q) = %q, want %q", tt.template, tt.selected, got, tt.want)
+			}
+		})
 	}
 }
 

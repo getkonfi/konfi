@@ -195,7 +195,7 @@ func (d *detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
 	case "enum":
 		return base.Background(d.theme.Palette.Primary).Foreground(d.theme.Palette.Base)
 	case "color":
-		hex := normalizeHex(colorHex)
+		hex := colorRenderHex(colorHex)
 		if hex != "" {
 			return base.Background(lipgloss.Color(hex)).Foreground(d.theme.Palette.Base)
 		}
@@ -511,14 +511,21 @@ func (d *detail) renderTypeVisual(f *pkg.Field, width int) string {
 		if val == "" {
 			return ""
 		}
-		hex := normalizeHex(val)
+		colorVal := val
 		if d.editing {
 			if ce, ok := d.editor.(*colorEditor); ok {
-				hex = normalizeHex(ce.PreviewValue())
+				colorVal = ce.PreviewValue()
 			}
 		}
-		colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
-		return colorValue(hex) + " " + colorStyle.Render(f.Key+" = "+hex)
+		display := colorDisplayValue(colorVal)
+		if display == "" {
+			return ""
+		}
+		colorStyle := d.theme.FieldValue
+		if hex := colorRenderHex(colorVal); hex != "" {
+			colorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
+		}
+		return colorValue(colorVal) + " " + colorStyle.Render(f.Key+" = "+display)
 
 	case "number":
 		if f.Min == nil && f.Max == nil {

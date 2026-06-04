@@ -69,8 +69,10 @@ const wideLayoutMinW = 100
 // footerH is the fixed height of the bottom preview bar.
 const footerH = 1
 
+const detailPaneWidthPercent = 45
+
 // splitWidths computes the field list and detail pane widths for a horizontal split.
-// detail gets a fixed ~35%. returns detailW=0 when hidden.
+// detail gets a fixed share of the available width. returns detailW=0 when hidden.
 func (c *content) splitWidths(innerW int) (fieldW, detailW int) {
 	if c.schema == nil || c.config == nil || len(c.fields) == 0 {
 		return innerW, 0
@@ -78,7 +80,7 @@ func (c *content) splitWidths(innerW int) (fieldW, detailW int) {
 	if innerW < 50 {
 		return innerW, 0
 	}
-	detailW = innerW * 35 / 100
+	detailW = innerW * detailPaneWidthPercent / 100
 	if detailW < 20 {
 		detailW = 20
 	}
@@ -530,14 +532,16 @@ func (c *content) renderFooter(width int) string {
 			valStr = c.theme.Accent.Render(val)
 		}
 	case f.Type == "color":
-		hex := normalizeHex(val)
+		colorVal := val
+		display := colorDisplayValue(colorVal)
 		if c.detail.editing {
 			if ce, ok := c.detail.editor.(*colorEditor); ok {
-				hex = normalizeHex(ce.PreviewValue())
+				colorVal = ce.PreviewValue()
+				display = colorDisplayValue(colorVal)
 			}
 		}
-		if hex != "" {
-			valStr = colorValue(hex)
+		if display != "" {
+			valStr = colorValue(colorVal)
 		} else {
 			valStr = c.theme.Muted.Render("not set")
 		}
@@ -897,10 +901,9 @@ func (c *content) renderBody(width int) string {
 			case InlineEditor:
 				renderedVal = e.InlineView(width / 2)
 			case *colorEditor:
-				newHex := normalizeHex(e.PreviewValue())
 				renderedVal = colorValue(e.oldHex) +
 					c.theme.Muted.Render(" → ") +
-					colorValue(newHex)
+					colorValue(e.PreviewValue())
 			case *stylestringEditor:
 				renderedVal = c.theme.Accent.Render(e.PreviewValue())
 			}
@@ -1012,11 +1015,10 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 		case "bool":
 			return c.theme.FieldDefault.Render(val)
 		case "color":
-			hex := normalizeHex(val)
-			if hex == "" {
+			if colorDisplayValue(val) == "" {
 				return c.theme.FieldDefault.Render("not set")
 			}
-			return colorValue(hex)
+			return colorValue(val)
 		default:
 			return c.theme.FieldDefault.Render(val)
 		}
@@ -1026,11 +1028,10 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 	case "bool":
 		return c.theme.FieldValue.Render(val)
 	case "color":
-		hex := normalizeHex(val)
-		if hex == "" {
+		if colorDisplayValue(val) == "" {
 			return c.theme.Muted.Render("not set")
 		}
-		return colorValue(hex)
+		return colorValue(val)
 	default:
 		return c.theme.FieldValue.Render(val)
 	}
@@ -1046,7 +1047,7 @@ func (c *content) typeIconStyle(typ, colorHex string) lipgloss.Style {
 	case "enum":
 		return c.theme.Primary
 	case "color":
-		hex := normalizeHex(colorHex)
+		hex := colorRenderHex(colorHex)
 		if hex != "" {
 			return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
 		}
