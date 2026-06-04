@@ -18,6 +18,7 @@ type detail struct {
 	previewLine  int
 	previewFound bool
 	previewKey   string
+	previewGen   uint64
 	docsURL      string
 	theme        *theme.Theme
 
@@ -77,6 +78,7 @@ func (d *detail) reset() {
 	d.previewLine = -1
 	d.previewFound = false
 	d.previewKey = ""
+	d.previewGen = 0
 	d.docsURL = ""
 	d.scrollY = 0
 	d.field = nil
@@ -90,6 +92,7 @@ func (d *detail) reset() {
 // forceRescan clears the cached key so the next sync re-scans the config.
 func (d *detail) forceRescan() {
 	d.previewKey = ""
+	d.previewGen = 0
 	d.snippetLines = nil
 }
 
@@ -100,12 +103,15 @@ func (d *detail) refreshPreviewLine() {
 		d.previewLine = -1
 		d.previewFound = false
 		d.previewKey = ""
+		d.previewGen = 0
 		return
 	}
-	if f.Key == d.previewKey {
+	gen := d.config.Generation()
+	if f.Key == d.previewKey && gen == d.previewGen {
 		return
 	}
 	d.previewKey = f.Key
+	d.previewGen = gen
 	d.previewLine, d.previewFound = d.konfable.Parser().FindLine(d.config.Content(), f.Key)
 }
 
@@ -234,8 +240,6 @@ func (d *detail) viewBrowse(width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	curVal, hasCur := d.values[f.Key]
-
 	// description
 	if f.Description != "" {
 		rendered := d.renderMarkdown(f.Description, width)
@@ -265,28 +269,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	if docURL != "" {
 		linkStyle := d.theme.Secondary.Underline(true).Hyperlink(docURL)
 		b.WriteString(linkStyle.Render("docs ↗"))
-		b.WriteByte('\n')
-	}
-
-	// live config line — git-diff style (skip for color)
-	if f.Type != "color" {
-		val := f.Default
-		if hasCur {
-			val = curVal
-		}
-		keyStr := f.Key
-		sep := " = "
-		prefixLen := 2 // "─ " or "+ "
-		usedW := prefixLen + len(keyStr) + len(sep)
-		if len(val)+usedW > width && width > usedW+1 {
-			val = val[:width-usedW-1] + "…"
-		}
-		b.WriteByte('\n')
-		if hasCur {
-			b.WriteString(d.theme.Error.Render("─ ") + d.theme.PreviewHL.Render(keyStr) + d.theme.Text.Render(sep) + d.theme.Error.Render(val))
-		} else {
-			b.WriteString(d.theme.Success.Render("+ ") + d.theme.Muted.Render(keyStr+sep) + d.theme.Success.Render(val))
-		}
 		b.WriteByte('\n')
 	}
 
@@ -429,35 +411,52 @@ func (d *detail) renderStylestringPreview(val string) string {
 
 // renderFileSnippet renders the config file snippet centered on the field's line.
 func (d *detail) renderFileSnippet(width, height int) string {
-	if d.config == nil {
+	if d.config == nil || height <= 0 {
 		return ""
 	}
 
 	if !d.previewFound {
-		if d.field == nil {
-			return ""
-		}
-		val := d.field.Default
-		if v, ok := d.values[d.field.Key]; ok {
-			val = v
-		}
-		var sb strings.Builder
-		if d.field.Default != "" {
-			sb.WriteString(d.theme.Muted.Render("  " + d.field.Default))
-			sb.WriteByte('\n')
-		}
-		sb.WriteString(d.theme.Success.Render(fmt.Sprintf("+ %s = %s", d.field.Key, val)))
-		return sb.String()
+		return d.renderMissingFileSnippet(width, height)
 	}
 
+	rawLines := d.configLines()
+	return d.renderConfigSnippet(rawLines, d.previewLine, height, width, nil)
+}
+
+func (d *detail) configLines() []string {
 	if gen := d.config.Generation(); d.snippetLines == nil || d.snippetGen != gen {
 		data := d.config.Content()
 		d.snippetLines = strings.Split(string(data), "\n")
 		d.snippetGen = gen
 	}
-	rawLines := d.snippetLines
+	return d.snippetLines
+}
 
-	startLine := d.previewLine - height/2
+func (d *detail) renderMissingFileSnippet(width, height int) string {
+	if d.field == nil || d.konfable == nil || d.konfable.Parser() == nil {
+		return ""
+	}
+
+	original := d.config.Content()
+	updated, addedLine, ok := d.previewAddedContent(original)
+	if !ok {
+		return d.renderBottomWithAddedLine(width, height)
+	}
+
+	originalLines := d.configLines()
+	updatedLines := strings.Split(string(updated), "\n")
+	addedLines := insertedLineSet(originalLines, updatedLines)
+	addedLines[addedLine] = true
+
+	return d.renderConfigSnippet(updatedLines, addedLine, height, width, addedLines)
+}
+
+func (d *detail) renderConfigSnippet(rawLines []string, focusLine, height, width int, addedLines map[int]bool) string {
+	if len(rawLines) == 0 {
+		return ""
+	}
+
+	startLine := focusLine - height/2
 	if startLine < 0 {
 		startLine = 0
 	}
@@ -472,20 +471,238 @@ func (d *detail) renderFileSnippet(width, height int) string {
 
 	var b strings.Builder
 	for i := startLine; i < endLine; i++ {
-		line := rawLines[i]
-		maxW := width - 2
-		if lipgloss.Width(line) > maxW {
-			line = line[:maxW]
-		}
-
-		if i == d.previewLine {
-			b.WriteString(d.theme.Error.Render("▶ " + line))
-		} else {
-			b.WriteString(d.theme.Muted.Render("  " + line))
-		}
+		b.WriteString(d.renderConfigSnippetLine(rawLines[i], i == focusLine, addedLines[i], width))
 		if i < endLine-1 {
 			b.WriteByte('\n')
 		}
 	}
 	return b.String()
+}
+
+func (d *detail) renderConfigSnippetLine(line string, focused, added bool, width int) string {
+	maxW := width - 2
+	if maxW < 1 {
+		maxW = 1
+	}
+	line = truncate(line, maxW)
+
+	switch {
+	case added:
+		return d.theme.Success.Render("+ ") + d.renderHighlightedConfigLine(line, d.theme.Success)
+	case focused:
+		return d.theme.Primary.Render("▶ ") + d.renderHighlightedConfigLine(line, d.theme.Text)
+	default:
+		return d.theme.Muted.Render("  " + line)
+	}
+}
+
+func (d *detail) renderHighlightedConfigLine(line string, base lipgloss.Style) string {
+	if d.field == nil {
+		return base.Render(line)
+	}
+
+	start, end := findKeySpan(line, d.field.Key)
+	if start < 0 {
+		return d.theme.PreviewHL.Render(line)
+	}
+
+	valueStart := findValueStart(line, end)
+	var b strings.Builder
+	b.WriteString(base.Render(line[:start]))
+	b.WriteString(d.theme.PreviewHL.Render(line[start:end]))
+	if valueStart >= 0 {
+		b.WriteString(base.Render(line[end:valueStart]))
+		b.WriteString(d.theme.Accent.Render(line[valueStart:]))
+	} else {
+		b.WriteString(base.Render(line[end:]))
+	}
+	return b.String()
+}
+
+func findKeySpan(line, key string) (int, int) {
+	searchEnd := len(line)
+	if sep := firstSeparatorIndex(line); sep >= 0 {
+		searchEnd = sep
+	}
+	search := line[:searchEnd]
+
+	for _, candidate := range keyCandidates(key) {
+		if candidate == "" {
+			continue
+		}
+		idx := strings.Index(search, candidate)
+		if idx < 0 {
+			idx = strings.Index(strings.ToLower(search), strings.ToLower(candidate))
+		}
+		if idx < 0 {
+			continue
+		}
+		start := idx
+		end := idx + len(candidate)
+		if start > 0 && end < len(line) && line[start-1] == '"' && line[end] == '"' {
+			start--
+			end++
+		}
+		return start, end
+	}
+
+	return -1, -1
+}
+
+func keyCandidates(key string) []string {
+	candidates := []string{key}
+	if idx := strings.LastIndexByte(key, '.'); idx >= 0 && idx < len(key)-1 {
+		candidates = append(candidates, key[idx+1:])
+	}
+	if idx := strings.LastIndexByte(key, '/'); idx >= 0 && idx < len(key)-1 {
+		candidates = append(candidates, key[idx+1:])
+	}
+
+	out := candidates[:0]
+	seen := make(map[string]bool, len(candidates))
+	for _, candidate := range candidates {
+		if candidate == "" || seen[candidate] {
+			continue
+		}
+		seen[candidate] = true
+		out = append(out, candidate)
+	}
+	return out
+}
+
+func firstSeparatorIndex(line string) int {
+	eq := strings.IndexByte(line, '=')
+	colon := strings.IndexByte(line, ':')
+	switch {
+	case eq >= 0 && colon >= 0:
+		return min(eq, colon)
+	case eq >= 0:
+		return eq
+	case colon >= 0:
+		return colon
+	default:
+		return -1
+	}
+}
+
+func findValueStart(line string, keyEnd int) int {
+	if keyEnd < 0 || keyEnd >= len(line) {
+		return -1
+	}
+	start := keyEnd
+	for start < len(line) && (line[start] == ' ' || line[start] == '\t') {
+		start++
+	}
+	if start < len(line) && (line[start] == '=' || line[start] == ':') {
+		start++
+		for start < len(line) && (line[start] == ' ' || line[start] == '\t') {
+			start++
+		}
+		return start
+	}
+	if start == keyEnd || start >= len(line) {
+		return -1
+	}
+	return start
+}
+
+func (d *detail) previewAddedContent(data []byte) ([]byte, int, bool) {
+	p := d.konfable.Parser()
+	value := d.fieldValue()
+
+	var (
+		updated []byte
+		err     error
+	)
+	if d.field.Type == "list" {
+		if mvp, ok := p.(konfables.MultiValueParser); ok {
+			updated, err = mvp.SetValues(data, d.field.Key, splitListValue(value))
+		}
+	}
+	if updated == nil && err == nil {
+		updated, err = p.SetValue(data, d.field.Key, d.serializedFieldValue(value))
+	}
+	if err != nil {
+		return nil, -1, false
+	}
+
+	line, found := p.FindLine(updated, d.field.Key)
+	if !found {
+		return nil, -1, false
+	}
+	return updated, line, true
+}
+
+func (d *detail) fieldValue() string {
+	if d.field == nil {
+		return ""
+	}
+	if v, ok := d.values[d.field.Key]; ok {
+		return v
+	}
+	return d.field.Default
+}
+
+func (d *detail) serializedFieldValue(value string) string {
+	if d.field == nil {
+		return value
+	}
+	switch d.field.Widget {
+	case "hook", "togglemap", "structlist":
+		return value
+	}
+	format := ""
+	if d.konfable != nil {
+		format = d.konfable.Info().Format
+	}
+	return formatValue(value, d.field.Type, format)
+}
+
+func (d *detail) renderBottomWithAddedLine(width, height int) string {
+	lines := d.configLines()
+	if len(lines) == 0 {
+		lines = []string{""}
+	}
+	added := d.fallbackAddedLine()
+
+	tailH := height - 1
+	if tailH < 0 {
+		tailH = 0
+	}
+	start := len(lines) - tailH
+	if start < 0 {
+		start = 0
+	}
+
+	var b strings.Builder
+	for i := start; i < len(lines); i++ {
+		b.WriteString(d.renderConfigSnippetLine(lines[i], false, false, width))
+		if i < len(lines)-1 || added != "" {
+			b.WriteByte('\n')
+		}
+	}
+	if added != "" {
+		b.WriteString(d.renderConfigSnippetLine(added, false, true, width))
+	}
+	return b.String()
+}
+
+func (d *detail) fallbackAddedLine() string {
+	if d.field == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s = %s", d.field.Key, d.serializedFieldValue(d.fieldValue()))
+}
+
+func insertedLineSet(original, updated []string) map[int]bool {
+	added := make(map[int]bool)
+	oi := 0
+	for ui, line := range updated {
+		if oi < len(original) && line == original[oi] {
+			oi++
+			continue
+		}
+		added[ui] = true
+	}
+	return added
 }
