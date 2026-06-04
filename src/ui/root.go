@@ -264,16 +264,15 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// palette intercepts ALL input when visible
 	if r.palette.Visible() {
-		switch msg.(type) {
+		switch msg := msg.(type) {
 		case tea.KeyPressMsg:
 			p, cmd := r.palette.Update(msg)
 			r.palette = p
 			return r, cmd
 		case PaletteSelectedMsg:
-			sel := msg.(PaletteSelectedMsg)
 			r.palette.Close()
 			// re-dispatch the inner action
-			return r.Update(sel.Action)
+			return r.Update(msg.Action)
 		case PaletteClosedMsg:
 			r.palette.Close()
 			return r, nil
@@ -687,7 +686,8 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "e":
 			if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
-				return r, r.openInEditor()
+				cmd := r.openInEditor()
+				return r, cmd
 			}
 
 		case "m":
@@ -751,7 +751,8 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case OpenEditorMsg:
 		if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
-			return r, r.openInEditor()
+			cmd := r.openInEditor()
+			return r, cmd
 		}
 		return r, nil
 
@@ -775,13 +776,14 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// find the visible row matching this field index
 		for vi, row := range r.content.visible {
-			if !row.isSection && row.fieldIdx == msg.FieldIdx {
-				r.content.cursor = vi
-				r.content.syncDetail()
-				r.focusPane(paneContent)
-				r.updateHints()
-				break
+			if row.isSection || row.fieldIdx != msg.FieldIdx {
+				continue
 			}
+			r.content.cursor = vi
+			r.content.syncDetail()
+			r.focusPane(paneContent)
+			r.updateHints()
+			break
 		}
 		return r, nil
 
@@ -970,11 +972,12 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 	case fileStateClearMsg:
-		if r.previewing {
+		switch {
+		case r.previewing:
 			r.content.fileState = "previewing"
-		} else if r.content.config != nil && r.content.config.Dirty() {
+		case r.content.config != nil && r.content.config.Dirty():
 			r.content.fileState = "unsaved"
-		} else {
+		default:
 			r.content.fileState = ""
 		}
 		return r, nil
@@ -1393,62 +1396,64 @@ func (r *root) buildPaletteItems() []PaletteItem {
 	}
 
 	// actions
-	items = append(items, PaletteItem{
-		Label:      "Save",
-		Shortcut:   "ctrl+s",
-		Category:   "action",
-		MatchTerms: "save write",
-		Action:     SaveMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "Undo",
-		Shortcut:   "ctrl+z",
-		Category:   "action",
-		MatchTerms: "undo revert",
-		Action:     UndoMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "Redo",
-		Shortcut:   "ctrl+y",
-		Category:   "action",
-		MatchTerms: "redo repeat",
-		Action:     RedoMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "Toggle Configured Filter",
-		Shortcut:   "f",
-		Category:   "action",
-		MatchTerms: "filter configured only",
-		Action:     ToggleFilterMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "Cycle Theme",
-		Shortcut:   "t",
-		Category:   "action",
-		MatchTerms: "theme cycle color palette",
-		Action:     CycleThemeMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "What's New",
-		Shortcut:   "w",
-		Category:   "action",
-		MatchTerms: "new version fields",
-		Action:     ToggleNewMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "Open in $EDITOR",
-		Shortcut:   "e",
-		Category:   "action",
-		MatchTerms: "editor vim nvim external",
-		Action:     OpenEditorMsg{},
-	})
-	items = append(items, PaletteItem{
-		Label:      "Help",
-		Shortcut:   "?",
-		Category:   "action",
-		MatchTerms: "help keybindings shortcuts",
-		Action:     ToggleHelpMsg{},
-	})
+	items = append(items,
+		PaletteItem{
+			Label:      "Save",
+			Shortcut:   "ctrl+s",
+			Category:   "action",
+			MatchTerms: "save write",
+			Action:     SaveMsg{},
+		},
+		PaletteItem{
+			Label:      "Undo",
+			Shortcut:   "ctrl+z",
+			Category:   "action",
+			MatchTerms: "undo revert",
+			Action:     UndoMsg{},
+		},
+		PaletteItem{
+			Label:      "Redo",
+			Shortcut:   "ctrl+y",
+			Category:   "action",
+			MatchTerms: "redo repeat",
+			Action:     RedoMsg{},
+		},
+		PaletteItem{
+			Label:      "Toggle Configured Filter",
+			Shortcut:   "f",
+			Category:   "action",
+			MatchTerms: "filter configured only",
+			Action:     ToggleFilterMsg{},
+		},
+		PaletteItem{
+			Label:      "Cycle Theme",
+			Shortcut:   "t",
+			Category:   "action",
+			MatchTerms: "theme cycle color palette",
+			Action:     CycleThemeMsg{},
+		},
+		PaletteItem{
+			Label:      "What's New",
+			Shortcut:   "w",
+			Category:   "action",
+			MatchTerms: "new version fields",
+			Action:     ToggleNewMsg{},
+		},
+		PaletteItem{
+			Label:      "Open in $EDITOR",
+			Shortcut:   "e",
+			Category:   "action",
+			MatchTerms: "editor vim nvim external",
+			Action:     OpenEditorMsg{},
+		},
+		PaletteItem{
+			Label:      "Help",
+			Shortcut:   "?",
+			Category:   "action",
+			MatchTerms: "help keybindings shortcuts",
+			Action:     ToggleHelpMsg{},
+		},
+	)
 
 	if r.installed["claude"] {
 		items = append(items, PaletteItem{
@@ -1473,7 +1478,8 @@ func (r *root) buildFieldItems() []PaletteItem {
 		app = r.content.konfable.Name()
 	}
 	items := make([]PaletteItem, 0, len(r.content.fields))
-	for i, f := range r.content.fields {
+	for i := range r.content.fields {
+		f := &r.content.fields[i]
 		section := ""
 		if r.content.schema != nil && i < len(r.content.fieldSection) {
 			si := r.content.fieldSection[i]
@@ -1599,9 +1605,9 @@ func (r *root) renderDiffPreview() string {
 
 // computeNewCounts counts fields with a `since` matching the detected version per app.
 // also populates a schema cache to avoid re-parsing in loadApp.
-func computeNewCounts(allK []konfables.Konfable, versions map[string]string) (map[string]int, map[string]*pkg.Schema) {
-	counts := make(map[string]int)
-	cache := make(map[string]*pkg.Schema)
+func computeNewCounts(allK []konfables.Konfable, versions map[string]string) (counts map[string]int, cache map[string]*pkg.Schema) {
+	counts = make(map[string]int)
+	cache = make(map[string]*pkg.Schema)
 	for _, k := range allK {
 		schemaData, err := k.Schema()
 		if err != nil || schemaData == nil {

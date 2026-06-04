@@ -94,9 +94,8 @@ func (e *fontEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		e.refilter()
 		// position cursor on the current font
 		if e.val != "" {
-			lower := strings.ToLower(e.val)
 			for i, name := range e.filtered {
-				if strings.ToLower(name) == lower {
+				if strings.EqualFold(name, e.val) {
 					e.cursor = i
 					e.scrollToCursor()
 					break

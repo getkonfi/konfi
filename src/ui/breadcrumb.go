@@ -35,7 +35,6 @@ func (b *breadcrumb) View() string {
 	}
 
 	sep := b.theme.Muted.Render(" > ")
-	sepW := lipgloss.Width(sep)
 
 	appStr := b.theme.Primary.Render(b.app)
 	secStr := b.theme.Text.Render(b.section)
@@ -58,7 +57,6 @@ func (b *breadcrumb) View() string {
 	// truncate from the left if too wide
 	if b.width > 0 && lipgloss.Width(line) > b.width {
 		ellipsis := b.theme.Muted.Render("…")
-		ellW := lipgloss.Width(ellipsis)
 
 		// try dropping leading segments until it fits
 		for len(parts) > 1 {
@@ -71,10 +69,6 @@ func (b *breadcrumb) View() string {
 		}
 		// last resort: single segment with ellipsis
 		if len(parts) == 1 && lipgloss.Width(ellipsis+parts[0]) > b.width {
-			avail := b.width - ellW - sepW
-			if avail < 1 {
-				avail = 1
-			}
 			line = ellipsis + parts[0]
 		}
 	}

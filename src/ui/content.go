@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/eminert/konfi/konfables"
 	"github.com/eminert/konfi/pkg"
@@ -385,7 +386,8 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			// type-through: printable chars seed a new editor in replace mode
 			if f := c.currentField(); f != nil && msg.Text != "" {
 				if f.Type != "bool" && f.Type != "enum" && f.Type != "list" && f.Type != "multi" && f.Widget == "" {
-					cmd := c.openEditorWithSeed([]rune(msg.Text)[0])
+					r, _ := utf8.DecodeRuneInString(msg.Text)
+					cmd := c.openEditorWithSeed(r)
 					return c, cmd
 				}
 			}
@@ -962,9 +964,10 @@ func (c *content) refreshValues() {
 	data := c.config.Content()
 
 	// batch lookup: single pass over the file when supported
-	if bmp, ok := p.(konfables.BatchMultiParser); ok {
+	switch p := p.(type) {
+	case konfables.BatchMultiParser:
 		// flat parsers with repeated keys (ghostty keybind, palette)
-		singles, multi := bmp.FindAllMulti(data)
+		singles, multi := p.FindAllMulti(data)
 		for _, sec := range c.schema.Sections {
 			for i := range sec.Fields {
 				f := &sec.Fields[i]
@@ -975,8 +978,8 @@ func (c *content) refreshValues() {
 				}
 			}
 		}
-	} else if bp, ok := p.(konfables.BatchParser); ok {
-		all := bp.FindAll(data)
+	case konfables.BatchParser:
+		all := p.FindAll(data)
 		for _, sec := range c.schema.Sections {
 			for i := range sec.Fields {
 				if v, found := all[sec.Fields[i].Key]; found {
@@ -984,7 +987,7 @@ func (c *content) refreshValues() {
 				}
 			}
 		}
-	} else {
+	default:
 		// fallback: per-field lookup
 		mvp, hasMVP := p.(konfables.MultiValueParser)
 		for _, sec := range c.schema.Sections {

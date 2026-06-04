@@ -203,15 +203,18 @@ func (r *mdRenderer) render(doc ast.Node, source []byte) string {
 func (r *mdRenderer) collectText(n ast.Node, source []byte) string {
 	var b strings.Builder
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-		if t, ok := c.(*ast.Text); ok {
-			b.Write(t.Segment.Value(source))
-			if t.SoftLineBreak() {
+		switch c := c.(type) {
+		case *ast.Text:
+			b.Write(c.Segment.Value(source))
+			if c.SoftLineBreak() {
 				b.WriteByte(' ')
 			}
-		} else if s, ok := c.(*ast.String); ok {
-			b.Write(s.Value)
-		} else if c.HasChildren() {
-			b.WriteString(r.collectText(c, source))
+		case *ast.String:
+			b.Write(c.Value)
+		default:
+			if c.HasChildren() {
+				b.WriteString(r.collectText(c, source))
+			}
 		}
 	}
 	return b.String()

@@ -330,13 +330,13 @@ func (c *content) renderDashboard(width int) string {
 	// app list
 	var installed, notInstalled []dashboardApp
 	var totalDeprecated, totalNew int
-	for _, a := range c.dashboardApps {
-		if a.installed {
-			installed = append(installed, a)
-			totalDeprecated += a.deprecatedCount
-			totalNew += a.newCount
+	for i := range c.dashboardApps {
+		if c.dashboardApps[i].installed {
+			installed = append(installed, c.dashboardApps[i])
+			totalDeprecated += c.dashboardApps[i].deprecatedCount
+			totalNew += c.dashboardApps[i].newCount
 		} else {
-			notInstalled = append(notInstalled, a)
+			notInstalled = append(notInstalled, c.dashboardApps[i])
 		}
 	}
 
@@ -382,17 +382,17 @@ func (c *content) renderDashboard(width int) string {
 
 	// compute column widths across both groups for alignment
 	nameW, verW := 0, 0
-	for _, a := range installed {
-		if len(a.name) > nameW {
-			nameW = len(a.name)
+	for i := range installed {
+		if len(installed[i].name) > nameW {
+			nameW = len(installed[i].name)
 		}
-		if len(a.version) > verW {
-			verW = len(a.version)
+		if len(installed[i].version) > verW {
+			verW = len(installed[i].version)
 		}
 	}
-	for _, a := range notInstalled {
-		if len(a.name) > nameW {
-			nameW = len(a.name)
+	for i := range notInstalled {
+		if len(notInstalled[i].name) > nameW {
+			nameW = len(notInstalled[i].name)
 		}
 	}
 
@@ -408,7 +408,8 @@ func (c *content) renderDashboard(width int) string {
 		}
 		hdr := c.theme.Muted.Render(label + strings.Repeat("─", pad))
 		lines = append(lines, hdr)
-		for _, a := range installed {
+		for i := range installed {
+			a := &installed[i]
 			icon := c.theme.Primary.Render(a.icon)
 			name := c.theme.Text.Render(" " + padRight(a.name, nameW))
 			ver := strings.Repeat(" ", verW+2)
@@ -430,15 +431,17 @@ func (c *content) renderDashboard(width int) string {
 		}
 		hdr := c.theme.Muted.Render(label + strings.Repeat("─", pad))
 		lines = append(lines, hdr)
-		for _, a := range notInstalled {
+		for i := range notInstalled {
+			a := &notInstalled[i]
 			icon := c.theme.Muted.Faint(true).Render(a.icon)
 			name := c.theme.Muted.Faint(true).Render(" " + padRight(a.name, nameW))
 			ver := ""
-			if a.minAppVersion != "" && a.maxAppVersion != "" {
+			switch {
+			case a.minAppVersion != "" && a.maxAppVersion != "":
 				ver = fmt.Sprintf("  %s – %s", a.minAppVersion, a.maxAppVersion)
-			} else if a.minAppVersion != "" {
+			case a.minAppVersion != "":
 				ver = fmt.Sprintf("  %s+", a.minAppVersion)
-			} else if a.maxAppVersion != "" {
+			case a.maxAppVersion != "":
 				ver = fmt.Sprintf("  up to %s", a.maxAppVersion)
 			}
 			if ver != "" {
@@ -652,13 +655,14 @@ func (c *content) View() string {
 		if c.detail.editing && c.detail.editor != nil {
 			if _, ok := c.detail.editor.(InlineEditor); !ok {
 				// for list/hook editors, track the active cursor, not the editor bottom
-				if le, ok := c.detail.editor.(*listEditor); ok {
-					cursorBottom += le.cursorOffset() + 1
-				} else if he, ok := c.detail.editor.(*hookEditor); ok {
-					cursorBottom += he.cursorOffset() + 1
-				} else if se, ok := c.detail.editor.(*structListEditor); ok {
-					cursorBottom += se.cursorOffset() + 1
-				} else {
+				switch editor := c.detail.editor.(type) {
+				case *listEditor:
+					cursorBottom += editor.cursorOffset() + 1
+				case *hookEditor:
+					cursorBottom += editor.cursorOffset() + 1
+				case *structListEditor:
+					cursorBottom += editor.cursorOffset() + 1
+				default:
 					cursorBottom += c.detail.editor.Height() + 1
 				}
 			}
@@ -1060,7 +1064,7 @@ func centerBlock(block string, width int) string {
 
 // dashboardStats formats the actionable stats suffix for a dashboard app.
 // configured count is omitted — sort order communicates engagement.
-func (c *content) dashboardStats(a dashboardApp) string {
+func (c *content) dashboardStats(a *dashboardApp) string {
 	var parts []string
 	if a.newCount > 0 {
 		parts = append(parts, fmt.Sprintf("%d new", a.newCount))

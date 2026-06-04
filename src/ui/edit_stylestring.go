@@ -16,7 +16,7 @@ var stylestringRe = regexp.MustCompile(`^\[(.+?)\]\((.+?)\)$`)
 
 // parseStyleString extracts symbol and style from "[symbol](style)".
 // returns (raw, "") if the format doesn't match.
-func parseStyleString(s string) (string, string) {
+func parseStyleString(s string) (symbol, style string) {
 	m := stylestringRe.FindStringSubmatch(strings.TrimSpace(s))
 	if m == nil {
 		return s, ""
@@ -185,11 +185,12 @@ func (e *stylestringEditor) View(width int) string {
 		var symCell string
 		if i < len(e.symbols) {
 			sym := e.symbols[i]
-			if i == e.symCursor && e.pane == 0 {
+			switch {
+			case i == e.symCursor && e.pane == 0:
 				symCell = e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(sym)
-			} else if i == e.symCurrent {
+			case i == e.symCurrent:
 				symCell = "  " + e.th.Accent.Render(sym)
-			} else {
+			default:
 				symCell = "  " + e.th.Subtext.Render(sym)
 			}
 		}
@@ -198,11 +199,12 @@ func (e *stylestringEditor) View(width int) string {
 		var styLeftCell string
 		if i < half {
 			sty := e.styles[i]
-			if i == e.styCursor && e.pane == 1 {
+			switch {
+			case i == e.styCursor && e.pane == 1:
 				styLeftCell = e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(sty)
-			} else if i == e.styCurrent {
+			case i == e.styCurrent:
 				styLeftCell = "  " + e.th.Accent.Render(sty)
-			} else {
+			default:
 				styLeftCell = "  " + e.th.Subtext.Render(sty)
 			}
 		}
@@ -212,11 +214,12 @@ func (e *stylestringEditor) View(width int) string {
 		ri := half + i
 		if ri < len(e.styles) {
 			sty := e.styles[ri]
-			if ri == e.styCursor && e.pane == 2 {
+			switch {
+			case ri == e.styCursor && e.pane == 2:
 				styRightCell = e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(sty)
-			} else if ri == e.styCurrent {
+			case ri == e.styCurrent:
 				styRightCell = "  " + e.th.Accent.Render(sty)
-			} else {
+			default:
 				styRightCell = "  " + e.th.Subtext.Render(sty)
 			}
 		}

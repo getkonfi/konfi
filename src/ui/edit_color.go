@@ -64,7 +64,8 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 		}
 	}
 
-	for _, pal := range ordered {
+	for i := range ordered {
+		pal := &ordered[i]
 		var group []theme.PaletteHex
 		for _, ph := range pal.Hexes() {
 			if !existing[ph.Hex] {
