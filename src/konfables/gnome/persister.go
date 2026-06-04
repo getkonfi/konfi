@@ -58,7 +58,7 @@ func NewPersister() pkg.Persister {
 }
 
 // splitFlatKey splits "org.gnome.desktop.interface/color-scheme" into (schema, key, true).
-func splitFlatKey(flat string) (string, string, bool) {
+func splitFlatKey(flat string) (schema, key string, ok bool) {
 	idx := strings.LastIndex(flat, "/")
 	if idx < 0 {
 		return "", "", false

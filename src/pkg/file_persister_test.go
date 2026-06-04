@@ -77,7 +77,7 @@ func TestFilePersisterLoadMissingNoDefault(t *testing.T) {
 	if len(data) != 0 {
 		t.Errorf("missing file with no default should return empty bytes, got %q", data)
 	}
-	// the load itself must not create the file — first Save is what materialises it.
+	// the load itself must not create the file — first Save is what materializes it.
 	if FileExists(path) {
 		t.Error("Load must not create the file when no default is set")
 	}

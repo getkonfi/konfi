@@ -563,7 +563,7 @@ func appendHostRowDirectives(out []string, row hostRow, indent string) []string 
 	return out
 }
 
-func appendMissingHostRows(out []string, order []string, rows map[string]hostRow, used map[string]bool) []string {
+func appendMissingHostRows(out, order []string, rows map[string]hostRow, used map[string]bool) []string {
 	if len(out) == 1 && out[0] == "" {
 		out = out[:0]
 	}

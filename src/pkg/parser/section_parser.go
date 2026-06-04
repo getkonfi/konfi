@@ -7,7 +7,7 @@ type KeySplitter func(key string) (section, field string)
 
 // SplitKeyLast splits at the last dot: "a.b.c" → ("a.b", "c").
 // use for TOML configs with dotted section headers (alacritty, helix, rio).
-func SplitKeyLast(key string) (string, string) {
+func SplitKeyLast(key string) (section, field string) {
 	idx := strings.LastIndexByte(key, '.')
 	if idx < 0 {
 		return "", key
@@ -17,7 +17,7 @@ func SplitKeyLast(key string) (string, string) {
 
 // SplitKeyFirst splits at the first dot: "a.b" → ("a", "b").
 // use for INI-style configs with flat section names (git, starship, pacman).
-func SplitKeyFirst(key string) (string, string) {
+func SplitKeyFirst(key string) (section, field string) {
 	section, field, found := strings.Cut(key, ".")
 	if !found {
 		return "", key

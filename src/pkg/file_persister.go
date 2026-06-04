@@ -51,7 +51,7 @@ func NewFilePersister(path string, opts ...FilePersisterOption) *FilePersister {
 }
 
 // Load reads the file from disk.
-// if the file is missing and defaultContent is set, materialises it on disk first.
+// if the file is missing and defaultContent is set, materializes it on disk first.
 // if missing with no defaultContent, returns empty bytes (no error) so the konfable is
 // editable as a brand-new config; the first Save will create the file on disk.
 func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {

@@ -95,7 +95,7 @@ func toGVariant(s string) string {
 		return s
 	}
 	// already a GVariant array/tuple (starts with [ or @)
-	if len(s) > 0 && (s[0] == '[' || s[0] == '@' || s[0] == '(') {
+	if s != "" && (s[0] == '[' || s[0] == '@' || s[0] == '(') {
 		return s
 	}
 	// wrap plain strings

@@ -11,7 +11,7 @@ type LineSplitter func(s string) (key, value string, ok bool)
 type LineFormatter func(key, value string) string
 
 // SplitEquals splits on "=" and trims whitespace: "key = value" → ("key", "value").
-func SplitEquals(s string) (string, string, bool) {
+func SplitEquals(s string) (key, value string, ok bool) {
 	k, v, found := strings.Cut(s, "=")
 	if !found {
 		return "", "", false
@@ -20,7 +20,7 @@ func SplitEquals(s string) (string, string, bool) {
 }
 
 // SplitEqualsOrSpace splits on "=" first, falling back to space-separated "key value".
-func SplitEqualsOrSpace(s string) (string, string, bool) {
+func SplitEqualsOrSpace(s string) (key, value string, ok bool) {
 	if k, v, found := strings.Cut(s, "="); found {
 		k = strings.TrimSpace(k)
 		if k != "" && !strings.ContainsRune(k, ' ') {
@@ -38,7 +38,7 @@ func SplitEqualsOrSpace(s string) (string, string, bool) {
 }
 
 // SplitColon splits on ":" and trims: "key: value" → ("key", "value").
-func SplitColon(s string) (string, string, bool) {
+func SplitColon(s string) (key, value string, ok bool) {
 	k, v, found := strings.Cut(s, ":")
 	if !found {
 		return "", "", false
@@ -47,7 +47,7 @@ func SplitColon(s string) (string, string, bool) {
 }
 
 // SplitSpacedEquals splits on " = " (space-equals-space): "key = value" → ("key", "value").
-func SplitSpacedEquals(s string) (string, string, bool) {
+func SplitSpacedEquals(s string) (key, value string, ok bool) {
 	k, v, found := strings.Cut(s, " = ")
 	if !found {
 		return "", "", false
@@ -176,16 +176,17 @@ func (p *FlatParser) FindAllMulti(data []byte) (singles map[string]string, multi
 			continue
 		}
 		count[k]++
-		if count[k] == 1 {
+		switch count[k] {
+		case 1:
 			singles[k] = v
-		} else if count[k] == 2 {
+		case 2:
 			// promote to multi
 			if multi == nil {
 				multi = make(map[string][]string)
 			}
 			multi[k] = []string{singles[k], v}
 			delete(singles, k)
-		} else {
+		default:
 			multi[k] = append(multi[k], v)
 		}
 	}

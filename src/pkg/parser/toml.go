@@ -165,9 +165,10 @@ func findInlineComment(s string) int {
 	for i := 0; i < len(s); i++ {
 		ch := s[i]
 		if inQuote != 0 {
-			if ch == '\\' {
+			switch ch {
+			case '\\':
 				i++ // skip escaped char
-			} else if ch == inQuote {
+			case inQuote:
 				inQuote = 0
 			}
 			continue

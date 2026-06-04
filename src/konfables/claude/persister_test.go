@@ -487,7 +487,7 @@ func TestSaveNestedKeyToCorrectTier(t *testing.T) {
 func TestIntegration3Tier(t *testing.T) {
 	global, local, project := setupTiers(t)
 	ctx := context.Background()
-	parser := &parser.JSONParser{}
+	jsonParser := &parser.JSONParser{}
 
 	// --- fixtures: 3 tiers with overlapping keys ---
 	writeJSON(t, global, map[string]any{
@@ -514,17 +514,17 @@ func TestIntegration3Tier(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 
-	val, ok := parser.FindValue(data, "effortLevel")
+	val, ok := jsonParser.FindValue(data, "effortLevel")
 	if !ok || val != "max" {
 		t.Fatalf("merged effortLevel = %q, want max", val)
 	}
 
-	vals, ok := parser.FindValues(data, "permissions.allow")
+	vals, ok := jsonParser.FindValues(data, "permissions.allow")
 	if !ok || len(vals) != 1 || vals[0] != "Bash(*)" {
 		t.Fatalf("merged permissions.allow = %v, want [Bash(*)]", vals)
 	}
 
-	val, ok = parser.FindValue(data, "model")
+	val, ok = jsonParser.FindValue(data, "model")
 	if !ok || val != "opus" {
 		t.Fatalf("merged model = %q, want opus", val)
 	}
@@ -544,7 +544,7 @@ func TestIntegration3Tier(t *testing.T) {
 	original := make([]byte, len(data))
 	copy(original, data)
 
-	data, err = parser.SetValues(data, "permissions.allow", []string{"Bash(*)", "Write"})
+	data, err = jsonParser.SetValues(data, "permissions.allow", []string{"Bash(*)", "Write"})
 	if err != nil {
 		t.Fatalf("SetValues: %v", err)
 	}
@@ -586,7 +586,7 @@ func TestIntegration3Tier(t *testing.T) {
 	original = make([]byte, len(data))
 	copy(original, data)
 
-	data, err = parser.DeleteKey(data, "effortLevel")
+	data, err = jsonParser.DeleteKey(data, "effortLevel")
 	if err != nil {
 		t.Fatalf("DeleteKey: %v", err)
 	}
@@ -617,7 +617,7 @@ func TestIntegration3Tier(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load after delete: %v", err)
 	}
-	val, ok = parser.FindValue(reloaded, "effortLevel")
+	val, ok = jsonParser.FindValue(reloaded, "effortLevel")
 	if !ok || val != "high" {
 		t.Fatalf("after delete+reload, effortLevel = %q, want high", val)
 	}
