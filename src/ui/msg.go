@@ -127,23 +127,5 @@ type appLoadedMsg struct {
 	appName string // guards against stale loads after app switch
 }
 
-// AskOpenMsg opens the AI ask overlay (from palette or keybind).
-type AskOpenMsg struct{}
-
-// AskResultMsg delivers results from the claude subprocess.
-type AskResultMsg struct {
-	Results []pkg.AISuggestion
-	Err     error
-}
-
-// AskJumpMsg requests cross-app navigation to a specific field.
-type AskJumpMsg struct {
-	App string
-	Key string
-}
-
-// askSpinnerTickMsg advances the loading spinner.
-type askSpinnerTickMsg struct{ gen int }
-
 // postSaveReloadMsg is sent when the post-save reload command completes.
 type postSaveReloadMsg struct{ err error }

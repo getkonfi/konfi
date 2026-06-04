@@ -38,6 +38,13 @@ type navEntry struct {
 	appIndex int
 }
 
+type dirtyConfigState struct {
+	config     *pkg.ConfigFile
+	origValues map[string]string
+	undoStack  *UndoStack
+	fileState  string
+}
+
 type root struct {
 	app           *setup.App
 	sidebar       sidebar
@@ -68,12 +75,11 @@ type root struct {
 	// per-app count of "new" fields (since == detected version)
 	newCounts map[string]int
 
+	// unsaved per-app working copies kept while browsing other apps
+	dirtyConfigs map[string]dirtyConfigState
+
 	// cached parsed schemas — populated by computeNewCounts, reused by loadApp
 	schemaCache map[string]*pkg.Schema
-
-	// AI ask overlay
-	ask         askOverlay
-	pendingJump *pendingJump // deferred field jump after cross-app AI navigation
 
 	// diff confirmation overlay before saving
 	showDiffPreview bool
@@ -83,11 +89,6 @@ type root struct {
 
 	// program ref for sending messages from outside the event loop
 	program *tea.Program
-}
-
-// pendingJump stores a deferred field navigation for after an app load completes.
-type pendingJump struct {
-	fieldKey string
 }
 
 // ProgramSetter allows main to inject the tea.Program after creation.
@@ -234,7 +235,6 @@ func NewRoot(app *setup.App) tea.Model {
 	}
 	st := newStatusbar(th)
 	pal := newPalette(th)
-	ask := newAskOverlay(th, schemaCache)
 
 	r := &root{
 		app:          app,
@@ -242,12 +242,12 @@ func NewRoot(app *setup.App) tea.Model {
 		content:      ct,
 		status:       st,
 		palette:      pal,
-		ask:          ask,
 		focus:        paneSidebar,
 		mode:         ModeNormal,
 		allKonfables: allK,
 		installed:    installed,
 		newCounts:    newCounts,
+		dirtyConfigs: make(map[string]dirtyConfigState),
 		schemaCache:  schemaCache,
 	}
 	r.sidebar.focused = true
@@ -279,38 +279,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			p, cmd := r.palette.Update(msg)
 			r.palette = p
-			return r, cmd
-		}
-	}
-
-	// ask overlay intercepts ALL input when visible
-	if r.ask.Visible() {
-		var cmd tea.Cmd
-		switch jump := msg.(type) {
-		case AskJumpMsg:
-			r.ask.Close()
-			// same-app: jump directly
-			if r.content.konfable != nil && r.content.konfable.Name() == jump.App {
-				r.content.jumpToFieldByKey(jump.Key)
-				r.focusPane(paneContent)
-				r.updateHints()
-				return r, nil
-			}
-			// cross-app: select app, store pending jump
-			for i, k := range r.allKonfables {
-				if k.Name() != jump.App {
-					continue
-				}
-				r.pendingJump = &pendingJump{fieldKey: jump.Key}
-				r.pushNav()
-				r.sidebar.setCursorToApp(i)
-				cmd = r.content.loadApp(r.allKonfables[i])
-				r.focusPane(paneContent)
-				return r, cmd
-			}
-			return r, nil
-		default:
-			r.ask, cmd = r.ask.Update(msg)
 			return r, cmd
 		}
 	}
@@ -458,9 +426,8 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// reset confirm-switch on keys that aren't navigation
 		switch msg.String() {
-		case "1", "2", "3", "4", "5", "6", "7", "8", "9",
-			"ctrl+n", "ctrl+p", "ctrl+o", "ctrl+]",
-			"enter", "space", "j", "k", "up", "down":
+		case "ctrl+n", "ctrl+p", "ctrl+o", "ctrl+]",
+			"enter", "space", "j", "k", "up", "down", "right":
 			// keep confirmSwitch alive for navigation keys
 		default:
 			r.confirmSwitch = false
@@ -512,27 +479,37 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.status.status = "no changes"
 			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg { return fileStateClearMsg{} })
 
-		case "tab":
-			r.cyclePane()
+		case ".":
+			r.toggleConfiguredFilter()
 			return r, nil
 
-		case "shift+tab":
-			r.cyclePane()
-			return r, nil
+		case "tab":
+			if r.focus == paneContent && !r.content.detailFocused {
+				r.toggleChangedFilter()
+				return r, nil
+			}
 
 		case "left":
+			if r.focus == paneContent && r.content.detailFocused {
+				break
+			}
 			if r.focus != paneSidebar {
 				r.focusPane(paneSidebar)
 			}
 			return r, nil
 
 		case "right":
-			if r.focus != paneContent {
-				r.focusPane(paneContent)
+			if r.focus == paneSidebar {
+				var cmd tea.Cmd
+				r.sidebar, cmd = r.sidebar.selectCurrent(true)
+				return r, cmd
 			}
-			return r, nil
+			break
 
 		case "esc":
+			if r.focus == paneContent && r.content.detailFocused {
+				break
+			}
 			// layered esc: clear filters before jumping to sidebar
 			if r.content.bookmarkedOnly {
 				r.content.bookmarkedOnly = false
@@ -551,6 +528,14 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if r.content.showNewOnly {
 				r.content.showNewOnly = false
+				r.content.refilter()
+				r.content.syncDetail()
+				r.status.status = ""
+				r.updateHints()
+				return r, nil
+			}
+			if r.content.changedOnly {
+				r.content.changedOnly = false
 				r.content.refilter()
 				r.content.syncDetail()
 				r.status.status = ""
@@ -604,25 +589,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.palette.height = r.height
 			return r, cmd
 
-		case "ctrl+a":
-			if r.installed["claude"] {
-				cmd := r.ask.Open()
-				r.ask.width = r.width
-				r.ask.height = r.height
-				return r, cmd
-			}
-
-		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-			idx := int(msg.String()[0]-'0') - 1
-			if idx < len(r.allKonfables) {
-				r.pushNav()
-				r.sidebar.setCursorToApp(idx)
-				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: idx, Confirmed: true}
-				}
-			}
-			return r, nil
-
 		case "ctrl+n":
 			cur := r.sidebar.appIndex()
 			if cur >= 0 && cur < len(r.allKonfables)-1 {
@@ -659,8 +625,8 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return r, nil
 
-		case "y":
-			if r.focus == paneContent {
+		case "c":
+			if r.focus == paneContent && !r.content.detailFocused {
 				cmd := r.yankField()
 				if cmd != nil {
 					r.updateHints()
@@ -669,7 +635,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "p":
-			if r.focus == paneContent {
+			if r.focus == paneContent && !r.content.detailFocused {
 				cmd := r.pasteField()
 				if cmd != nil {
 					return r, cmd
@@ -678,7 +644,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "w":
 			// only toggle "what's new" filter when content focused with no active search matches
-			if r.focus == paneContent && len(r.content.searchMatches) == 0 {
+			if r.focus == paneContent && !r.content.detailFocused && len(r.content.searchMatches) == 0 {
 				r.toggleNewFilter()
 				r.updateHints()
 				return r, nil
@@ -691,7 +657,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "m":
-			if r.focus == paneContent && r.content.konfable != nil {
+			if r.focus == paneContent && !r.content.detailFocused && r.content.konfable != nil {
 				cmd := r.toggleBookmark()
 				if cmd != nil {
 					r.updateHints()
@@ -700,7 +666,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "b":
-			if r.focus == paneContent && r.content.schema != nil {
+			if r.focus == paneContent && !r.content.detailFocused && r.content.schema != nil {
 				r.content.bookmarkedOnly = !r.content.bookmarkedOnly
 				r.content.refilter()
 				r.content.syncDetail()
@@ -721,12 +687,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case ToggleFilterMsg:
-		if r.content.schema != nil {
-			r.content.configuredOnly = !r.content.configuredOnly
-			r.content.refilter()
-			r.content.syncDetail()
-		}
-		r.updateHints()
+		r.toggleConfiguredFilter()
 		return r, nil
 
 	case CycleThemeMsg:
@@ -759,15 +720,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ToggleHelpMsg:
 		r.showHelp = !r.showHelp
 		r.updateHints()
-		return r, nil
-
-	case AskOpenMsg:
-		if r.installed["claude"] {
-			cmd := r.ask.Open()
-			r.ask.width = r.width
-			r.ask.height = r.height
-			return r, cmd
-		}
 		return r, nil
 
 	case JumpToFieldMsg:
@@ -808,8 +760,13 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case AppSelectedMsg:
 		if msg.Index == -1 {
 			if msg.Confirmed || r.app.Config.BrowseLoadsApp {
+				stashedName, stashed := r.stashActiveDirtyConfig()
 				r.content.showDashboard()
-				r.status.status = ""
+				if stashed {
+					r.status.status = "kept unsaved changes for " + stashedName
+				} else {
+					r.status.status = ""
+				}
 			}
 			return r, nil
 		}
@@ -817,25 +774,27 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !msg.Confirmed && !r.app.Config.BrowseLoadsApp {
 				return r, nil // browse only — don't load
 			}
-			// guard: warn before discarding unsaved edits
-			if r.content.config != nil && r.content.config.Dirty() && !r.confirmSwitch {
-				r.confirmSwitch = true
-				r.pendingSwitch = &msg
-				r.status.status = "unsaved changes — press again to switch, ctrl+s to save"
-				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-					return confirmSwitchClearMsg{}
-				})
+			k := r.allKonfables[msg.Index]
+			if r.content.konfable != nil && r.content.konfable.Name() == k.Name() {
+				if msg.Confirmed {
+					r.focusPane(paneContent)
+				}
+				return r, nil
 			}
 			r.confirmSwitch = false
 			r.pendingSwitch = nil
+			stashedName, stashed := r.stashActiveDirtyConfig()
 			if r.previewing {
 				r.previewing = false
 				if r.content.config != nil {
 					_ = r.content.config.RevertPreview(context.Background())
 				}
 			}
-			k := r.allKonfables[msg.Index]
-			r.status.status = ""
+			if stashed {
+				r.status.status = "kept unsaved changes for " + stashedName
+			} else {
+				r.status.status = ""
+			}
 			cmd := r.content.loadApp(k)
 			cmds = append(cmds, cmd)
 			if msg.Confirmed {
@@ -864,7 +823,19 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if r.content.konfable == nil || r.content.konfable.Name() != msg.appName {
 			return r, nil
 		}
-		if msg.err == nil && msg.config != nil {
+		restoredState, restoredDirty := r.takeDirtyConfig(msg.appName, msg.path)
+		if restoredDirty {
+			r.content.config = restoredState.config
+			if restoredState.fileState != "" {
+				r.content.fileState = restoredState.fileState
+			} else {
+				r.content.fileState = "unsaved"
+			}
+			if restoredState.undoStack != nil {
+				r.content.undoStack = restoredState.undoStack.Clone()
+			}
+			r.status.status = "restored unsaved changes"
+		} else if msg.err == nil && msg.config != nil {
 			r.content.config = msg.config
 			r.content.config.Path = msg.path
 			if msg.isNew {
@@ -872,7 +843,13 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		r.content.refreshValues()
-		r.content.snapshotOrigValues()
+		if restoredDirty {
+			r.content.origValues = cloneValues(restoredState.origValues)
+			r.content.cachedChangesDirty = true
+			r.content.syncDiffView()
+		} else {
+			r.content.snapshotOrigValues()
+		}
 		// start watching if the konfable supports it
 		if r.content.config != nil && r.content.program != nil {
 			if w, ok := r.content.konfable.(pkg.Watchable); ok {
@@ -883,12 +860,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				})
 			}
 		}
-		// fulfill pending jump from ask AI
-		if r.pendingJump != nil {
-			key := r.pendingJump.fieldKey
-			r.pendingJump = nil
-			r.content.jumpToFieldByKey(key)
-		}
 		r.updateHints()
 		return r, nil
 
@@ -896,6 +867,9 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if r.content.config != nil {
 			r.content.refreshValues()
 			r.content.snapshotOrigValues()
+			if r.content.konfable != nil {
+				r.clearDirtyConfig(r.content.konfable.Name())
+			}
 			switch msg.source {
 			case "editor-dirty":
 				r.content.fileState = "reloaded from $EDITOR"
@@ -915,6 +889,9 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			r.content.fileState = "saved"
 			r.content.snapshotOrigValues()
+			if r.content.konfable != nil {
+				r.clearDirtyConfig(r.content.konfable.Name())
+			}
 			info := r.currentAppInfo()
 			if info.AutoReload {
 				r.status.status = "saved (live reload)"
@@ -1149,12 +1126,17 @@ func (r *root) View() tea.View {
 
 	// track dirty apps for sidebar indicator
 	changes := r.content.pendingChanges()
-	if r.sidebar.dirtyApps == nil {
-		r.sidebar.dirtyApps = make(map[string]bool)
+	r.sidebar.dirtyApps = make(map[string]bool, len(r.dirtyConfigs)+1)
+	for name, state := range r.dirtyConfigs {
+		if state.config != nil && state.config.Dirty() {
+			r.sidebar.dirtyApps[name] = true
+		}
 	}
 	if r.content.konfable != nil {
 		name := r.content.konfable.Name()
-		r.sidebar.dirtyApps[name] = len(changes) > 0
+		if len(changes) > 0 {
+			r.sidebar.dirtyApps[name] = true
+		}
 	}
 
 	// pass change count to statusbar
@@ -1174,13 +1156,6 @@ func (r *root) View() tea.View {
 
 	if r.showDiffPreview {
 		v.Content = r.renderDiffPreview()
-		return v
-	}
-
-	if r.ask.Visible() {
-		r.ask.width = r.width
-		r.ask.height = r.height
-		v.Content = r.ask.View()
 		return v
 	}
 
@@ -1235,9 +1210,12 @@ func (r *root) focusPane(p pane) {
 
 	switch p {
 	case paneSidebar:
+		r.content.detailFocused = false
+		r.content.syncDetail()
 		r.sidebar.focused = true
 	case paneContent:
 		r.content.focused = true
+		r.content.syncDetail()
 	}
 	r.updateHints()
 }
@@ -1248,6 +1226,67 @@ func (r *root) cyclePane() {
 	} else {
 		r.focusPane(paneSidebar)
 	}
+}
+
+func cloneValues(values map[string]string) map[string]string {
+	if values == nil {
+		return nil
+	}
+	out := make(map[string]string, len(values))
+	for k, v := range values {
+		out[k] = v
+	}
+	return out
+}
+
+func (r *root) stashActiveDirtyConfig() (string, bool) {
+	if r.content.konfable == nil || r.content.config == nil {
+		return "", false
+	}
+	name := r.content.konfable.Name()
+	if r.dirtyConfigs == nil {
+		r.dirtyConfigs = make(map[string]dirtyConfigState)
+	}
+	if !r.content.config.Dirty() {
+		delete(r.dirtyConfigs, name)
+		return name, false
+	}
+	state := dirtyConfigState{
+		config:     r.content.config,
+		origValues: cloneValues(r.content.origValues),
+		fileState:  r.content.fileState,
+	}
+	if r.content.undoStack != nil {
+		state.undoStack = r.content.undoStack.Clone()
+	}
+	r.dirtyConfigs[name] = state
+	return name, true
+}
+
+func (r *root) takeDirtyConfig(name, path string) (dirtyConfigState, bool) {
+	if r.dirtyConfigs == nil {
+		return dirtyConfigState{}, false
+	}
+	state, ok := r.dirtyConfigs[name]
+	if !ok {
+		return dirtyConfigState{}, false
+	}
+	if state.config == nil || !state.config.Dirty() {
+		delete(r.dirtyConfigs, name)
+		return dirtyConfigState{}, false
+	}
+	delete(r.dirtyConfigs, name)
+	if path != "" {
+		state.config.Path = path
+	}
+	return state, true
+}
+
+func (r *root) clearDirtyConfig(name string) {
+	if r.dirtyConfigs == nil || name == "" {
+		return
+	}
+	delete(r.dirtyConfigs, name)
 }
 
 func (r *root) updateHints() {
@@ -1291,78 +1330,61 @@ func (r *root) updateHints() {
 	case paneSidebar:
 		if r.sidebar.searching {
 			r.content.hints = []keyHint{
-				{"←↑↓", "navigate"},
+				{"↑↓", "nav"},
 				{"⏎", "select"},
-				{"esc", "clear"},
+				{"esc", "cancel"},
 			}
 		} else {
 			hints := []keyHint{
-				{"←↑↓", "navigate"},
+				{"↑↓", "nav"},
 				{"⏎", "open"},
-				{"1-9", "jump"},
 				{"/", "search"},
-				{"^K", "palette"},
-			}
-			if r.installed["claude"] {
-				hints = append(hints, keyHint{"^A", "ask"})
 			}
 			hints = append(hints, []keyHint{
 				{"→", "content"},
-				{"t", "theme"},
-				{"?", "help"},
+				{"esc", "cancel"},
 				{"q", "quit"},
 			}...)
 			r.content.hints = hints
 		}
 	case paneContent:
+		if r.content.detailFocused {
+			hints := []keyHint{
+				{"↑↓", "scroll file"},
+				{"Pg", "page"},
+				{"Home", "top"},
+				{"End", "bottom"},
+				{"←", "fields"},
+			}
+			if r.content.config != nil && r.content.config.Path != "" {
+				hints = append(hints, keyHint{"e", "$EDITOR"})
+			}
+			hints = append(hints, keyHint{"q", "quit"})
+			r.content.hints = hints
+			r.status.hints = r.content.hints
+			return
+		}
 		if r.content.searching {
 			r.content.hints = []keyHint{
-				{"←↑↓", "navigate"},
+				{"↑↓", "nav"},
 				{"⏎", "lock"},
-				{"esc", "clear"},
+				{"esc", "cancel"},
 			}
 			r.status.hints = r.content.hints
 			return
 		}
-		hints := []keyHint{
-			{"←↑↓", "navigate"},
+		r.content.hints = []keyHint{
+			{"↑↓", "nav"},
 			{"⏎", "edit"},
-			{"⌫", "revert"},
-			{"d", "delete"},
-			{"JK", "scroll detail"},
+			{"⌫", "del"},
 			{"/", "search"},
-		}
-		hints = append(hints, []keyHint{
-			{"y", "copy"},
+			{"c", "copy"},
 			{"p", "paste"},
-		}...)
-		if len(r.content.searchMatches) > 0 {
-			hints = append(hints, keyHint{"nN", "next/prev match"})
-		} else if r.newCounts[r.content.title] > 0 {
-			hints = append(hints, keyHint{"w", "what's new"})
-		}
-		hints = append(hints, keyHint{"f", "filter"})
-		if r.content.currentDocURL() != "" {
-			hints = append(hints, keyHint{"o", "docs"})
-		}
-		if r.content.config != nil && r.content.config.Path != "" {
-			hints = append(hints, keyHint{"e", "$EDITOR"})
-		}
-		hints = append(hints, []keyHint{
-			{"←", "back"},
-			{"t", "theme"},
-		}...)
-		if r.content.config != nil && r.content.config.Dirty() {
-			hints = append(hints, keyHint{"^S", "save"})
-		}
-		if r.installed["claude"] {
-			hints = append(hints, keyHint{"^A", "ask"})
-		}
-		hints = append(hints, []keyHint{
-			{"?", "help"},
+			{".", "configured"},
+			{"⇥", "changed"},
 			{"q", "quit"},
-		}...)
-		r.content.hints = hints
+			{"esc", "cancel"},
+		}
 	}
 	r.status.hints = r.content.hints
 }
@@ -1454,16 +1476,6 @@ func (r *root) buildPaletteItems() []PaletteItem {
 			Action:     ToggleHelpMsg{},
 		},
 	)
-
-	if r.installed["claude"] {
-		items = append(items, PaletteItem{
-			Label:      "Ask AI",
-			Shortcut:   "ctrl+a",
-			Category:   "action",
-			MatchTerms: "ask ai claude natural language search find",
-			Action:     AskOpenMsg{},
-		})
-	}
 
 	return items
 }
@@ -1730,6 +1742,31 @@ func (r *root) toggleNewFilter() {
 	} else {
 		r.status.status = ""
 	}
+}
+
+func (r *root) toggleConfiguredFilter() {
+	if r.content.schema == nil {
+		return
+	}
+	r.content.configuredOnly = !r.content.configuredOnly
+	r.content.refilter()
+	r.content.syncDetail()
+	r.updateHints()
+}
+
+func (r *root) toggleChangedFilter() {
+	if r.content.schema == nil {
+		return
+	}
+	r.content.changedOnly = !r.content.changedOnly
+	r.content.refilter()
+	r.content.syncDetail()
+	if r.content.changedOnly {
+		r.status.status = fmt.Sprintf("showing %d changed fields", len(r.content.pendingChanges()))
+	} else {
+		r.status.status = ""
+	}
+	r.updateHints()
 }
 
 // openInEditor launches $EDITOR (or $VISUAL, fallback vim) on the config file.
