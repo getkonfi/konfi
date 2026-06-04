@@ -27,8 +27,8 @@ func (h *Hyprland) Info() konfables.AppInfo {
 		Binary:     "Hyprland",
 		ConfigPath: h.Path,
 		Format:     "hyprland",
-		Icon:       "🪟",
-		NerdIcon:   "\uf219", //  window
+		Icon:       "💧",
+		NerdIcon:   "\U000f058c", // nf-md-water
 		ReloadCmd:  []string{"hyprctl", "reload"},
 	}
 }

@@ -27,8 +27,8 @@ func (k *Kitty) Info() konfables.AppInfo {
 		Binary:     "kitty",
 		ConfigPath: k.Path,
 		Format:     "kitty",
-		Icon:       "",
-		NerdIcon:   "\uf490", // nerd font terminal icon
+		Icon:       "🐱",
+		NerdIcon:   "\U000f011b", // nf-md-cat
 		ReloadCmd:  []string{"kitty", "@", "set-colors", "--all", "--configured"},
 	}
 }

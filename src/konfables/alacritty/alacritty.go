@@ -27,8 +27,8 @@ func (a *Alacritty) Info() konfables.AppInfo {
 		Binary:     "alacritty",
 		ConfigPath: a.Path,
 		Format:     "toml",
-		Icon:       "🖥",
-		NerdIcon:   "\ue795", //  terminal
+		Icon:       "▴",
+		NerdIcon:   "\uf120", // nf-fa-terminal
 		AutoReload: true,
 	}
 }
