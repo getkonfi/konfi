@@ -35,6 +35,14 @@ func (c *content) buildFieldList() {
 	c.refilter()
 }
 
+func (c *content) changedFieldKeys() map[string]bool {
+	changed := make(map[string]bool)
+	for _, change := range c.pendingChanges() {
+		changed[change.Key] = true
+	}
+	return changed
+}
+
 // refilter rebuilds the visible row slice with interleaved section headers.
 func (c *content) refilter() {
 	c.visible = c.visible[:0]
@@ -52,10 +60,17 @@ func (c *content) refilter() {
 
 	// track which section we last emitted a header for
 	lastHeaderSection := -1
+	var changedKeys map[string]bool
+	if c.changedOnly {
+		changedKeys = c.changedFieldKeys()
+	}
 
 	for i := range c.fields {
 		f := &c.fields[i]
 		si := c.fieldSection[i]
+		if changedKeys != nil && !changedKeys[f.Key] {
+			continue
+		}
 		if c.configuredOnly && !c.showEffective {
 			if _, ok := c.values[f.Key]; !ok {
 				continue
@@ -133,10 +148,17 @@ func (c *content) refilterRanked(query string) {
 		matchInfo  string
 	}
 	var filtered []rankedField
+	var changedKeys map[string]bool
+	if c.changedOnly {
+		changedKeys = c.changedFieldKeys()
+	}
 	for _, r := range results {
 		flatIdx := offsets[r.SectionIdx] + r.FieldIdx
 
 		f := &c.fields[flatIdx]
+		if changedKeys != nil && !changedKeys[f.Key] {
+			continue
+		}
 		if c.configuredOnly && !c.showEffective {
 			if _, ok := c.values[f.Key]; !ok {
 				continue

@@ -95,3 +95,46 @@ func TestDetailPreviewLineRescansWhenConfigChanges(t *testing.T) {
 		t.Fatalf("preview still showed add line after config change:\n%s", got)
 	}
 }
+
+func TestDetailFocusedViewShowsScrollableConfigFile(t *testing.T) {
+	th := theme.NewTheme(&theme.Catppuccin)
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Format: "ghostty"}}
+	cf := newDetailTestConfig(t, "a = 1\nb = 2\nc = 3\nd = 4\ne = 5\n")
+	f := &pkg.Field{Key: "d", Type: "string", Default: "4"}
+
+	d := newDetail(th)
+	d.sync(f, cf, k, map[string]string{"d": "4"}, true)
+	d.centerPreview(3)
+
+	got := stripANSI(d.View(40, 5))
+	if !strings.Contains(got, "▶ 4 d = 4") {
+		t.Fatalf("focused config view did not highlight selected config line:\n%s", got)
+	}
+	if !strings.Contains(got, "↕") {
+		t.Fatalf("focused config view did not include scroll indicator:\n%s", got)
+	}
+
+	d.scroll(1)
+	scrolled := stripANSI(d.View(40, 5))
+	if scrolled == got {
+		t.Fatalf("scrolling focused config view did not change output:\n%s", scrolled)
+	}
+}
+
+func TestDetailFocusedViewShowsMissingFieldAsAddedLine(t *testing.T) {
+	th := theme.NewTheme(&theme.Catppuccin)
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Format: "ghostty"}}
+	cf := newDetailTestConfig(t, "a = 1\nb = 2\n")
+	f := &pkg.Field{Key: "c", Type: "string", Default: "3"}
+
+	d := newDetail(th)
+	d.sync(f, cf, k, map[string]string{}, true)
+	d.centerPreview(3)
+
+	got := stripANSI(d.View(40, 5))
+	if !strings.Contains(got, "+ 3 c = 3") {
+		t.Fatalf("focused config view did not show missing field as added line:\n%s", got)
+	}
+}

@@ -17,7 +17,7 @@ var fieldTypeIconNerd = map[string]string{
 	"number": "\uf292",
 	"bool":   "\uf444",
 	"enum":   "\uf150",
-	"color":  "\uf53f",
+	"color":  "##",
 	"list":   "\uf03a",
 	"multi":  "\uf046",
 
@@ -132,7 +132,7 @@ func (c *content) fieldAreaOverhead() int {
 
 // filterIndicatorVisible returns true when a filter indicator line should be shown.
 func (c *content) filterIndicatorVisible() bool {
-	return !c.searching && (c.configuredOnly || c.showNewOnly || c.showEffective || c.bookmarkedOnly)
+	return !c.searching && (c.configuredOnly || c.changedOnly || c.showNewOnly || c.showEffective || c.bookmarkedOnly)
 }
 
 // cursorLine returns the rendered line number for the current cursor position
@@ -537,7 +537,7 @@ func (c *content) renderFooter(width int) string {
 			}
 		}
 		if hex != "" {
-			valStr = swatch(hex) + " " + c.theme.Accent.Render(strings.TrimPrefix(hex, "#"))
+			valStr = colorValue(hex)
 		} else {
 			valStr = c.theme.Muted.Render("not set")
 		}
@@ -711,7 +711,11 @@ func (c *content) View() string {
 
 		detailView := c.detail.View(detailContentW, c.height)
 
-		detailStyled := c.theme.Detail.
+		detailStyle := c.theme.Detail
+		if c.focused && c.detailFocused {
+			detailStyle = detailStyle.BorderForeground(c.theme.Palette.BorderFocus)
+		}
+		detailStyled := detailStyle.
 			Width(detailW - 1).
 			MaxWidth(detailW).
 			Height(c.height).
@@ -737,7 +741,11 @@ func (c *content) View() string {
 
 	detailView := c.detail.View(detailContentW, bodyH)
 
-	detailStyled := c.theme.Detail.
+	detailStyle := c.theme.Detail
+	if c.focused && c.detailFocused {
+		detailStyle = detailStyle.BorderForeground(c.theme.Palette.BorderFocus)
+	}
+	detailStyled := detailStyle.
 		Width(detailW - 1).
 		MaxWidth(detailW).
 		Height(bodyH).
@@ -782,17 +790,23 @@ func (c *content) renderBody(width int) string {
 
 	// filter indicator (when not searching)
 	if c.filterIndicatorVisible() {
-		var label string
-		switch {
-		case c.bookmarkedOnly:
-			label = "bookmarks"
-		case c.showEffective:
-			label = "effective (all with defaults)"
-		case c.showNewOnly:
-			label = "new only"
-		default:
-			label = "configured only"
+		var labels []string
+		if c.bookmarkedOnly {
+			labels = append(labels, "bookmarks")
 		}
+		if c.showEffective {
+			labels = append(labels, "effective")
+		}
+		if c.showNewOnly {
+			labels = append(labels, "new")
+		}
+		if c.changedOnly {
+			labels = append(labels, "changed")
+		}
+		if c.configuredOnly {
+			labels = append(labels, "configured")
+		}
+		label := strings.Join(labels, " + ")
 		b.WriteString(c.theme.Warning.Render("▸ " + label))
 		b.WriteByte('\n')
 	}
@@ -818,7 +832,7 @@ func (c *content) renderBody(width int) string {
 			if c.collapsed[r.sectionIdx] {
 				indicator = "▸ "
 			}
-			isCursor := c.focused && i == c.cursor
+			isCursor := c.fieldListFocused() && i == c.cursor
 			prefix := "── "
 			if isCursor {
 				prefix = sc.Render("▎ ")
@@ -838,7 +852,7 @@ func (c *content) renderBody(width int) string {
 		}
 
 		f := &c.fields[r.fieldIdx]
-		isCursor := c.focused && i == c.cursor
+		isCursor := c.fieldListFocused() && i == c.cursor
 
 		// is this row the one being edited?
 		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
@@ -884,10 +898,9 @@ func (c *content) renderBody(width int) string {
 				renderedVal = e.InlineView(width / 2)
 			case *colorEditor:
 				newHex := normalizeHex(e.PreviewValue())
-				renderedVal = swatch(e.oldHex) +
+				renderedVal = colorValue(e.oldHex) +
 					c.theme.Muted.Render(" → ") +
-					swatch(newHex) +
-					" " + c.theme.FieldValue.Render(newHex)
+					colorValue(newHex)
 			case *stylestringEditor:
 				renderedVal = c.theme.Accent.Render(e.PreviewValue())
 			}
@@ -997,16 +1010,13 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 	if isDefault {
 		switch f.Type {
 		case "bool":
-			if val == "true" {
-				return c.theme.FieldDefault.Render("● true")
-			}
-			return c.theme.FieldDefault.Render("○ false")
+			return c.theme.FieldDefault.Render(val)
 		case "color":
 			hex := normalizeHex(val)
 			if hex == "" {
 				return c.theme.FieldDefault.Render("not set")
 			}
-			return swatch(hex) + " " + c.theme.FieldDefault.Render(val)
+			return colorValue(hex)
 		default:
 			return c.theme.FieldDefault.Render(val)
 		}
@@ -1014,16 +1024,13 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 
 	switch f.Type {
 	case "bool":
-		if val == "true" {
-			return c.theme.Success.Render("●") + " " + c.theme.FieldValue.Render("true")
-		}
-		return c.theme.Muted.Render("○") + " " + c.theme.FieldValue.Render("false")
+		return c.theme.FieldValue.Render(val)
 	case "color":
 		hex := normalizeHex(val)
 		if hex == "" {
 			return c.theme.Muted.Render("not set")
 		}
-		return swatch(hex) + " " + c.theme.FieldValue.Render(val)
+		return colorValue(hex)
 	default:
 		return c.theme.FieldValue.Render(val)
 	}

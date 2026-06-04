@@ -107,3 +107,14 @@ func (s *UndoStack) Clear() {
 
 // Len returns the number of undoable operations.
 func (s *UndoStack) Len() int { return len(s.undos) }
+
+// Clone returns an independent copy of the undo/redo history.
+func (s *UndoStack) Clone() *UndoStack {
+	if s == nil {
+		return NewUndoStack(50)
+	}
+	clone := NewUndoStack(s.limit)
+	clone.undos = append(clone.undos, s.undos...)
+	clone.redos = append(clone.redos, s.redos...)
+	return clone
+}

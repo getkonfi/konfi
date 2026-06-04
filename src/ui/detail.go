@@ -133,7 +133,56 @@ func (d *detail) renderMarkdown(md string, width int) string {
 // View renders the detail pane content — always browse mode.
 // editing is handled inline in the field list (content.renderBody).
 func (d *detail) View(width, height int) string {
+	if d.focused && d.field != nil {
+		return d.viewConfigFile(width, height)
+	}
 	return d.viewBrowse(width, height)
+}
+
+func (d *detail) scroll(delta int) {
+	d.scrollY += delta
+	if d.scrollY < 0 {
+		d.scrollY = 0
+	}
+}
+
+func (d *detail) scrollTop() {
+	d.scrollY = 0
+}
+
+func (d *detail) scrollBottom() {
+	d.scrollY = 1 << 30
+}
+
+func (d *detail) centerPreview(viewport int) {
+	focusLine := d.configFocusLine()
+	if focusLine < 0 {
+		d.scrollY = 0
+		return
+	}
+	if viewport < 1 {
+		viewport = 1
+	}
+	d.scrollY = focusLine - viewport/2
+	if d.scrollY < 0 {
+		d.scrollY = 0
+	}
+}
+
+func (d *detail) configFocusLine() int {
+	if d.previewFound {
+		return d.previewLine
+	}
+	if d.field == nil || d.config == nil || d.konfable == nil || d.konfable.Parser() == nil {
+		return -1
+	}
+	if _, addedLine, ok := d.previewAddedContent(d.config.Content()); ok {
+		return addedLine
+	}
+	if added := d.fallbackAddedLine(); added != "" {
+		return len(d.configLines())
+	}
+	return -1
 }
 
 // typeBadgeStyle returns a styled badge for the field type with per-type coloring.
@@ -160,6 +209,141 @@ func (d *detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
 	}
 }
 
+func (d *detail) viewConfigFile(width, height int) string {
+	if d.config == nil {
+		return d.theme.Muted.Render("no preview")
+	}
+	if height <= 0 {
+		return ""
+	}
+
+	rawLines, focusLine, addedLines := d.configPreviewLines()
+	if len(rawLines) == 0 {
+		rawLines = []string{""}
+	}
+
+	var out []string
+	bodyH := height - 1
+	if height >= 4 {
+		header := d.configFileHeader(width, focusLine)
+		if header != "" {
+			out = append(out, header)
+			bodyH--
+		}
+	}
+	if bodyH < 1 {
+		bodyH = 1
+	}
+
+	maxScroll := max(0, len(rawLines)-bodyH)
+	if d.scrollY > maxScroll {
+		d.scrollY = maxScroll
+	}
+	if d.scrollY < 0 {
+		d.scrollY = 0
+	}
+
+	end := d.scrollY + bodyH
+	if end > len(rawLines) {
+		end = len(rawLines)
+	}
+	for i := d.scrollY; i < end; i++ {
+		out = append(out, d.renderConfigFileLine(rawLines[i], i, len(rawLines), i == focusLine, addedLines[i], width))
+	}
+
+	if height > 1 {
+		out = append(out, d.configScrollIndicator(d.scrollY, end, len(rawLines), focusLine, width))
+	}
+	return strings.Join(out, "\n")
+}
+
+func (d *detail) configPreviewLines() ([]string, int, map[int]bool) {
+	if d.config == nil {
+		return nil, -1, nil
+	}
+	if d.previewFound {
+		return d.configLines(), d.previewLine, nil
+	}
+	if d.field == nil || d.konfable == nil || d.konfable.Parser() == nil {
+		return d.configLines(), -1, nil
+	}
+
+	originalLines := d.configLines()
+	updated, addedLine, ok := d.previewAddedContent(d.config.Content())
+	if ok {
+		updatedLines := strings.Split(string(updated), "\n")
+		addedLines := insertedLineSet(originalLines, updatedLines)
+		addedLines[addedLine] = true
+		return updatedLines, addedLine, addedLines
+	}
+
+	added := d.fallbackAddedLine()
+	if added == "" {
+		return originalLines, -1, nil
+	}
+	lines := append([]string(nil), originalLines...)
+	addedLine = len(lines)
+	lines = append(lines, added)
+	return lines, addedLine, map[int]bool{addedLine: true}
+}
+
+func (d *detail) configFileHeader(width, focusLine int) string {
+	path := d.config.Path
+	if path == "" && d.konfable != nil {
+		path = d.konfable.Info().Name
+	}
+	if path == "" {
+		path = "configuration"
+	}
+	if d.field != nil {
+		path += " · " + d.field.Key
+	}
+	if focusLine >= 0 {
+		path += fmt.Sprintf(" · line %d", focusLine+1)
+	}
+	return d.theme.Subtext.Render(truncate(path, width))
+}
+
+func (d *detail) configScrollIndicator(start, end, total, focusLine, width int) string {
+	if total < 1 {
+		total = 1
+	}
+	if end < start {
+		end = start
+	}
+	label := fmt.Sprintf("↕ %d-%d/%d", start+1, end, total)
+	if focusLine >= 0 {
+		label += fmt.Sprintf(" · target %d", focusLine+1)
+	}
+	return d.theme.Muted.Render(truncate(label, width))
+}
+
+func (d *detail) renderConfigFileLine(line string, idx, total int, focused, added bool, width int) string {
+	gutterW := len(fmt.Sprintf("%d", total))
+	if gutterW < 1 {
+		gutterW = 1
+	}
+	maxW := width - gutterW - 3
+	if maxW < 1 {
+		maxW = 1
+	}
+	line = truncate(line, maxW)
+	gutter := fmt.Sprintf("%*d ", gutterW, idx+1)
+
+	switch {
+	case added:
+		return d.theme.Success.Render("+ ") +
+			d.theme.Success.Faint(true).Render(gutter) +
+			d.renderHighlightedConfigLine(line, d.theme.Success)
+	case focused:
+		return d.theme.Primary.Render("▶ ") +
+			d.theme.Muted.Render(gutter) +
+			d.renderHighlightedConfigLine(line, d.theme.Text)
+	default:
+		return d.theme.Muted.Faint(true).Render("  "+gutter) + d.theme.Muted.Render(line)
+	}
+}
+
 // viewBrowse renders the structured detail panel in browse mode.
 // all sections are rendered unconditionally, then scrolled into the viewport.
 func (d *detail) viewBrowse(width, height int) string {
@@ -170,7 +354,7 @@ func (d *detail) viewBrowse(width, height int) string {
 	f := d.field
 	var b strings.Builder
 
-	if !d.focused || f == nil {
+	if f == nil {
 		pathDisplay := d.config.Path
 		if pathDisplay == "" && d.konfable != nil {
 			pathDisplay = d.konfable.Info().Name
@@ -334,7 +518,7 @@ func (d *detail) renderTypeVisual(f *pkg.Field, width int) string {
 			}
 		}
 		colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
-		return swatch(hex) + swatch(hex) + " " + colorStyle.Render(f.Key+" = "+strings.TrimPrefix(hex, "#"))
+		return colorValue(hex) + " " + colorStyle.Render(f.Key+" = "+hex)
 
 	case "number":
 		if f.Min == nil && f.Max == nil {

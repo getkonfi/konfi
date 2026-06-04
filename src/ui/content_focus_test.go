@@ -1,0 +1,265 @@
+package ui
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
+	cfgparse "github.com/eminert/konfi/pkg/parser"
+	"github.com/eminert/konfi/setup"
+
+	tea "charm.land/bubbletea/v2"
+)
+
+type switchTestKonfable struct {
+	name   string
+	parser konfables.Parser
+	data   []byte
+}
+
+func (k *switchTestKonfable) Info() konfables.AppInfo {
+	return konfables.AppInfo{Name: k.name, Format: "ghostty"}
+}
+
+func (k *switchTestKonfable) Parser() konfables.Parser { return k.parser }
+func (k *switchTestKonfable) Schema() ([]byte, error)  { return nil, nil }
+func (k *switchTestKonfable) Name() string             { return k.name }
+func (k *switchTestKonfable) ConfigPath() string       { return "/tmp/" + k.name + ".conf" }
+
+func (k *switchTestKonfable) Load(context.Context) ([]byte, error) {
+	return k.data, nil
+}
+
+func (k *switchTestKonfable) Save(_ context.Context, _, data []byte) error {
+	k.data = data
+	return nil
+}
+
+func newContentFocusTestModel(t *testing.T) content {
+	t.Helper()
+
+	th := testTheme()
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Format: "ghostty"}}
+	var data strings.Builder
+	for i := 1; i <= 20; i++ {
+		fmt.Fprintf(&data, "line%d = %d\n", i, i)
+	}
+	cf, err := pkg.NewConfigFile(context.Background(), &detailTestPersister{data: []byte(data.String())})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := newContent(th)
+	c.focused = true
+	c.width = 120
+	c.height = 8
+	c.konfable = k
+	c.config = cf
+	c.schema = &pkg.Schema{
+		Sections: []pkg.Section{{
+			Name: "general",
+			Fields: []pkg.Field{
+				{Key: "line1", Label: "Line 1", Type: "string", Default: "1"},
+				{Key: "line12", Label: "Line 12", Type: "string", Default: "12"},
+			},
+		}},
+	}
+	c.buildFieldList()
+	c.refreshValues()
+	c.snapshotOrigValues()
+	c.cursor = 2
+	c.syncDetail()
+	return c
+}
+
+func TestContentRightFocusesConfigPaneAndScrollsWithoutMovingFieldCursor(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	startCursor := c.cursor
+
+	var cmd tea.Cmd
+	c, cmd = c.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if cmd != nil {
+		t.Fatal("right arrow should not return a command")
+	}
+	if !c.detailFocused {
+		t.Fatal("right arrow on a field did not focus the config pane")
+	}
+	if c.cursor != startCursor {
+		t.Fatalf("right arrow moved field cursor: got %d want %d", c.cursor, startCursor)
+	}
+
+	startScroll := c.detail.scrollY
+	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	if c.cursor != startCursor {
+		t.Fatalf("down in config pane moved field cursor: got %d want %d", c.cursor, startCursor)
+	}
+	if c.detail.scrollY <= startScroll {
+		t.Fatalf("down in config pane did not advance file scroll: got %d want > %d", c.detail.scrollY, startScroll)
+	}
+
+	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if c.detailFocused {
+		t.Fatal("left arrow did not return focus to the field list")
+	}
+}
+
+func TestContentDeleteKeyDeletesConfiguredField(t *testing.T) {
+	c := newContentFocusTestModel(t)
+
+	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+
+	if _, ok := c.values["line12"]; ok {
+		t.Fatal("delete key did not remove field from values")
+	}
+	if strings.Contains(string(c.config.Content()), "line12") {
+		t.Fatalf("delete key did not remove field from config:\n%s", c.config.Content())
+	}
+}
+
+func TestRootDotTogglesConfiguredOnly(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	r := &root{content: c, focus: paneContent}
+
+	_, _ = r.Update(tea.KeyPressMsg{Text: "."})
+
+	if !r.content.configuredOnly {
+		t.Fatal("dot did not toggle configured-only filter")
+	}
+}
+
+func TestRootTabTogglesChangedOnly(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	c.applyFieldByKey("line12", "99")
+	r := &root{content: c, focus: paneContent}
+
+	_, _ = r.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	if !r.content.changedOnly {
+		t.Fatal("tab did not toggle changed-only filter")
+	}
+	var visibleKeys []string
+	for _, row := range r.content.visible {
+		if row.isSection {
+			continue
+		}
+		visibleKeys = append(visibleKeys, r.content.fields[row.fieldIdx].Key)
+	}
+	if !reflect.DeepEqual(visibleKeys, []string{"line12"}) {
+		t.Fatalf("visible fields after changed-only = %#v, want [line12]", visibleKeys)
+	}
+}
+
+func TestSwitchingAppsKeepsUnsavedConfigInSession(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	c.schemaCache = map[string]*pkg.Schema{"test": c.schema}
+	c.applyFieldByKey("line12", "99")
+	if c.config == nil || !c.config.Dirty() {
+		t.Fatal("test setup did not create a dirty config")
+	}
+
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	other := &switchTestKonfable{name: "other", parser: p, data: []byte("other = 1\n")}
+	otherConfig, err := pkg.NewConfigFile(context.Background(), other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &root{
+		app:          &setup.App{Config: &setup.KonfConfig{}},
+		content:      c,
+		focus:        paneContent,
+		allKonfables: []konfables.Konfable{c.konfable, other},
+		dirtyConfigs: make(map[string]dirtyConfigState),
+	}
+
+	_, _ = r.Update(AppSelectedMsg{Index: 1, Confirmed: true})
+	if _, ok := r.dirtyConfigs["test"]; !ok {
+		t.Fatal("dirty config was not stashed before switching apps")
+	}
+	_, _ = r.Update(appLoadedMsg{appName: "other", config: otherConfig, path: other.ConfigPath()})
+
+	_, _ = r.Update(AppSelectedMsg{Index: 0, Confirmed: true})
+	_, _ = r.Update(appLoadedMsg{appName: "test", path: "/tmp/test.conf"})
+
+	if r.content.config == nil || !r.content.config.Dirty() {
+		t.Fatal("restored config is not dirty")
+	}
+	if got := r.content.values["line12"]; got != "99" {
+		t.Fatalf("restored line12 = %q, want 99", got)
+	}
+	changes := r.content.pendingChanges()
+	if len(changes) != 1 || changes[0].Key != "line12" || changes[0].OldVal != "12" || changes[0].NewVal != "99" {
+		t.Fatalf("restored pending changes = %#v, want line12 12 -> 99", changes)
+	}
+}
+
+func TestContentBottomHelpersMatchRequestedKeys(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	r := &root{content: c, focus: paneContent}
+
+	r.updateHints()
+
+	want := []keyHint{
+		{"↑↓", "nav"},
+		{"⏎", "edit"},
+		{"⌫", "del"},
+		{"/", "search"},
+		{"c", "copy"},
+		{"p", "paste"},
+		{".", "configured"},
+		{"⇥", "changed"},
+		{"q", "quit"},
+		{"esc", "cancel"},
+	}
+	if !reflect.DeepEqual(r.status.hints, want) {
+		t.Fatalf("status hints mismatch\ngot:  %#v\nwant: %#v", r.status.hints, want)
+	}
+}
+
+func TestSidebarRightSelectsCurrentApp(t *testing.T) {
+	s := newSidebar([]sidebarItem{
+		{name: "home", installed: true, home: true},
+		{name: "ghostty", installed: true},
+	}, testTheme())
+	s.focused = true
+	s.cursor = 1
+	r := &root{sidebar: s, focus: paneSidebar}
+
+	_, cmd := r.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if cmd == nil {
+		t.Fatal("right arrow from sidebar did not emit app selection")
+	}
+	msg := cmd()
+	selected, ok := msg.(AppSelectedMsg)
+	if !ok {
+		t.Fatalf("right arrow emitted %T, want AppSelectedMsg", msg)
+	}
+	if selected.Index != 0 || !selected.Confirmed {
+		t.Fatalf("selection = {Index:%d Confirmed:%v}, want {Index:0 Confirmed:true}", selected.Index, selected.Confirmed)
+	}
+}
+
+func TestNumberKeysDoNotJumpApps(t *testing.T) {
+	s := newSidebar([]sidebarItem{
+		{name: "home", installed: true, home: true},
+		{name: "ghostty", installed: true},
+	}, testTheme())
+	s.focused = true
+	r := &root{
+		sidebar:      s,
+		content:      newContent(testTheme()),
+		focus:        paneSidebar,
+		allKonfables: []konfables.Konfable{detailTestKonfable{}},
+		dirtyConfigs: make(map[string]dirtyConfigState),
+	}
+
+	_, cmd := r.Update(tea.KeyPressMsg{Text: "1"})
+	if cmd != nil {
+		msg := cmd()
+		t.Fatalf("number key emitted %T, want no app jump", msg)
+	}
+}

@@ -267,7 +267,7 @@ func (e *colorEditor) viewWithPalette(width int) string {
 
 		var cell string
 		if i == e.palCursor && e.inPalette {
-			cell = e.th.Primary.Render("[") + sw + " " + e.th.Text.Bold(true).Render(label) + e.th.Primary.Render("]")
+			cell = e.th.Primary.Render("▎") + sw + " " + e.th.Text.Bold(true).Render(label) + " "
 		} else {
 			cell = " " + sw + " " + e.th.Muted.Render(label) + " "
 		}
@@ -329,6 +329,14 @@ func swatch(hex string) string {
 	s := lipgloss.NewStyle().Foreground(lipgloss.Color(hex)).Render("██")
 	swatchCache.Store(hex, s)
 	return s
+}
+
+func colorValue(hex string) string {
+	if hex == "" {
+		return "##"
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
+	return style.Render("##") + " " + style.Render(hex)
 }
 
 // normalizeHex prepends # if missing so lipgloss can render it.

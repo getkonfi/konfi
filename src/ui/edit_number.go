@@ -39,7 +39,6 @@ func (e *numberEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
 
-	// build range hint
 	if field.Min != nil || field.Max != nil {
 		lo, hi := "*", "*"
 		if field.Min != nil {
@@ -50,6 +49,7 @@ func (e *numberEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 		}
 		e.hint = th.Muted.Render(fmt.Sprintf(" (%s — %s)", lo, hi))
 	}
+	e.hint += th.Muted.Render("  ↑↓ adjust")
 
 	return e.input.Focus()
 }

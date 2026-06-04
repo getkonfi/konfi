@@ -95,7 +95,7 @@ func (s *statusbar) View() string {
 		l := s.theme.Muted.Render(h.Label)
 		hintParts = append(hintParts, k+" "+l)
 	}
-	themeKey := s.theme.KeyCap.Render("theme")
+	themeKey := s.theme.KeyCap.Render("t")
 	themeName := s.theme.Primary.Bold(true).Render(s.themeName)
 	themeBadge := themeKey + " " + themeName
 

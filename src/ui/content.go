@@ -38,10 +38,12 @@ type content struct {
 	searchIndex    *pkg.SearchIndex
 	collapsed      map[int]bool // section index → collapsed
 	configuredOnly bool
+	changedOnly    bool
 	searching      bool
 	search         textinput.Model
 	scrollY        int
 	focused        bool
+	detailFocused  bool
 	width          int
 	height         int
 	theme          *theme.Theme
@@ -221,9 +223,37 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		if !c.focused {
 			return c, nil
 		}
+
+		if c.detailFocused {
+			switch msg.String() {
+			case "left", "esc":
+				c.detailFocused = false
+				c.syncDetail()
+			case "j", "down":
+				c.detail.scroll(1)
+			case "k", "up":
+				c.detail.scroll(-1)
+			case "pgdown":
+				c.detail.scroll(c.detailPageSize())
+			case "pgup":
+				c.detail.scroll(-c.detailPageSize())
+			case "home":
+				c.detail.scrollTop()
+			case "end":
+				c.detail.scrollBottom()
+			}
+			return c, nil
+		}
+
 		hasRows := c.schema != nil && len(c.visible) > 0
 
 		switch msg.String() {
+		case "right":
+			if c.currentField() != nil && c.detailPaneVisible() {
+				c.detailFocused = true
+				c.syncDetail()
+				c.detail.centerPreview(c.detailPageSize())
+			}
 		case "space", "enter":
 			if hasRows && c.cursor < len(c.visible) && c.visible[c.cursor].isSection {
 				si := c.visible[c.cursor].sectionIdx
@@ -338,12 +368,8 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 				}
 			}
 		case "backspace", "delete":
-			// revert to original value (if added this session, revert = delete)
 			if f := c.currentField(); f != nil && c.konfable != nil && c.config != nil {
-				origVal, hasOrig := c.origValues[f.Key]
-				if hasOrig {
-					c.revertField(*f, origVal)
-				} else if _, hasCur := c.values[f.Key]; hasCur {
+				if _, hasCur := c.values[f.Key]; hasCur {
 					c.deleteField(*f)
 				}
 				cmd := c.drainErr()
@@ -780,6 +806,7 @@ func (c *content) showDashboard() {
 	c.searchIndex = nil
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
+	c.changedOnly = false
 	c.showNewOnly = false
 	c.showEffective = false
 	c.searching = false
@@ -788,6 +815,7 @@ func (c *content) showDashboard() {
 	c.values = make(map[string]string)
 	c.origValues = make(map[string]string)
 	c.scrollY = 0
+	c.detailFocused = false
 	c.cursor = 0
 	c.detail.editing = false
 	c.detail.editor = nil
@@ -821,6 +849,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.konfable = k
 	c.title = k.Name()
 	c.scrollY = 0
+	c.detailFocused = false
 	c.cursor = 0
 	c.fields = nil
 	c.fieldSection = nil
@@ -828,6 +857,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.searchIndex = nil
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
+	c.changedOnly = false
 	c.showNewOnly = false
 	c.showEffective = false
 	c.searching = false
@@ -917,6 +947,52 @@ func (c *content) currentField() *pkg.Field {
 		return nil
 	}
 	return &c.fields[r.fieldIdx]
+}
+
+func (c *content) fieldListFocused() bool {
+	return c.focused && !c.detailFocused
+}
+
+func (c *content) detailPaneVisible() bool {
+	if c.schema == nil || c.config == nil || len(c.fields) == 0 {
+		return false
+	}
+	innerW := c.width - 2
+	if innerW < 10 {
+		innerW = 10
+	}
+	_, detailW := c.splitWidths(innerW)
+	return detailW > 0
+}
+
+func (c *content) detailPaneHeight() int {
+	if !c.detailPaneVisible() {
+		return 0
+	}
+	innerW := c.width - 2
+	if innerW < 10 {
+		innerW = 10
+	}
+	_, detailW := c.splitWidths(innerW)
+	if c.width > wideLayoutMinW && detailW > 0 {
+		return c.height
+	}
+	bodyH := c.height - logoBlockH - footerH
+	if c.breadcrumb.app != "" {
+		bodyH--
+	}
+	if bodyH < 3 {
+		bodyH = 3
+	}
+	return bodyH
+}
+
+func (c *content) detailPageSize() int {
+	page := c.detailPaneHeight() - 2
+	if page < 1 {
+		page = 1
+	}
+	return page
 }
 
 // currentDocURL returns the best doc URL for the cursor position:
@@ -1128,7 +1204,7 @@ func (c *content) snapshotOrigValues() {
 
 // syncDetail pushes content state into the detail sub-model and updates breadcrumb.
 func (c *content) syncDetail() {
-	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused)
+	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused && c.detailFocused)
 
 	// update breadcrumb path
 	app := ""
@@ -1155,7 +1231,7 @@ func (c content) Editing() bool {
 }
 
 // buildInsights computes the cycling insight lines from current state.
-// linter warnings come first, then stats and schema hints.
+// linter warnings come first, then stats.
 func (c *content) buildInsights() {
 	c.insightLines = nil
 	c.insightIdx = 0
@@ -1208,5 +1284,4 @@ func (c *content) buildInsights() {
 	sections := len(c.schema.Sections)
 	stat := fmt.Sprintf("%d/%d fields configured across %d sections", configured, totalFields, sections)
 	c.insightLines = append(c.insightLines, stat)
-	c.insightLines = append(c.insightLines, c.schema.Hints...)
 }
