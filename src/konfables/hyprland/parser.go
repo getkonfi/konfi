@@ -156,45 +156,16 @@ func findFlatResult(data []byte, key string) (value string, lineIdx int, found b
 // findNestedResult finds a key inside a named block, returning value, line index, and found.
 // handles depth-2+ by recursing into sub-blocks with offset tracking.
 func findNestedResult(data []byte, block, inner string) (value string, lineIdx int, found bool) {
-	if subBlock, subInner, nested := splitKey(inner); nested {
-		lines := bytes.Split(data, []byte("\n"))
-		inBlock, depth := false, 0
-		blockStart, blockEnd := -1, -1
-
-		for i, line := range lines {
-			trimmed := bytes.TrimSpace(line)
-			if !inBlock && depth == 0 {
-				if isBlockOpen(trimmed, block) {
-					inBlock = true
-					depth = 1
-					blockStart = i + 1
-					continue
-				}
-			}
-			if inBlock {
-				depth += braceBalance(trimmed)
-				if depth <= 0 {
-					blockEnd = i
-					break
-				}
-			} else {
-				depth += braceBalance(trimmed)
-			}
-		}
-
-		if blockStart < 0 || blockEnd < 0 {
-			return "", -1, false
-		}
-
-		blockContent := bytes.Join(lines[blockStart:blockEnd], []byte("\n"))
-		v, lineInBlock, found := findNestedResult(blockContent, subBlock, subInner)
-		if !found {
-			return "", -1, false
-		}
-		return v, blockStart + lineInBlock, true
+	if v, i, ok := findDirectNestedResult(data, block, inner); ok {
+		return v, i, true
 	}
+	if subBlock, subInner, nested := splitKey(inner); nested {
+		return findNestedRecursive(data, block, subBlock, subInner)
+	}
+	return "", -1, false
+}
 
-	// depth-1: direct child of block
+func findDirectNestedResult(data []byte, block, inner string) (value string, lineIdx int, found bool) {
 	lines := bytes.Split(data, []byte("\n"))
 	inBlock, depth := false, 0
 
@@ -224,6 +195,44 @@ func findNestedResult(data []byte, block, inner string) (value string, lineIdx i
 	return "", -1, false
 }
 
+func findNestedRecursive(data []byte, block, subBlock, subInner string) (value string, lineIdx int, found bool) {
+	lines := bytes.Split(data, []byte("\n"))
+	inBlock, depth := false, 0
+	blockStart, blockEnd := -1, -1
+
+	for i, line := range lines {
+		trimmed := bytes.TrimSpace(line)
+		if !inBlock && depth == 0 {
+			if isBlockOpen(trimmed, block) {
+				inBlock = true
+				depth = 1
+				blockStart = i + 1
+				continue
+			}
+		}
+		if inBlock {
+			depth += braceBalance(trimmed)
+			if depth <= 0 {
+				blockEnd = i
+				break
+			}
+		} else {
+			depth += braceBalance(trimmed)
+		}
+	}
+
+	if blockStart < 0 || blockEnd < 0 {
+		return "", -1, false
+	}
+
+	blockContent := bytes.Join(lines[blockStart:blockEnd], []byte("\n"))
+	v, lineInBlock, found := findNestedResult(blockContent, subBlock, subInner)
+	if !found {
+		return "", -1, false
+	}
+	return v, blockStart + lineInBlock, true
+}
+
 // setFlat replaces or appends a flat key = value at depth 0.
 func setFlat(data []byte, key, value string) ([]byte, error) {
 	lines := bytes.Split(data, []byte("\n"))
@@ -248,9 +257,15 @@ func setFlat(data []byte, key, value string) ([]byte, error) {
 // if inner contains dots, recursively descends into sub-blocks.
 func setNested(data []byte, block, inner, value string) ([]byte, error) {
 	if subBlock, subInner, nested := splitKey(inner); nested {
+		if _, _, found := findDirectNestedResult(data, block, inner); found || isLiteralNestedKey(block, inner) {
+			return setNestedDirect(data, block, inner, value)
+		}
 		return setNestedRecursive(data, block, subBlock, subInner, value)
 	}
+	return setNestedDirect(data, block, inner, value)
+}
 
+func setNestedDirect(data []byte, block, inner, value string) ([]byte, error) {
 	lines := bytes.Split(data, []byte("\n"))
 	inBlock, depth := false, 0
 	lastLineInBlock := -1
@@ -379,9 +394,15 @@ func deleteFlat(data []byte, key string) ([]byte, error) {
 // if inner contains dots, recursively descends into sub-blocks.
 func deleteNested(data []byte, block, inner string) ([]byte, error) {
 	if subBlock, subInner, nested := splitKey(inner); nested {
+		if _, _, found := findDirectNestedResult(data, block, inner); found || isLiteralNestedKey(block, inner) {
+			return deleteNestedDirect(data, block, inner)
+		}
 		return deleteNestedRecursive(data, block, subBlock, subInner)
 	}
+	return deleteNestedDirect(data, block, inner)
+}
 
+func deleteNestedDirect(data []byte, block, inner string) ([]byte, error) {
 	lines := bytes.Split(data, []byte("\n"))
 	inBlock, depth := false, 0
 
@@ -412,6 +433,10 @@ func deleteNested(data []byte, block, inner string) ([]byte, error) {
 		}
 	}
 	return data, nil
+}
+
+func isLiteralNestedKey(block, inner string) bool {
+	return block == "general" && strings.HasPrefix(inner, "col.")
 }
 
 // deleteNestedRecursive handles deleting values in depth-2+ blocks.

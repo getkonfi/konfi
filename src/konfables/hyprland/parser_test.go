@@ -85,6 +85,27 @@ func TestFindValueNestedDeep(t *testing.T) {
 	}
 }
 
+func TestFindValueLiteralDottedKeyInBlock(t *testing.T) {
+	p := newParser()
+	data := mustReadTestdata(t, "config.txt")
+
+	v, ok := p.FindValue(data, "general.col.active_border")
+	if !ok {
+		t.Fatal("expected to find 'general.col.active_border'")
+	}
+	if v != "rgba(cba6f7ee)" {
+		t.Fatalf("got %q, want %q", v, "rgba(cba6f7ee)")
+	}
+
+	line, ok := p.FindLine(data, "general.col.active_border")
+	if !ok {
+		t.Fatal("expected to find line for 'general.col.active_border'")
+	}
+	if line != 10 {
+		t.Fatalf("FindLine(general.col.active_border) = %d, want 10", line)
+	}
+}
+
 // -- FindLine tests --
 
 func TestFindLineFlat(t *testing.T) {
@@ -253,6 +274,45 @@ func TestSetValueVariable(t *testing.T) {
 	}
 }
 
+func TestSetValueLiteralDottedKeyInBlock(t *testing.T) {
+	p := newParser()
+	data := mustReadTestdata(t, "config.txt")
+
+	got, err := p.SetValue(data, "general.col.active_border", "rgba(33ccffee)")
+	if err != nil {
+		t.Fatalf("SetValue error: %v", err)
+	}
+	v, ok := p.FindValue(got, "general.col.active_border")
+	if !ok {
+		t.Fatal("expected to find 'general.col.active_border' after set")
+	}
+	if v != "rgba(33ccffee)" {
+		t.Fatalf("got %q, want %q", v, "rgba(33ccffee)")
+	}
+	if bytes.Contains(got, []byte("col {\n")) {
+		t.Fatalf("literal dotted key was converted into nested block:\n%s", got)
+	}
+	if !bytes.Contains(got, []byte("    col.active_border = rgba(33ccffee)\n")) {
+		t.Fatalf("updated config did not keep literal dotted key:\n%s", got)
+	}
+}
+
+func TestSetValueCreatesLiteralDottedKeyInBlock(t *testing.T) {
+	p := newParser()
+	data := []byte("general {\n    border_size = 2\n}\n")
+
+	got, err := p.SetValue(data, "general.col.inactive_border", "0xff444444")
+	if err != nil {
+		t.Fatalf("SetValue error: %v", err)
+	}
+	if bytes.Contains(got, []byte("col {\n")) {
+		t.Fatalf("literal dotted key was created as nested block:\n%s", got)
+	}
+	if !bytes.Contains(got, []byte("    col.inactive_border = 0xff444444\n")) {
+		t.Fatalf("updated config did not insert literal dotted key:\n%s", got)
+	}
+}
+
 // -- DeleteKey tests --
 
 func TestDeleteFlat(t *testing.T) {
@@ -280,6 +340,25 @@ func TestDeleteNested(t *testing.T) {
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestDeleteLiteralDottedKeyInBlock(t *testing.T) {
+	p := newParser()
+	data := mustReadTestdata(t, "config.txt")
+
+	got, err := p.DeleteKey(data, "general.col.active_border")
+	if err != nil {
+		t.Fatalf("DeleteKey error: %v", err)
+	}
+	if _, ok := p.FindValue(got, "general.col.active_border"); ok {
+		t.Fatal("expected 'general.col.active_border' to be deleted")
+	}
+	if bytes.Contains(got, []byte("col.active_border")) {
+		t.Fatalf("literal dotted key was not removed:\n%s", got)
+	}
+	if _, ok := p.FindValue(got, "decoration.blur.enabled"); !ok {
+		t.Fatal("unrelated nested key should still exist")
 	}
 }
 
