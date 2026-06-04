@@ -134,13 +134,13 @@ sections:
         options: ["❯", "➜", "❮", "▶", "→", "›", "»", "∙", "λ", "$", "⚡"]
         alt_options: ["bold green", "bold red", "bold purple", "bold yellow", "bold cyan", "bold blue", "bold white", "green", "red", "purple", "yellow", "cyan", "dimmed green", "bright-black"]
       - key: character.disabled
-        label: Disabled
+        label: Character Disabled
         type: bool
         default: "false"
         description: disable character module
         doc_url: "https://starship.rs/config/#character"
       - key: line_break.disabled
-        label: Disabled
+        label: Line Break Disabled
         type: bool
         default: "false"
         description: disable line_break module
@@ -160,7 +160,7 @@ sections:
         example: "style = \"dimmed white\""
         doc_url: "https://starship.rs/config/#fill"
       - key: fill.disabled
-        label: Disabled
+        label: Fill Disabled
         type: bool
         default: "false"
         description: disable fill module
