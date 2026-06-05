@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/eminert/konfi/konfables/alacritty"
+	"github.com/eminert/konfi/konfables/brew"
 	"github.com/eminert/konfi/konfables/claude"
 	"github.com/eminert/konfi/konfables/dconf"
 	"github.com/eminert/konfi/konfables/ghostty"
@@ -88,6 +89,9 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"pacman", func() Konfable {
 		return pacman.New(pkg.NewFilePersister("/etc/pacman.conf"))
+	}, false, nil},
+	{"brew", func() Konfable {
+		return brew.New(pkg.NewFilePersister(brew.DefaultConfigPath()))
 	}, false, nil},
 	{"claude", func() Konfable {
 		home, _ := os.UserHomeDir()

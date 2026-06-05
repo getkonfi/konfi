@@ -1,0 +1,74 @@
+app: brew
+format: brewfile
+schema_version: 1.0.0
+docs_url: "https://github.com/Homebrew/homebrew-bundle"
+coverage: partial
+hints:
+  - "`brew bundle dump --global` — write your current setup into the Brewfile"
+  - "`brew bundle --global` — install everything listed here"
+  - "`brew bundle cleanup --global` — uninstall anything not listed"
+  - "lines with inline options (e.g. `brew \"x\", args: [...]`) are preserved but not shown as fields"
+
+sections:
+  - name: Taps
+    fields:
+      - key: tap
+        label: Taps
+        type: list
+        default: ""
+        description: third-party formula repositories
+        example: "tap \"homebrew/cask-fonts\""
+        hint: "`brew tap` — list active taps"
+
+  - name: Formulae
+    fields:
+      - key: brew
+        label: Formulae
+        type: list
+        default: ""
+        description: command-line packages installed via `brew install`
+        example: "brew \"git\""
+        hint: "`brew search <q>` to find formulae | `brew leaves` lists top-level installs"
+
+  - name: Casks
+    fields:
+      - key: cask
+        label: Casks
+        type: list
+        default: ""
+        description: macOS GUI applications installed via `brew install --cask`
+        example: "cask \"firefox\""
+        hint: "`brew search --casks <q>` to find casks (macOS only)"
+
+  - name: Mac App Store
+    fields:
+      - key: mas
+        label: App Store Apps
+        type: list
+        widget: structlist
+        default: ""
+        description: Mac App Store apps installed via the `mas` CLI
+        example: "mas \"Xcode\", id: 497799835"
+        hint: "`mas search <name>` to find the numeric id | needs the `mas` formula"
+        item_schema:
+          - name: name
+            label: Name
+            type: string
+            required: true
+            placeholder: "Xcode"
+          - name: id
+            label: App ID
+            type: number
+            required: true
+            placeholder: "497799835"
+        separator: " | "
+
+  - name: VS Code Extensions
+    fields:
+      - key: vscode
+        label: Extensions
+        type: list
+        default: ""
+        description: VS Code extensions installed via `code --install-extension`
+        example: "vscode \"ms-python.python\""
+        hint: "`code --list-extensions` dumps installed extension ids"
