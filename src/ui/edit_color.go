@@ -405,17 +405,18 @@ func colorRenderHexToken(s string) string {
 		return ""
 	}
 	for _, prefix := range []string{"rgba(", "rgb("} {
-		if strings.HasPrefix(lower, prefix) {
-			closeIdx := strings.IndexByte(lower, ')')
-			if closeIdx < len(prefix) {
-				return ""
-			}
-			digits := strings.TrimSpace(lower[len(prefix):closeIdx])
-			if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
-				return "#" + digits[:6]
-			}
+		if !strings.HasPrefix(lower, prefix) {
+			continue
+		}
+		closeIdx := strings.IndexByte(lower, ')')
+		if closeIdx < len(prefix) {
 			return ""
 		}
+		digits := strings.TrimSpace(lower[len(prefix):closeIdx])
+		if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
+			return "#" + digits[:6]
+		}
+		return ""
 	}
 	if strings.HasPrefix(lower, "#") {
 		digits := lower[1:]

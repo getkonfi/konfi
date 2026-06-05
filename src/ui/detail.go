@@ -257,7 +257,7 @@ func (d *detail) viewConfigFile(width, height int) string {
 	return strings.Join(out, "\n")
 }
 
-func (d *detail) configPreviewLines() ([]string, int, map[int]bool) {
+func (d *detail) configPreviewLines() (lines []string, focusLine int, addedLines map[int]bool) {
 	if d.config == nil {
 		return nil, -1, nil
 	}
@@ -281,10 +281,10 @@ func (d *detail) configPreviewLines() ([]string, int, map[int]bool) {
 	if added == "" {
 		return originalLines, -1, nil
 	}
-	lines := append([]string(nil), originalLines...)
-	addedLine = len(lines)
-	lines = append(lines, added)
-	return lines, addedLine, map[int]bool{addedLine: true}
+	previewLines := append([]string(nil), originalLines...)
+	addedLine = len(previewLines)
+	previewLines = append(previewLines, added)
+	return previewLines, addedLine, map[int]bool{addedLine: true}
 }
 
 func (d *detail) configFileHeader(width, focusLine int) string {
@@ -710,7 +710,7 @@ func (d *detail) renderHighlightedConfigLine(line string, base lipgloss.Style) s
 	return b.String()
 }
 
-func findKeySpan(line, key string) (int, int) {
+func findKeySpan(line, key string) (start, end int) {
 	searchEnd := len(line)
 	if sep := firstSeparatorIndex(line); sep >= 0 {
 		searchEnd = sep
@@ -797,14 +797,11 @@ func findValueStart(line string, keyEnd int) int {
 	return start
 }
 
-func (d *detail) previewAddedContent(data []byte) ([]byte, int, bool) {
+func (d *detail) previewAddedContent(data []byte) (updated []byte, line int, ok bool) {
 	p := d.konfable.Parser()
 	value := d.fieldValue()
 
-	var (
-		updated []byte
-		err     error
-	)
+	var err error
 	if d.field.Type == "list" {
 		if mvp, ok := p.(konfables.MultiValueParser); ok {
 			updated, err = mvp.SetValues(data, d.field.Key, splitListValue(value))

@@ -23,9 +23,9 @@ func TestNumberEditorShowsArrowAdjustHint(t *testing.T) {
 }
 
 func TestNumberEditorCombinesRangeAndArrowHint(t *testing.T) {
-	min, max := 0.0, 255.0
+	minVal, maxVal := 0.0, 255.0
 	e := &numberEditor{}
-	e.Init(pkg.Field{Type: "number", Min: &min, Max: &max}, "10", testTheme())
+	e.Init(pkg.Field{Type: "number", Min: &minVal, Max: &maxVal}, "10", testTheme())
 
 	got := stripANSI(e.View(80))
 	if !strings.Contains(got, "(0 — 255)") {

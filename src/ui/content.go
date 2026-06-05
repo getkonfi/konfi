@@ -670,42 +670,6 @@ func (c *content) deleteField(f pkg.Field) {
 	c.refreshValues()
 }
 
-// revertField restores a field to its original value.
-func (c *content) revertField(f pkg.Field, origVal string) {
-	p := c.konfable.Parser()
-	if p == nil {
-		return
-	}
-	curVal := c.values[f.Key]
-	data := c.config.Content()
-
-	// list fields need SetValues for repeated-key formats
-	if f.Type == "list" {
-		if mvp, ok := p.(konfables.MultiValueParser); ok {
-			vals := splitListValue(origVal)
-			newData, err := mvp.SetValues(data, f.Key, vals)
-			if err != nil {
-				c.lastErr = "revert failed: " + err.Error()
-				return
-			}
-			c.config.SetContent(newData)
-			c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: origVal})
-			c.refreshValues()
-			return
-		}
-	}
-
-	serialized := formatValue(origVal, f.Type, c.konfable.Info().Format)
-	newData, err := p.SetValue(data, f.Key, serialized)
-	if err != nil {
-		c.lastErr = "revert failed: " + err.Error()
-		return
-	}
-	c.config.SetContent(newData)
-	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: origVal})
-	c.refreshValues()
-}
-
 // applyFieldByKey writes a value to a field identified by key, used by undo/redo.
 // empty value deletes the key from the config.
 func (c *content) applyFieldByKey(key, value string) {
@@ -1169,22 +1133,6 @@ func (c *content) computePendingChanges() []pendingChange {
 	}
 
 	return changes
-}
-
-// jumpToFieldByKey scrolls to the field with the given key.
-func (c *content) jumpToFieldByKey(key string) {
-	for i := range c.fields {
-		if c.fields[i].Key == key {
-			for vi, row := range c.visible {
-				if !row.isSection && row.fieldIdx == i {
-					c.cursor = vi
-					c.syncDetail()
-					return
-				}
-			}
-			return
-		}
-	}
 }
 
 // syncDiffView populates the diff preview from current pending changes.

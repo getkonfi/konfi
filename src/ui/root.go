@@ -504,7 +504,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.sidebar, cmd = r.sidebar.selectCurrent(true)
 				return r, cmd
 			}
-			break
 
 		case "esc":
 			if r.focus == paneContent && r.content.detailFocused {
@@ -1218,14 +1217,6 @@ func (r *root) focusPane(p pane) {
 		r.content.syncDetail()
 	}
 	r.updateHints()
-}
-
-func (r *root) cyclePane() {
-	if r.focus == paneSidebar {
-		r.focusPane(paneContent)
-	} else {
-		r.focusPane(paneSidebar)
-	}
 }
 
 func cloneValues(values map[string]string) map[string]string {
