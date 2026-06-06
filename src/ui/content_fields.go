@@ -8,6 +8,7 @@ import (
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/theme"
 	"github.com/eminert/konfi/ui/editors"
+	"github.com/eminert/konfi/ui/widgets"
 )
 
 // field type icons — nerd font glyphs
@@ -341,7 +342,7 @@ func (c *content) renderInlineDiff(oldVal string, hadOld bool, newVal string, ha
 		}
 		ot := theme.Truncate(oldVal, side)
 		nt := theme.Truncate(newVal, side)
-		return renderWordDiff(ot, nt, diffRemoved, th) + arrow + renderWordDiff(nt, ot, diffAdded, th)
+		return widgets.RenderWordDiff(ot, nt, widgets.DiffRemoved, th) + arrow + widgets.RenderWordDiff(nt, ot, widgets.DiffAdded, th)
 	}
 }
 

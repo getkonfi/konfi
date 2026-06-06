@@ -7,6 +7,7 @@ import (
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/theme"
 	"github.com/eminert/konfi/ui/editors"
+	"github.com/eminert/konfi/ui/widgets"
 
 	"charm.land/lipgloss/v2"
 	"github.com/yuin/goldmark"
@@ -47,7 +48,7 @@ type detail struct {
 
 	// cached styles
 	badgeBase lipgloss.Style
-	cachedMD  *mdRenderer
+	cachedMD  *widgets.MdRenderer
 	cachedMDW int
 }
 
@@ -116,10 +117,10 @@ func (d *detail) refreshPreviewLine() {
 	d.previewLine, d.previewFound = d.konfable.Parser().FindLine(d.config.Content(), f.Key)
 }
 
-// renderMarkdown renders markdown using the goldmark-based renderer in markdown.go.
+// renderMarkdown renders markdown using the goldmark-based renderer in ui/widgets.
 func (d *detail) renderMarkdown(md string, width int) string {
 	if d.cachedMD == nil || d.cachedMDW != width {
-		d.cachedMD = newMDRenderer(d.theme, width)
+		d.cachedMD = widgets.NewMDRenderer(d.theme, width)
 		d.cachedMDW = width
 	}
 	if md == "" {
@@ -128,7 +129,7 @@ func (d *detail) renderMarkdown(md string, width int) string {
 	source := []byte(md)
 	p := goldmark.DefaultParser()
 	doc := p.Parse(text.NewReader(source))
-	return strings.TrimRight(d.cachedMD.render(doc, source), "\n")
+	return strings.TrimRight(d.cachedMD.Render(doc, source), "\n")
 }
 
 // View renders the detail pane content — always browse mode.

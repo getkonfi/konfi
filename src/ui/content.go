@@ -13,6 +13,7 @@ import (
 	"github.com/eminert/konfi/pkg/pixelart"
 	"github.com/eminert/konfi/theme"
 	"github.com/eminert/konfi/ui/editors"
+	"github.com/eminert/konfi/ui/widgets"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -82,10 +83,10 @@ type content struct {
 	// breadcrumb, undo/redo, diff preview
 	breadcrumb breadcrumb
 	undoStack  *UndoStack
-	diffView   *diffView
+	diffView   *widgets.DiffView
 
 	// cached pending changes — invalidated on value mutation
-	cachedChanges      []pendingChange
+	cachedChanges      []widgets.PendingChange
 	cachedChangesDirty bool
 
 	// search match tracking for n/N navigation
@@ -143,7 +144,7 @@ func newContent(th *theme.Theme) content {
 		detail:        newDetail(th),
 		breadcrumb:    newBreadcrumb(th),
 		undoStack:     NewUndoStack(50),
-		diffView:      newDiffView(th),
+		diffView:      widgets.NewDiffView(th),
 		searchMatches: make([]int, 0),
 	}
 }
@@ -409,7 +410,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		c.detail.theme = msg.Theme
 		c.detail.cachedMD = nil
 		c.breadcrumb.theme = msg.Theme
-		c.diffView.theme = msg.Theme
+		c.diffView.SetTheme(msg.Theme)
 
 	case ExternalChangeMsg:
 		if c.config != nil && c.config.Path == msg.Path {
@@ -983,19 +984,8 @@ func (c *content) refreshValues() {
 	c.syncDiffView()
 }
 
-// pendingChange describes a single field change relative to the on-disk snapshot.
-type pendingChange struct {
-	Section string
-	Label   string
-	Key     string
-	OldVal  string
-	NewVal  string
-	IsNew   bool // key wasn't in origValues
-	Deleted bool // key was removed
-}
-
 // pendingChanges returns cached per-field diffs, recomputing only when dirty.
-func (c *content) pendingChanges() []pendingChange {
+func (c *content) pendingChanges() []widgets.PendingChange {
 	if !c.cachedChangesDirty {
 		return c.cachedChanges
 	}
@@ -1004,13 +994,13 @@ func (c *content) pendingChanges() []pendingChange {
 	return c.cachedChanges
 }
 
-func (c *content) computePendingChanges() []pendingChange {
+func (c *content) computePendingChanges() []widgets.PendingChange {
 	// inert until a config is actually loaded — guards the async load window
 	// where schema/values belong to the new app but config is still nil.
 	if c.schema == nil || c.origValues == nil || c.config == nil {
 		return nil
 	}
-	var changes []pendingChange
+	var changes []widgets.PendingChange
 	seen := make(map[string]bool)
 
 	for i := range c.fields {
@@ -1031,7 +1021,7 @@ func (c *content) computePendingChanges() []pendingChange {
 			}
 		}
 
-		changes = append(changes, pendingChange{
+		changes = append(changes, widgets.PendingChange{
 			Section: sec,
 			Label:   f.Label,
 			Key:     f.Key,
@@ -1048,7 +1038,7 @@ func (c *content) computePendingChanges() []pendingChange {
 			continue
 		}
 		if _, hasCur := c.values[key]; !hasCur {
-			changes = append(changes, pendingChange{
+			changes = append(changes, widgets.PendingChange{
 				Key:     key,
 				Label:   key,
 				OldVal:  origVal,

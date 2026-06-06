@@ -1,4 +1,4 @@
-package ui
+package widgets
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-// mdRenderer holds lipgloss styles derived from the active theme.
-type mdRenderer struct {
+// MdRenderer holds lipgloss styles derived from the active theme.
+type MdRenderer struct {
 	width int
 	theme *theme.Theme
 
@@ -28,8 +28,8 @@ type mdRenderer struct {
 	listBullet lipgloss.Style
 }
 
-func newMDRenderer(th *theme.Theme, width int) *mdRenderer {
-	return &mdRenderer{
+func NewMDRenderer(th *theme.Theme, width int) *MdRenderer {
+	return &MdRenderer{
 		width:  width,
 		theme:  th,
 		bold:   lipgloss.NewStyle().Foreground(th.Palette.Text).Bold(true),
@@ -53,13 +53,13 @@ func RenderMarkdown(content string, width int, th *theme.Theme) string {
 	source := []byte(content)
 	p := goldmark.DefaultParser()
 	doc := p.Parse(text.NewReader(source))
-	r := newMDRenderer(th, width)
-	out := r.render(doc, source)
+	r := NewMDRenderer(th, width)
+	out := r.Render(doc, source)
 	return strings.TrimRight(out, "\n")
 }
 
-// render walks the AST and produces styled output.
-func (r *mdRenderer) render(doc ast.Node, source []byte) string {
+// Render walks the AST and produces styled output.
+func (r *MdRenderer) Render(doc ast.Node, source []byte) string {
 	var b strings.Builder
 	var listIndex int // current ordered-list counter
 	var ordered bool  // ordered vs unordered
@@ -200,7 +200,7 @@ func (r *mdRenderer) render(doc ast.Node, source []byte) string {
 }
 
 // collectText recursively extracts raw text from an inline node and its children.
-func (r *mdRenderer) collectText(n ast.Node, source []byte) string {
+func (r *MdRenderer) collectText(n ast.Node, source []byte) string {
 	var b strings.Builder
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 		switch c := c.(type) {
@@ -221,7 +221,7 @@ func (r *mdRenderer) collectText(n ast.Node, source []byte) string {
 }
 
 // collectLines extracts raw lines from a code block node.
-func (r *mdRenderer) collectLines(n ast.Node, source []byte) string {
+func (r *MdRenderer) collectLines(n ast.Node, source []byte) string {
 	var b strings.Builder
 	lines := n.Lines()
 	for i := 0; i < lines.Len(); i++ {

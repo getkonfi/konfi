@@ -1,4 +1,4 @@
-package ui
+package widgets
 
 import (
 	"fmt"
@@ -9,25 +9,37 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// diffView renders a preview of all pending changes before saving.
+// PendingChange describes a single field change relative to the on-disk snapshot.
+type PendingChange struct {
+	Section string
+	Label   string
+	Key     string
+	OldVal  string
+	NewVal  string
+	IsNew   bool // key wasn't in origValues
+	Deleted bool // key was removed
+}
+
+// DiffView renders a preview of all pending changes before saving.
 // pure view component — no tea.Model, no Update.
-type diffView struct {
-	entries []pendingChange
+type DiffView struct {
+	entries []PendingChange
 	width   int
 	height  int
 	theme   *theme.Theme
 }
 
-func newDiffView(th *theme.Theme) *diffView {
-	return &diffView{theme: th}
+func NewDiffView(th *theme.Theme) *DiffView {
+	return &DiffView{theme: th}
 }
 
-func (d *diffView) SetEntries(entries []pendingChange) { d.entries = entries }
-func (d *diffView) SetSize(w, h int)                   { d.width = w; d.height = h }
-func (d *diffView) HasChanges() bool                   { return len(d.entries) > 0 }
-func (d *diffView) Count() int                         { return len(d.entries) }
+func (d *DiffView) SetEntries(entries []PendingChange) { d.entries = entries }
+func (d *DiffView) SetSize(w, h int)                   { d.width = w; d.height = h }
+func (d *DiffView) SetTheme(th *theme.Theme)           { d.theme = th }
+func (d *DiffView) HasChanges() bool                   { return len(d.entries) > 0 }
+func (d *DiffView) Count() int                         { return len(d.entries) }
 
-func (d *diffView) View() string {
+func (d *DiffView) View() string {
 	if !d.HasChanges() {
 		msg := d.theme.Muted.Render("No pending changes")
 		return lipgloss.Place(d.width, d.height, lipgloss.Center, lipgloss.Center, msg)
@@ -65,8 +77,8 @@ func (d *diffView) View() string {
 		default:
 			ot := theme.Truncate(ch.OldVal, maxValWidth)
 			nt := theme.Truncate(ch.NewVal, maxValWidth)
-			old = th.Error.Render("  - ") + renderWordDiff(ot, nt, diffRemoved, th)
-			n = th.Success.Render("  + ") + renderWordDiff(nt, ot, diffAdded, th)
+			old = th.Error.Render("  - ") + RenderWordDiff(ot, nt, DiffRemoved, th)
+			n = th.Success.Render("  + ") + RenderWordDiff(nt, ot, DiffAdded, th)
 		}
 
 		block := fmt.Sprintf("  %s\n%s\n%s", header, old, n)

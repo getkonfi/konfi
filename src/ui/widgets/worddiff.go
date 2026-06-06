@@ -1,4 +1,4 @@
-package ui
+package widgets
 
 import (
 	"strings"
@@ -6,23 +6,23 @@ import (
 	"github.com/eminert/konfi/theme"
 )
 
-// diffSide selects the removed (old) or added (new) styling for a word diff.
-type diffSide int
+// DiffSide selects the removed (old) or added (new) styling for a word diff.
+type DiffSide int
 
 const (
-	diffRemoved diffSide = iota
-	diffAdded
+	DiffRemoved DiffSide = iota
+	DiffAdded
 )
 
-// renderWordDiff renders self with its changed run emphasized, like a git inline
+// RenderWordDiff renders self with its changed run emphasized, like a git inline
 // diff. other is the opposing value, used only to locate the shared leading run;
 // everything from the first difference through the end of self is highlighted.
 // self and other are expected to differ; if they don't, the whole value renders
 // in the base style.
-func renderWordDiff(self, other string, side diffSide, th *theme.Theme) string {
+func RenderWordDiff(self, other string, side DiffSide, th *theme.Theme) string {
 	base := th.Error
 	emph := th.Error.Bold(true).Background(th.Palette.Surface)
-	if side == diffAdded {
+	if side == DiffAdded {
 		base = th.Success
 		emph = th.Success.Bold(true).Background(th.Palette.Surface)
 	}

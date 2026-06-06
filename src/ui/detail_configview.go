@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/eminert/konfi/konfables"
 	"github.com/eminert/konfi/theme"
+	"github.com/eminert/konfi/ui/widgets"
 )
 
 func (d *detail) viewConfigFile(width, height int) string {
@@ -269,11 +270,11 @@ func (d *detail) diffHunk(line string, idx, total, width int) (minus, plus strin
 	minus = d.theme.Error.Render("- ") +
 		d.theme.Error.Faint(true).Render(gutter) +
 		d.theme.Error.Render(keyPart) +
-		renderWordDiff(oldText, newText, diffRemoved, d.theme)
+		widgets.RenderWordDiff(oldText, newText, widgets.DiffRemoved, d.theme)
 	plus = d.theme.Success.Render("+ ") +
 		d.theme.Success.Faint(true).Render(gutter) +
 		d.theme.Success.Render(keyPart) +
-		renderWordDiff(newText, oldText, diffAdded, d.theme)
+		widgets.RenderWordDiff(newText, oldText, widgets.DiffAdded, d.theme)
 	return minus, plus, true
 }
 

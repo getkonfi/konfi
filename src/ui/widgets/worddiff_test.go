@@ -1,4 +1,4 @@
-package ui
+package widgets
 
 import (
 	"regexp"
@@ -8,30 +8,7 @@ import (
 	"github.com/eminert/konfi/theme"
 )
 
-// TestRenderInlineDiff asserts the changed-only (tab) value renders as
-// "old → new", with ∅ for absent sides, and never loses characters.
-func TestRenderInlineDiff(t *testing.T) {
-	c := &content{theme: theme.NewTheme(theme.PaletteByName("catppuccin"))}
-	cases := []struct {
-		oldVal string
-		hadOld bool
-		newVal string
-		hasNew bool
-		want   string
-	}{
-		{"12", true, "14", true, "12 → 14"},
-		{"#1e1e1e", true, "#282828", true, "#1e1e1e → #282828"},
-		{"", false, "enabled", true, "∅ → enabled"},
-		{"removed", true, "", false, "removed → ∅"},
-	}
-	for _, tc := range cases {
-		got := ansiRE.ReplaceAllString(c.renderInlineDiff(tc.oldVal, tc.hadOld, tc.newVal, tc.hasNew, 60), "")
-		if got != tc.want {
-			t.Errorf("renderInlineDiff(%q,%v,%q,%v) = %q, want %q",
-				tc.oldVal, tc.hadOld, tc.newVal, tc.hasNew, got, tc.want)
-		}
-	}
-}
+var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 // TestRenderWordDiffPreservesText asserts that styling never drops, adds, or
 // reorders characters — the visible text must equal the input value.
@@ -45,10 +22,10 @@ func TestRenderWordDiffPreservesText(t *testing.T) {
 		{"value", "value"},
 	}
 	for _, c := range cases {
-		for _, side := range []diffSide{diffRemoved, diffAdded} {
-			got := ansiRE.ReplaceAllString(renderWordDiff(c.self, c.other, side, th), "")
+		for _, side := range []DiffSide{DiffRemoved, DiffAdded} {
+			got := ansiRE.ReplaceAllString(RenderWordDiff(c.self, c.other, side, th), "")
 			if got != c.self {
-				t.Errorf("renderWordDiff(%q, %q, %d) visible text = %q, want %q",
+				t.Errorf("RenderWordDiff(%q, %q, %d) visible text = %q, want %q",
 					c.self, c.other, side, got, c.self)
 			}
 		}
@@ -92,14 +69,14 @@ func TestRenderWordDiffHighlightsLastChar(t *testing.T) {
 		{"2000", "1000"},       // shared trailing "000"
 	}
 	for _, c := range changed {
-		for _, side := range []diffSide{diffRemoved, diffAdded} {
-			if got := renderWordDiff(c.self, c.other, side, th); !bgAtLastRune(got) {
-				t.Errorf("renderWordDiff(%q, %q, %d): last rune lost its highlight", c.self, c.other, side)
+		for _, side := range []DiffSide{DiffRemoved, DiffAdded} {
+			if got := RenderWordDiff(c.self, c.other, side, th); !bgAtLastRune(got) {
+				t.Errorf("RenderWordDiff(%q, %q, %d): last rune lost its highlight", c.self, c.other, side)
 			}
 		}
 	}
 	// identical values carry no emphasis at all
-	if bgAtLastRune(renderWordDiff("same", "same", diffAdded, th)) {
+	if bgAtLastRune(RenderWordDiff("same", "same", DiffAdded, th)) {
 		t.Errorf("identical values should not be highlighted")
 	}
 }
