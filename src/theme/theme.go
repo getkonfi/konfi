@@ -1,6 +1,12 @@
 package theme
 
-import "charm.land/lipgloss/v2"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"charm.land/lipgloss/v2"
+)
 
 // Theme holds the active palette and pre-computed lipgloss styles.
 type Theme struct {
@@ -124,5 +130,35 @@ func (t *Theme) recompute() {
 		Foreground(p.Text).
 		Bold(true).
 		Padding(0, 1)
+}
+
+// Truncate shortens s to fit within maxWidth, appending "…" if needed.
+func Truncate(s string, maxWidth int) string {
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	for i := range s {
+		if lipgloss.Width(s[:i]) > maxWidth-1 {
+			return s[:i] + "…"
+		}
+	}
+	return s
+}
+
+// FormatNum renders f as an integer when it has no fractional part, else with
+// one decimal place.
+func FormatNum(f float64) string {
+	if f == float64(int(f)) {
+		return strconv.Itoa(int(f))
+	}
+	return fmt.Sprintf("%.1f", f)
+}
+
+// FormatCount renders a "(cur of total)" position label, "(0)" when total is 0.
+func FormatCount(cur, total int) string {
+	if total == 0 {
+		return "(0)"
+	}
+	return strings.Join([]string{"(", strings.TrimSpace(FormatNum(float64(cur))), " of ", strings.TrimSpace(FormatNum(float64(total))), ")"}, "")
 }
 
