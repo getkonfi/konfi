@@ -12,14 +12,5 @@ config.yaml
 # debug logs
 tea_debug.log
 
-# claude local state (root)
-.claude/settings.local.json
-.claude/plans/
-.claude/memory/
-.claude/agents/
-.claude/scripts/
-.claude/research/
-.claude/verify/
-
-# claude local state (src/)
-src/.claude/
+# claude local state
+.claude/
