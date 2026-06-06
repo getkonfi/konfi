@@ -127,21 +127,6 @@ type content struct {
 	rawContentGen uint64
 }
 
-// dashboardApp holds summary info for the landing page.
-type dashboardApp struct {
-	icon            string
-	name            string
-	installed       bool
-	version         string
-	configuredCount int    // fields with non-default values
-	totalFields     int    // total schema fields
-	deprecatedCount int    // deprecated diagnostics
-	newCount        int    // fields added in the detected version
-	coverage        string // from schema.Coverage
-	minAppVersion   string // schema min supported version
-	maxAppVersion   string // schema max supported version
-}
-
 func newContent(th *theme.Theme) content {
 	ti := textinput.New()
 	ti.Placeholder = "search..."
@@ -164,11 +149,10 @@ func newContent(th *theme.Theme) content {
 
 func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 	// when editing, forward all messages to the active editor
-	if c.detail.editing && c.detail.editor != nil {
+	if c.detail.editor != nil {
 		cmd, done, canceled := c.detail.editor.Update(msg)
 		if done {
 			if canceled {
-				c.detail.editing = false
 				c.detail.editor = nil
 			} else {
 				settingCmd := c.commitEdit(c.detail.editor.Value())
@@ -528,7 +512,6 @@ func (c *content) openEditor() tea.Cmd {
 	}
 
 	c.detail.editor = e
-	c.detail.editing = true
 	return e.Init(*f, initVal, c.theme)
 }
 
@@ -545,7 +528,6 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 
 	e := editorForField(*f)
 	c.detail.editor = e
-	c.detail.editing = true
 
 	initCmd := e.Init(*f, "", c.theme)
 	seedCmd := func() tea.Msg {
@@ -557,7 +539,6 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 // commitEdit writes the edited value back to the config and returns
 // a cmd to propagate konfi setting changes (theme, log_level).
 func (c *content) commitEdit(value string) tea.Cmd {
-	c.detail.editing = false
 	c.detail.editor = nil
 
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
@@ -572,37 +553,7 @@ func (c *content) commitEdit(value string) tea.Cmd {
 	f := c.fields[c.detail.editField]
 	oldValue := c.detail.editOrigVal
 	data := c.config.Content()
-
-	// repeated-key list fields (incl. structlist editors like ghostty keybind,
-	// brew mas) write every value back via SetValues, not just the first
-	if f.Type == "list" {
-		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
-			vals := splitListValue(value)
-			newData, err := mvp.SetValues(data, f.Key, vals)
-			if err != nil {
-				return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
-			}
-			c.config.SetContent(newData)
-			c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
-			c.refreshValues()
-			return c.settingChangedCmd(f.Key, value)
-		}
-	}
-
-	// raw JSON widgets: write via SetValue (not MultiValueParser)
-	if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
-		newData, err := c.konfable.Parser().SetValue(data, f.Key, value)
-		if err != nil {
-			return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
-		}
-		c.config.SetContent(newData)
-		c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
-		c.refreshValues()
-		return c.settingChangedCmd(f.Key, value)
-	}
-
-	serialized := formatValue(value, f.Type, c.konfable.Info().Format)
-	newData, err := c.konfable.Parser().SetValue(data, f.Key, serialized)
+	newData, err := konfables.WriteField(c.konfable.Parser(), data, f, value, c.konfable.Info().Format)
 	if err != nil {
 		return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
 	}
@@ -639,10 +590,8 @@ func (c *content) toggleBool(f pkg.Field) tea.Cmd {
 	if cur == "true" {
 		next = "false"
 	}
-	serialized := formatValue(next, f.Type, c.konfable.Info().Format)
-
 	data := c.config.Content()
-	newData, err := c.konfable.Parser().SetValue(data, f.Key, serialized)
+	newData, err := konfables.WriteField(c.konfable.Parser(), data, f, next, c.konfable.Info().Format)
 	if err != nil {
 		c.lastErr = "toggle failed: " + err.Error()
 		return nil
@@ -688,47 +637,16 @@ func (c *content) applyFieldByKey(key, value string) {
 		}
 		c.config.SetContent(newData)
 	} else {
-		// find the field to get its type for formatting
-		fmtStr := c.konfable.Info().Format
-		fieldType := "string"
-		fieldWidget := ""
+		// resolve the field's shape (by key) so WriteField picks the right
+		// parser method; default to a plain string field when not found.
+		f := pkg.Field{Key: key, Type: "string"}
 		for i := range c.fields {
 			if c.fields[i].Key == key {
-				fieldType = c.fields[i].Type
-				fieldWidget = c.fields[i].Widget
+				f = c.fields[i]
 				break
 			}
 		}
-
-		// raw JSON widgets use plain SetValue
-		if fieldWidget == "hook" || fieldWidget == "togglemap" || fieldWidget == "structlist" {
-			newData, err := p.SetValue(data, key, value)
-			if err != nil {
-				c.lastErr = "undo/redo failed: " + err.Error()
-				return
-			}
-			c.config.SetContent(newData)
-			c.refreshValues()
-			return
-		}
-
-		// list fields need SetValues for repeated-key formats
-		if fieldType == "list" {
-			if mvp, ok := p.(konfables.MultiValueParser); ok {
-				vals := splitListValue(value)
-				newData, err := mvp.SetValues(data, key, vals)
-				if err != nil {
-					c.lastErr = "undo/redo failed: " + err.Error()
-					return
-				}
-				c.config.SetContent(newData)
-				c.refreshValues()
-				return
-			}
-		}
-
-		serialized := formatValue(value, fieldType, fmtStr)
-		newData, err := p.SetValue(data, key, serialized)
+		newData, err := konfables.WriteField(p, data, f, value, c.konfable.Info().Format)
 		if err != nil {
 			c.lastErr = "undo/redo failed: " + err.Error()
 			return
@@ -782,7 +700,6 @@ func (c *content) showDashboard() {
 	c.scrollY = 0
 	c.detailFocused = false
 	c.cursor = 0
-	c.detail.editing = false
 	c.detail.editor = nil
 	c.detail.reset()
 	c.insightLines = nil
@@ -836,7 +753,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.cachedChangesDirty = true
 	c.config = nil
 	c.schema = nil
-	c.detail.editing = false
 	c.detail.editor = nil
 	c.detail.reset()
 	c.undoStack.Clear()
@@ -1187,7 +1103,7 @@ func (c *content) syncDetail() {
 
 // Editing returns whether the detail panel is in edit mode.
 func (c content) Editing() bool {
-	return c.detail.editing
+	return c.detail.editor != nil
 }
 
 // buildInsights computes the cycling insight lines from current state.

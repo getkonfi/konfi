@@ -23,12 +23,7 @@ type pathEditor struct {
 
 func (e *pathEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {
 	e.th = th
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
 	return e.input.Focus()
@@ -177,7 +172,7 @@ func (e *pathEditor) View(width int) string {
 			display := entry
 			maxW := width - 6
 			if maxW > 0 && len(display) > maxW {
-				display = display[:maxW-1] + "…"
+				display = truncate(display, maxW)
 			}
 			if i == e.compCursor {
 				b.WriteString("    " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))

@@ -87,12 +87,7 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 		}
 	}
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()
 

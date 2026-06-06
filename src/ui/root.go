@@ -33,33 +33,19 @@ const (
 	ModeSearch
 )
 
-// navEntry records a navigation position for back/forward.
-type navEntry struct {
-	appIndex int
-}
-
-type dirtyConfigState struct {
-	config     *pkg.ConfigFile
-	origValues map[string]string
-	undoStack  *UndoStack
-	fileState  string
-}
-
 type root struct {
-	app           *setup.App
-	sidebar       sidebar
-	content       content
-	status        statusbar
-	palette       palette
-	focus         pane
-	mode          AppMode
-	width         int
-	height        int
-	ready         bool
-	showHelp      bool
-	confirmQuit   bool
-	confirmSwitch bool            // dirty-state guard for app switching
-	pendingSwitch *AppSelectedMsg // deferred app switch awaiting confirmation
+	app         *setup.App
+	sidebar     sidebar
+	content     content
+	status      statusbar
+	palette     palette
+	focus       pane
+	mode        AppMode
+	width       int
+	height      int
+	ready       bool
+	showHelp    bool
+	confirmQuit bool
 
 	// all konfables (indexed by sidebar item order)
 	allKonfables []konfables.Konfable
@@ -157,82 +143,8 @@ func NewRoot(app *setup.App) tea.Model {
 		ct.bookmarks[b] = true
 	}
 
-	// populate dashboard data with stats
-	for _, k := range allK {
-		info := k.Info()
-		nIcon := info.NerdIcon
-		if !nerdFont {
-			nIcon = info.Icon
-		}
-		if nIcon == "" {
-			nIcon = info.Icon
-		}
-		da := dashboardApp{
-			icon:      nIcon,
-			name:      k.Name(),
-			installed: installed[k.Name()],
-		}
-		if v, ok := app.Versions[k.Name()]; ok {
-			da.version = v
-		}
+	ct.dashboardApps = buildDashboardApps(allK, installed, nerdFont, app.Versions, schemaCache, newCounts)
 
-		// stats from schema
-		if s, ok := schemaCache[k.Name()]; ok {
-			for si := range s.Sections {
-				da.totalFields += len(s.Sections[si].Fields)
-			}
-			da.coverage = s.Coverage
-			da.minAppVersion = s.MinAppVersion
-			da.maxAppVersion = s.MaxAppVersion
-
-			// count configured + deprecated for installed apps
-			if installed[k.Name()] {
-				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				cf, err := pkg.NewConfigFile(ctx, k)
-				cancel()
-				if err == nil && cf != nil {
-					data := cf.Content()
-					p := k.Parser()
-					if p != nil {
-						configured := 0
-						if bp, ok := p.(konfables.BatchParser); ok {
-							all := bp.FindAll(data)
-							configured = len(all)
-						} else {
-							// per-field lookup against schema keys
-							for si := range s.Sections {
-								for fi := range s.Sections[si].Fields {
-									if _, found := p.FindValue(data, s.Sections[si].Fields[fi].Key); found {
-										configured++
-									}
-								}
-							}
-						}
-						da.configuredCount = configured
-
-						// deprecated count via diagnostics
-						var configKeys []string
-						if bp, ok := p.(konfables.BatchParser); ok {
-							for key := range bp.FindAll(data) {
-								configKeys = append(configKeys, key)
-							}
-						}
-						if len(configKeys) > 0 {
-							diags := pkg.Diagnose(configKeys, s, da.version)
-							for _, d := range diags {
-								if d.Kind == "deprecated" {
-									da.deprecatedCount++
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		da.newCount = newCounts[k.Name()]
-		ct.dashboardApps = append(ct.dashboardApps, da)
-	}
 	st := newStatusbar(th)
 	pal := newPalette(th)
 
@@ -260,26 +172,46 @@ func (r *root) Init() tea.Cmd {
 }
 
 func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
+	if model, cmd, done := r.interceptModal(msg); done {
+		return model, cmd
+	}
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		r.width = msg.Width
+		r.height = msg.Height
+		r.ready = true
+		r.layout()
+		return r, nil
+	case tea.KeyPressMsg:
+		return r.updateKey(msg)
+	default:
+		return r.updateMessage(msg)
+	}
+}
 
+// interceptModal handles overlay, edit, and search states that capture input
+// before the normal keymap runs. it returns handled=true when the event was
+// consumed and Update should return immediately.
+func (r *root) interceptModal(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	// palette intercepts ALL input when visible
 	if r.palette.Visible() {
 		switch msg := msg.(type) {
 		case tea.KeyPressMsg:
 			p, cmd := r.palette.Update(msg)
 			r.palette = p
-			return r, cmd
+			return r, cmd, true
 		case PaletteSelectedMsg:
 			r.palette.Close()
 			// re-dispatch the inner action
-			return r.Update(msg.Action)
+			m, cmd := r.Update(msg.Action)
+			return m, cmd, true
 		case PaletteClosedMsg:
 			r.palette.Close()
-			return r, nil
+			return r, nil, true
 		default:
 			p, cmd := r.palette.Update(msg)
 			r.palette = p
-			return r, cmd
+			return r, cmd, true
 		}
 	}
 
@@ -294,7 +226,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, func() tea.Msg {
 					err := cfg.Save(context.Background())
 					return saveResultMsg{err: err}
-				}
+				}, true
 			case "p":
 				info := r.currentAppInfo()
 				if info.AutoReload {
@@ -305,14 +237,14 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return r, func() tea.Msg {
 						err := cfg.Preview(context.Background())
 						return previewResultMsg{err: err}
-					}
+					}, true
 				}
 			case "esc", "n":
 				r.showDiffPreview = false
 				r.status.status = ""
-				return r, nil
+				return r, nil, true
 			}
-			return r, nil
+			return r, nil, true
 		}
 	}
 
@@ -327,7 +259,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, func() tea.Msg {
 					err := cfg.Save(context.Background())
 					return saveResultMsg{err: err}
-				}
+				}, true
 			case "esc":
 				r.previewing = false
 				r.status.status = "reverting..."
@@ -335,7 +267,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r, func() tea.Msg {
 					err := cfg.RevertPreview(context.Background())
 					return revertPreviewResultMsg{err: err}
-				}
+				}, true
 			}
 		}
 	}
@@ -347,17 +279,16 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if r.content.config != nil {
 				r.content.stopWatching()
 			}
-			return r, tea.Quit
+			return r, tea.Quit, true
 		}
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
-		cmds = append(cmds, cmd)
 		// sync file state after edit commits
 		if r.content.config != nil && r.content.config.Dirty() {
 			r.content.fileState = "unsaved"
 		}
 		r.updateHints()
-		return r, tea.Batch(cmds...)
+		return r, tea.Batch(cmd), true
 	}
 
 	// when content is searching, forward keys to content (same pattern as sidebar search)
@@ -367,12 +298,12 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if r.content.config != nil {
 					r.content.stopWatching()
 				}
-				return r, tea.Quit
+				return r, tea.Quit, true
 			}
 			var cmd tea.Cmd
 			r.content, cmd = r.content.Update(msg)
 			r.updateHints()
-			return r, cmd
+			return r, cmd, true
 		}
 	}
 
@@ -384,323 +315,265 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.showHelp = false
 				r.updateHints()
 			}
-			return r, nil
+			return r, nil, true
 		}
 	}
 
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		r.width = msg.Width
-		r.height = msg.Height
-		r.ready = true
-		r.layout()
-		return r, nil
+	return r, nil, false
+}
 
-	case tea.KeyPressMsg:
-		// when sidebar is searching, don't intercept keys that should reach the textinput
-		if r.sidebar.searching {
-			switch msg.String() {
-			case "ctrl+c":
-				if r.content.config != nil {
-					r.content.stopWatching()
-				}
-				return r, tea.Quit
-			case "esc":
-				// let sidebar handle esc to clear search
-				var cmd tea.Cmd
-				r.sidebar, cmd = r.sidebar.Update(msg)
-				r.updateHints()
-				return r, cmd
-			default:
-				// forward everything else to sidebar
-				var cmd tea.Cmd
-				r.sidebar, cmd = r.sidebar.Update(msg)
-				r.updateHints()
-				return r, cmd
-			}
-		}
-
-		// reset confirm-quit on any key that isn't q
-		if msg.String() != "q" {
-			r.confirmQuit = false
-		}
-		// reset confirm-switch on keys that aren't navigation
-		switch msg.String() {
-		case "ctrl+n", "ctrl+p", "ctrl+o", "ctrl+]",
-			"enter", "space", "j", "k", "up", "down", "right":
-			// keep confirmSwitch alive for navigation keys
-		default:
-			r.confirmSwitch = false
-			r.pendingSwitch = nil
-		}
-
+func (r *root) updateKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// when sidebar is searching, don't intercept keys that should reach the textinput
+	if r.sidebar.searching {
 		switch msg.String() {
 		case "ctrl+c":
-			if r.previewing {
-				r.previewing = false
-				if r.content.config != nil {
-					_ = r.content.config.RevertPreview(context.Background())
-				}
-			}
 			if r.content.config != nil {
 				r.content.stopWatching()
 			}
 			return r, tea.Quit
-
-		case "q":
-			if r.content.config != nil && r.content.config.Dirty() && !r.confirmQuit {
-				r.confirmQuit = true
-				if r.previewing {
-					r.status.status = "previewing — q to quit and revert, ctrl+s to save"
-				} else {
-					r.status.status = "unsaved changes — q to quit, ctrl+s to save"
-				}
-				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-					return confirmQuitClearMsg{}
-				})
-			}
-			if r.previewing {
-				r.previewing = false
-				if r.content.config != nil {
-					_ = r.content.config.RevertPreview(context.Background())
-				}
-			}
-			if r.content.config != nil {
-				r.content.stopWatching()
-			}
-			return r, tea.Quit
-
-		case "ctrl+s":
-			if r.content.config != nil && r.content.config.Dirty() {
-				r.content.syncDiffView()
-				r.showDiffPreview = true
-				return r, nil
-			}
-			r.status.status = "no changes"
-			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg { return fileStateClearMsg{} })
-
-		case ".":
-			r.toggleConfiguredFilter()
-			return r, nil
-
-		case "tab":
-			if r.focus == paneContent && !r.content.detailFocused {
-				r.toggleChangedFilter()
-				return r, nil
-			}
-
-		case "left":
-			if r.focus == paneContent && r.content.detailFocused {
-				break
-			}
-			if r.focus != paneSidebar {
-				r.focusPane(paneSidebar)
-			}
-			return r, nil
-
-		case "right":
-			if r.focus == paneSidebar {
-				var cmd tea.Cmd
-				r.sidebar, cmd = r.sidebar.selectCurrent(true)
-				return r, cmd
-			}
-
 		case "esc":
-			if r.focus == paneContent && r.content.detailFocused {
-				break
-			}
-			// layered esc: clear filters before jumping to sidebar
-			if r.content.bookmarkedOnly {
-				r.content.bookmarkedOnly = false
-				r.content.refilter()
-				r.content.syncDetail()
-				r.status.status = ""
-				r.updateHints()
-				return r, nil
-			}
-			if r.content.showEffective {
-				r.content.showEffective = false
-				r.content.refilter()
-				r.content.syncDetail()
-				r.updateHints()
-				return r, nil
-			}
-			if r.content.showNewOnly {
-				r.content.showNewOnly = false
-				r.content.refilter()
-				r.content.syncDetail()
-				r.status.status = ""
-				r.updateHints()
-				return r, nil
-			}
-			if r.content.changedOnly {
-				r.content.changedOnly = false
-				r.content.refilter()
-				r.content.syncDetail()
-				r.status.status = ""
-				r.updateHints()
-				return r, nil
-			}
-			if r.content.configuredOnly {
-				r.content.configuredOnly = false
-				r.content.refilter()
-				r.content.syncDetail()
-				r.updateHints()
-				return r, nil
-			}
-			if len(r.content.searchMatches) > 0 || r.content.search.Value() != "" {
-				r.content.search.SetValue("")
-				r.content.searchMatches = r.content.searchMatches[:0]
-				r.content.searchIdx = 0
-				r.content.refilter()
-				r.content.syncDetail()
-				r.updateHints()
-				return r, nil
-			}
-			if r.focus != paneSidebar {
-				r.focusPane(paneSidebar)
-			}
-			return r, nil
-
-		case "t":
-			r.cycleTheme()
-			themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
+			// let sidebar handle esc to clear search
 			var cmd tea.Cmd
-			r.sidebar, cmd = r.sidebar.Update(themeMsg)
-			cmds = append(cmds, cmd)
-			r.content, cmd = r.content.Update(themeMsg)
-			cmds = append(cmds, cmd)
-			r.status.theme = r.app.Theme
-			r.status.themeName = r.app.Theme.Palette.Name
-			r.status.refreshStyles()
-			return r, tea.Batch(cmds...)
-
-		case "?":
-			r.showHelp = true
+			r.sidebar, cmd = r.sidebar.Update(msg)
 			r.updateHints()
-			return r, nil
-
-		case "ctrl+k":
-			cmdItems := r.buildPaletteItems()
-			fldItems := r.buildFieldItems()
-			cmd := r.palette.Open(PaletteModeCommands, cmdItems, fldItems)
-			r.palette.width = r.width
-			r.palette.height = r.height
 			return r, cmd
+		default:
+			// forward everything else to sidebar
+			var cmd tea.Cmd
+			r.sidebar, cmd = r.sidebar.Update(msg)
+			r.updateHints()
+			return r, cmd
+		}
+	}
 
-		case "ctrl+n":
-			cur := r.sidebar.appIndex()
-			if cur >= 0 && cur < len(r.allKonfables)-1 {
-				r.pushNav()
-				next := cur + 1
-				r.sidebar.setCursorToApp(next)
-				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: next, Confirmed: true}
-				}
+	// reset confirm-quit on any key that isn't q
+	if msg.String() != "q" {
+		r.confirmQuit = false
+	}
+
+	switch msg.String() {
+	case "ctrl+c":
+		if r.previewing {
+			r.previewing = false
+			if r.content.config != nil {
+				_ = r.content.config.RevertPreview(context.Background())
 			}
+		}
+		if r.content.config != nil {
+			r.content.stopWatching()
+		}
+		return r, tea.Quit
+
+	case "q":
+		if r.content.config != nil && r.content.config.Dirty() && !r.confirmQuit {
+			r.confirmQuit = true
+			if r.previewing {
+				r.status.status = "previewing — q to quit and revert, ctrl+s to save"
+			} else {
+				r.status.status = "unsaved changes — q to quit, ctrl+s to save"
+			}
+			return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+				return confirmQuitClearMsg{}
+			})
+		}
+		if r.previewing {
+			r.previewing = false
+			if r.content.config != nil {
+				_ = r.content.config.RevertPreview(context.Background())
+			}
+		}
+		if r.content.config != nil {
+			r.content.stopWatching()
+		}
+		return r, tea.Quit
+
+	case "ctrl+s":
+		if r.content.config != nil && r.content.config.Dirty() {
+			r.content.syncDiffView()
+			r.showDiffPreview = true
 			return r, nil
+		}
+		r.status.status = "no changes"
+		return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg { return fileStateClearMsg{} })
 
-		case "ctrl+p":
-			cur := r.sidebar.appIndex()
-			if cur > 0 {
-				r.pushNav()
-				prev := cur - 1
-				r.sidebar.setCursorToApp(prev)
-				return r, func() tea.Msg {
-					return AppSelectedMsg{Index: prev, Confirmed: true}
-				}
-			}
+	case ".":
+		r.toggleConfiguredFilter()
+		return r, nil
+
+	case "tab":
+		if r.focus == paneContent && !r.content.detailFocused {
+			r.toggleChangedFilter()
 			return r, nil
-
-		case "ctrl+o":
-			if cmd := r.navBack(); cmd != nil {
-				return r, cmd
-			}
-			return r, nil
-
-		case "ctrl+]":
-			if cmd := r.navForward(); cmd != nil {
-				return r, cmd
-			}
-			return r, nil
-
-		case "c":
-			if r.focus == paneContent && !r.content.detailFocused {
-				cmd := r.yankField()
-				if cmd != nil {
-					r.updateHints()
-					return r, cmd
-				}
-			}
-
-		case "p":
-			if r.focus == paneContent && !r.content.detailFocused {
-				cmd := r.pasteField()
-				if cmd != nil {
-					return r, cmd
-				}
-			}
-
-		case "w":
-			// only toggle "what's new" filter when content focused with no active search matches
-			if r.focus == paneContent && !r.content.detailFocused && len(r.content.searchMatches) == 0 {
-				r.toggleNewFilter()
-				r.updateHints()
-				return r, nil
-			}
-
-		case "e":
-			if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
-				cmd := r.openInEditor()
-				return r, cmd
-			}
-
-		case "m":
-			if r.focus == paneContent && !r.content.detailFocused && r.content.konfable != nil {
-				cmd := r.toggleBookmark()
-				if cmd != nil {
-					r.updateHints()
-					return r, cmd
-				}
-			}
-
-		case "b":
-			if r.focus == paneContent && !r.content.detailFocused && r.content.schema != nil {
-				r.content.bookmarkedOnly = !r.content.bookmarkedOnly
-				r.content.refilter()
-				r.content.syncDetail()
-				if r.content.bookmarkedOnly {
-					r.status.status = "showing bookmarks"
-				} else {
-					r.status.status = ""
-				}
-				r.updateHints()
-				return r, nil
-			}
-
-		case "ctrl+z":
-			return r, func() tea.Msg { return UndoMsg{} }
-
-		case "ctrl+y":
-			return r, func() tea.Msg { return RedoMsg{} }
 		}
 
+	case "left":
+		if r.focus == paneContent && r.content.detailFocused {
+			break
+		}
+		if r.focus != paneSidebar {
+			r.focusPane(paneSidebar)
+		}
+		return r, nil
+
+	case "right":
+		if r.focus == paneSidebar {
+			var cmd tea.Cmd
+			r.sidebar, cmd = r.sidebar.selectCurrent(true)
+			return r, cmd
+		}
+
+	case "esc":
+		if r.focus == paneContent && r.content.detailFocused {
+			break
+		}
+		// layered esc: clear filters before jumping to sidebar
+		if cleared, clearStatus := r.content.clearTopFilter(); cleared {
+			if clearStatus {
+				r.status.status = ""
+			}
+			r.updateHints()
+			return r, nil
+		}
+		if len(r.content.searchMatches) > 0 || r.content.search.Value() != "" {
+			r.content.search.SetValue("")
+			r.content.searchMatches = r.content.searchMatches[:0]
+			r.content.searchIdx = 0
+			r.content.refilter()
+			r.content.syncDetail()
+			r.updateHints()
+			return r, nil
+		}
+		if r.focus != paneSidebar {
+			r.focusPane(paneSidebar)
+		}
+		return r, nil
+
+	case "t":
+		r.cycleTheme()
+		return r, tea.Batch(r.applyThemeChange()...)
+
+	case "?":
+		r.showHelp = true
+		r.updateHints()
+		return r, nil
+
+	case "ctrl+k":
+		cmdItems := r.buildPaletteItems()
+		fldItems := r.buildFieldItems()
+		cmd := r.palette.Open(PaletteModeCommands, cmdItems, fldItems)
+		r.palette.width = r.width
+		r.palette.height = r.height
+		return r, cmd
+
+	case "ctrl+n":
+		cur := r.sidebar.appIndex()
+		if cur >= 0 && cur < len(r.allKonfables)-1 {
+			r.pushNav()
+			next := cur + 1
+			r.sidebar.setCursorToApp(next)
+			return r, func() tea.Msg {
+				return AppSelectedMsg{Index: next, Confirmed: true}
+			}
+		}
+		return r, nil
+
+	case "ctrl+p":
+		cur := r.sidebar.appIndex()
+		if cur > 0 {
+			r.pushNav()
+			prev := cur - 1
+			r.sidebar.setCursorToApp(prev)
+			return r, func() tea.Msg {
+				return AppSelectedMsg{Index: prev, Confirmed: true}
+			}
+		}
+		return r, nil
+
+	case "ctrl+o":
+		if cmd := r.navBack(); cmd != nil {
+			return r, cmd
+		}
+		return r, nil
+
+	case "ctrl+]":
+		if cmd := r.navForward(); cmd != nil {
+			return r, cmd
+		}
+		return r, nil
+
+	case "c":
+		if r.focus == paneContent && !r.content.detailFocused {
+			cmd := r.yankField()
+			if cmd != nil {
+				r.updateHints()
+				return r, cmd
+			}
+		}
+
+	case "p":
+		if r.focus == paneContent && !r.content.detailFocused {
+			cmd := r.pasteField()
+			if cmd != nil {
+				return r, cmd
+			}
+		}
+
+	case "w":
+		// only toggle "what's new" filter when content focused with no active search matches
+		if r.focus == paneContent && !r.content.detailFocused && len(r.content.searchMatches) == 0 {
+			r.toggleNewFilter()
+			r.updateHints()
+			return r, nil
+		}
+
+	case "e":
+		if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
+			cmd := r.openInEditor()
+			return r, cmd
+		}
+
+	case "m":
+		if r.focus == paneContent && !r.content.detailFocused && r.content.konfable != nil {
+			cmd := r.toggleBookmark()
+			if cmd != nil {
+				r.updateHints()
+				return r, cmd
+			}
+		}
+
+	case "b":
+		if r.focus == paneContent && !r.content.detailFocused && r.content.schema != nil {
+			r.content.bookmarkedOnly = !r.content.bookmarkedOnly
+			r.content.refilter()
+			r.content.syncDetail()
+			if r.content.bookmarkedOnly {
+				r.status.status = "showing bookmarks"
+			} else {
+				r.status.status = ""
+			}
+			r.updateHints()
+			return r, nil
+		}
+
+	case "ctrl+z":
+		return r, func() tea.Msg { return UndoMsg{} }
+
+	case "ctrl+y":
+		return r, func() tea.Msg { return RedoMsg{} }
+	}
+	return r.fanOut(msg)
+}
+
+func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	switch msg := msg.(type) {
 	case ToggleFilterMsg:
 		r.toggleConfiguredFilter()
 		return r, nil
 
 	case CycleThemeMsg:
 		r.cycleTheme()
-		themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
-		var cmd tea.Cmd
-		r.sidebar, cmd = r.sidebar.Update(themeMsg)
-		cmds = append(cmds, cmd)
-		r.content, cmd = r.content.Update(themeMsg)
-		cmds = append(cmds, cmd)
-		r.status.theme = r.app.Theme
-		r.status.themeName = r.app.Theme.Palette.Name
-		r.status.refreshStyles()
-		return r, tea.Batch(cmds...)
+		return r, tea.Batch(r.applyThemeChange()...)
 
 	case ToggleNewMsg:
 		if r.focus == paneContent && len(r.content.searchMatches) == 0 {
@@ -780,8 +653,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return r, nil
 			}
-			r.confirmSwitch = false
-			r.pendingSwitch = nil
 			stashedName, stashed := r.stashActiveDirtyConfig()
 			if r.previewing {
 				r.previewing = false
@@ -965,14 +836,6 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, nil
 
-	case confirmSwitchClearMsg:
-		r.confirmSwitch = false
-		r.pendingSwitch = nil
-		if r.status.status == "unsaved changes — press again to switch, ctrl+s to save" {
-			r.status.status = ""
-		}
-		return r, nil
-
 	case statusClearMsg:
 		r.status.status = ""
 		return r, nil
@@ -1027,15 +890,7 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "theme":
 			p := theme.PaletteByName(msg.Value)
 			r.app.Theme.SetPalette(p)
-			themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
-			var cmd tea.Cmd
-			r.sidebar, cmd = r.sidebar.Update(themeMsg)
-			cmds = append(cmds, cmd)
-			r.content, cmd = r.content.Update(themeMsg)
-			cmds = append(cmds, cmd)
-			r.status.theme = r.app.Theme
-			r.status.themeName = r.app.Theme.Palette.Name
-			r.status.refreshStyles()
+			cmds = append(cmds, r.applyThemeChange()...)
 			r.app.Config.Theme = msg.Value
 		case "log_level":
 			r.app.Config.LogLevel = msg.Value
@@ -1081,8 +936,13 @@ func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
 		return r, cmd
+	default:
+		return r.fanOut(msg)
 	}
+}
 
+func (r *root) fanOut(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	// bounce nav keys from empty content back to sidebar
 	if km, ok := msg.(tea.KeyPressMsg); ok && r.focus == paneContent {
 		switch km.String() {
@@ -1219,165 +1079,20 @@ func (r *root) focusPane(p pane) {
 	r.updateHints()
 }
 
-func cloneValues(values map[string]string) map[string]string {
-	if values == nil {
-		return nil
-	}
-	out := make(map[string]string, len(values))
-	for k, v := range values {
-		out[k] = v
-	}
-	return out
-}
-
-func (r *root) stashActiveDirtyConfig() (string, bool) {
-	if r.content.konfable == nil || r.content.config == nil {
-		return "", false
-	}
-	name := r.content.konfable.Name()
-	if r.dirtyConfigs == nil {
-		r.dirtyConfigs = make(map[string]dirtyConfigState)
-	}
-	if !r.content.config.Dirty() {
-		delete(r.dirtyConfigs, name)
-		return name, false
-	}
-	state := dirtyConfigState{
-		config:     r.content.config,
-		origValues: cloneValues(r.content.origValues),
-		fileState:  r.content.fileState,
-	}
-	if r.content.undoStack != nil {
-		state.undoStack = r.content.undoStack.Clone()
-	}
-	r.dirtyConfigs[name] = state
-	return name, true
-}
-
-func (r *root) takeDirtyConfig(name, path string) (dirtyConfigState, bool) {
-	if r.dirtyConfigs == nil {
-		return dirtyConfigState{}, false
-	}
-	state, ok := r.dirtyConfigs[name]
-	if !ok {
-		return dirtyConfigState{}, false
-	}
-	if state.config == nil || !state.config.Dirty() {
-		delete(r.dirtyConfigs, name)
-		return dirtyConfigState{}, false
-	}
-	delete(r.dirtyConfigs, name)
-	if path != "" {
-		state.config.Path = path
-	}
-	return state, true
-}
-
-func (r *root) clearDirtyConfig(name string) {
-	if r.dirtyConfigs == nil || name == "" {
-		return
-	}
-	delete(r.dirtyConfigs, name)
-}
-
-func (r *root) updateHints() {
-	// wire mode indicator and undo count into statusbar
-	switch {
-	case r.content.Editing():
-		r.status.SetMode("EDIT")
-	case r.content.searching || r.sidebar.searching:
-		r.status.SetMode("SEARCH")
-	default:
-		r.status.SetMode("")
-	}
-	r.status.SetUndoCount(r.content.undoStack.Len())
-
-	if r.content.Editing() {
-		switch r.content.detail.editor.(type) {
-		case *listEditor, *hookEditor, *structListEditor:
-			r.content.hints = []keyHint{
-				{"a", "add"}, {"d", "delete"},
-				{"⏎", "edit"}, {"^S", "done"}, {"esc", "cancel"},
-			}
-		case *toggleMapEditor:
-			r.content.hints = []keyHint{
-				{"␣", "toggle"}, {"a", "add"}, {"d", "delete"},
-				{"⏎", "done"}, {"esc", "cancel"},
-			}
-		case *enumEditor:
-			r.content.hints = []keyHint{
-				{"↑↓", "select"}, {"⏎", "confirm"}, {"esc", "cancel"},
-			}
-		default:
-			r.content.hints = []keyHint{
-				{"⏎", "confirm"}, {"esc", "cancel"}, {"tab", "switch mode"},
-			}
-		}
-		r.status.hints = r.content.hints
-		return
-	}
-
-	switch r.focus {
-	case paneSidebar:
-		if r.sidebar.searching {
-			r.content.hints = []keyHint{
-				{"↑↓", "nav"},
-				{"⏎", "select"},
-				{"esc", "cancel"},
-			}
-		} else {
-			hints := []keyHint{
-				{"↑↓", "nav"},
-				{"⏎", "open"},
-				{"/", "search"},
-			}
-			hints = append(hints, []keyHint{
-				{"→", "content"},
-				{"esc", "cancel"},
-				{"q", "quit"},
-			}...)
-			r.content.hints = hints
-		}
-	case paneContent:
-		if r.content.detailFocused {
-			hints := []keyHint{
-				{"↑↓", "scroll file"},
-				{"Pg", "page"},
-				{"Home", "top"},
-				{"End", "bottom"},
-				{"←", "fields"},
-			}
-			if r.content.config != nil && r.content.config.Path != "" {
-				hints = append(hints, keyHint{"e", "$EDITOR"})
-			}
-			hints = append(hints, keyHint{"q", "quit"})
-			r.content.hints = hints
-			r.status.hints = r.content.hints
-			return
-		}
-		if r.content.searching {
-			r.content.hints = []keyHint{
-				{"↑↓", "nav"},
-				{"⏎", "lock"},
-				{"esc", "cancel"},
-			}
-			r.status.hints = r.content.hints
-			return
-		}
-		r.content.hints = []keyHint{
-			{"↑↓", "nav"},
-			{"⏎", "edit"},
-			{"⌫", "del"},
-			{"/", "search"},
-			{"c", "copy"},
-			{"p", "paste"},
-			{".", "configured"},
-			{"⇥", "changed"},
-			{"q", "quit"},
-			{"esc", "cancel"},
-		}
-	}
-	r.status.hints = r.content.hints
+// applyThemeChange propagates the active theme to the child models and refreshes
+// the statusbar. returns the child update cmds for the caller to batch.
+func (r *root) applyThemeChange() []tea.Cmd {
+	themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+	r.sidebar, cmd = r.sidebar.Update(themeMsg)
+	cmds = append(cmds, cmd)
+	r.content, cmd = r.content.Update(themeMsg)
+	cmds = append(cmds, cmd)
+	r.status.theme = r.app.Theme
+	r.status.themeName = r.app.Theme.Palette.Name
+	r.status.refreshStyles()
+	return cmds
 }
 
 func (r *root) cycleTheme() {
@@ -1391,219 +1106,6 @@ func (r *root) cycleTheme() {
 		}
 	}
 	r.app.Theme.SetPalette(&palettes[nextIdx])
-}
-
-// buildPaletteItems creates the command palette entries from current state.
-func (r *root) buildPaletteItems() []PaletteItem {
-	var items []PaletteItem
-
-	// app entries
-	for i, k := range r.allKonfables {
-		idx := i
-		items = append(items, PaletteItem{
-			Label:      k.Name(),
-			Category:   "app",
-			MatchTerms: k.Name(),
-			Action:     SelectAppMsg{Index: idx},
-		})
-	}
-
-	// actions
-	items = append(items,
-		PaletteItem{
-			Label:      "Save",
-			Shortcut:   "ctrl+s",
-			Category:   "action",
-			MatchTerms: "save write",
-			Action:     SaveMsg{},
-		},
-		PaletteItem{
-			Label:      "Undo",
-			Shortcut:   "ctrl+z",
-			Category:   "action",
-			MatchTerms: "undo revert",
-			Action:     UndoMsg{},
-		},
-		PaletteItem{
-			Label:      "Redo",
-			Shortcut:   "ctrl+y",
-			Category:   "action",
-			MatchTerms: "redo repeat",
-			Action:     RedoMsg{},
-		},
-		PaletteItem{
-			Label:      "Toggle Configured Filter",
-			Shortcut:   "f",
-			Category:   "action",
-			MatchTerms: "filter configured only",
-			Action:     ToggleFilterMsg{},
-		},
-		PaletteItem{
-			Label:      "Cycle Theme",
-			Shortcut:   "t",
-			Category:   "action",
-			MatchTerms: "theme cycle color palette",
-			Action:     CycleThemeMsg{},
-		},
-		PaletteItem{
-			Label:      "What's New",
-			Shortcut:   "w",
-			Category:   "action",
-			MatchTerms: "new version fields",
-			Action:     ToggleNewMsg{},
-		},
-		PaletteItem{
-			Label:      "Open in $EDITOR",
-			Shortcut:   "e",
-			Category:   "action",
-			MatchTerms: "editor vim nvim external",
-			Action:     OpenEditorMsg{},
-		},
-		PaletteItem{
-			Label:      "Help",
-			Shortcut:   "?",
-			Category:   "action",
-			MatchTerms: "help keybindings shortcuts",
-			Action:     ToggleHelpMsg{},
-		},
-	)
-
-	return items
-}
-
-// buildFieldItems creates palette entries for the current app's schema fields.
-func (r *root) buildFieldItems() []PaletteItem {
-	if len(r.content.fields) == 0 {
-		return nil
-	}
-	app := ""
-	if r.content.konfable != nil {
-		app = r.content.konfable.Name()
-	}
-	items := make([]PaletteItem, 0, len(r.content.fields))
-	for i := range r.content.fields {
-		f := &r.content.fields[i]
-		section := ""
-		if r.content.schema != nil && i < len(r.content.fieldSection) {
-			si := r.content.fieldSection[i]
-			if si < len(r.content.schema.Sections) {
-				section = r.content.schema.Sections[si].Name
-			}
-		}
-		desc := f.Type
-		if f.Description != "" {
-			desc = f.Description
-		}
-		terms := f.Key + " " + section + " " + f.Type
-		if f.Description != "" {
-			terms += " " + f.Description
-		}
-		cat := app
-		if section != "" {
-			cat = section
-		}
-		items = append(items, PaletteItem{
-			Label:       f.Key,
-			Description: desc,
-			Category:    cat,
-			MatchTerms:  terms,
-			Action:      JumpToFieldMsg{FieldIdx: i},
-		})
-	}
-	return items
-}
-
-// pushNav records the current position in the navigation history.
-func (r *root) pushNav() {
-	entry := navEntry{
-		appIndex: r.sidebar.appIndex(),
-	}
-	// truncate forward history when pushing
-	if r.navHistoryPos < len(r.navHistory) {
-		r.navHistory = r.navHistory[:r.navHistoryPos]
-	}
-	r.navHistory = append(r.navHistory, entry)
-	r.navHistoryPos = len(r.navHistory)
-}
-
-// navBack navigates to the previous position in history.
-func (r *root) navBack() tea.Cmd {
-	if r.navHistoryPos <= 0 || len(r.navHistory) == 0 {
-		return nil
-	}
-	// save current position at the tip so forward can return here
-	if r.navHistoryPos >= len(r.navHistory) {
-		r.navHistory = append(r.navHistory, navEntry{appIndex: r.sidebar.appIndex()})
-	}
-	r.navHistoryPos--
-	entry := r.navHistory[r.navHistoryPos]
-	r.sidebar.setCursorToApp(entry.appIndex)
-	idx := entry.appIndex
-	return func() tea.Msg {
-		return AppSelectedMsg{Index: idx, Confirmed: true}
-	}
-}
-
-// navForward navigates to the next position in history.
-func (r *root) navForward() tea.Cmd {
-	if r.navHistoryPos >= len(r.navHistory)-1 {
-		return nil
-	}
-	r.navHistoryPos++
-	entry := r.navHistory[r.navHistoryPos]
-	r.sidebar.setCursorToApp(entry.appIndex)
-	idx := entry.appIndex
-	return func() tea.Msg {
-		return AppSelectedMsg{Index: idx, Confirmed: true}
-	}
-}
-
-// renderDiffPreview renders a centered card with the diff view and confirmation hints.
-func (r *root) renderDiffPreview() string {
-	th := r.app.Theme
-
-	cardW := r.width * 60 / 100
-	if cardW < 40 {
-		cardW = 40
-	}
-	if cardW > r.width-4 {
-		cardW = r.width - 4
-	}
-	cardH := r.height * 70 / 100
-	if cardH < 10 {
-		cardH = 10
-	}
-	if cardH > r.height-4 {
-		cardH = r.height - 4
-	}
-
-	innerW := cardW - 4
-	innerH := cardH - 6 // border + padding + header + footer
-
-	r.content.diffView.SetSize(innerW, innerH)
-
-	var b strings.Builder
-	b.WriteString(th.Primary.Bold(true).Render("  save changes?"))
-	b.WriteString("\n\n")
-	b.WriteString(r.content.diffView.View())
-	b.WriteString("\n\n")
-	hints := "  enter save  esc cancel"
-	if r.currentAppInfo().AutoReload {
-		hints = "  enter save  p preview  esc cancel"
-	}
-	b.WriteString(th.Muted.Italic(true).Render(hints))
-
-	card := helpCardStyle.
-		BorderForeground(th.Palette.Primary).
-		Width(cardW).
-		Height(cardH).
-		Render(b.String())
-
-	return lipgloss.Place(r.width, r.height,
-		lipgloss.Center, lipgloss.Center,
-		card,
-		lipgloss.WithWhitespaceChars(" "),
-	)
 }
 
 // computeNewCounts counts fields with a `since` matching the detected version per app.
@@ -1708,25 +1210,7 @@ func (r *root) applyPaste(value string) {
 		return
 	}
 	data := r.content.config.Content()
-
-	// list fields need SetValues for repeated-key formats
-	if f.Type == "list" {
-		if mvp, ok := p.(konfables.MultiValueParser); ok {
-			vals := splitListValue(value)
-			newData, err := mvp.SetValues(data, f.Key, vals)
-			if err != nil {
-				r.status.status = "paste failed: " + err.Error()
-				return
-			}
-			r.content.config.SetContent(newData)
-			r.content.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldVal, NewValue: value})
-			r.content.refreshValues()
-			return
-		}
-	}
-
-	serialized := formatValue(value, f.Type, r.content.konfable.Info().Format)
-	newData, err := p.SetValue(data, f.Key, serialized)
+	newData, err := konfables.WriteField(p, data, *f, value, r.content.konfable.Info().Format)
 	if err != nil {
 		r.status.status = "paste failed: " + err.Error()
 		return

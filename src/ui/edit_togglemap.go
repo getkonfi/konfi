@@ -69,12 +69,7 @@ func (e *toggleMapEditor) Init(field pkg.Field, currentValue string, th *theme.T
 		}
 	}
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 	e.input.Placeholder = "key name"
 	return nil
 }

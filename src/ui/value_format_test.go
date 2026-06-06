@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/eminert/konfi/konfables"
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/pkg/parser"
 )
@@ -82,7 +83,7 @@ func TestKeybindRepeatedKeyRoundTrip(t *testing.T) {
 	e.Init(field, strings.Join(vals, "\n"), testTheme())
 
 	// write path
-	newData, err := p.SetValues(cfg, "keybind", splitListValue(e.Value()))
+	newData, err := p.SetValues(cfg, "keybind", konfables.SplitListValue(e.Value()))
 	if err != nil {
 		t.Fatal(err)
 	}

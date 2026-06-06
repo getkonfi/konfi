@@ -55,12 +55,7 @@ func (e *listEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	}
 	e.cursor = 0
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 
 	if field.Widget == "patternlist" && len(field.Options) > 0 {
 		e.completionOptions = make([]string, len(field.Options))
@@ -269,7 +264,7 @@ func (e *listEditor) View(width int) string {
 			display := e.completionFiltered[i]
 			maxW := width - 8
 			if maxW > 0 && len(display) > maxW {
-				display = display[:maxW-1] + "…"
+				display = truncate(display, maxW)
 			}
 			if i == e.completionIdx {
 				b.WriteString("      " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))

@@ -62,12 +62,7 @@ func (e *hookEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	}
 	e.cursor = 0
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 
 	if len(field.Options) > 0 {
 		e.matcherOptions = make([]string, len(field.Options))
@@ -288,7 +283,7 @@ func (e *hookEditor) View(width int) string {
 			display := e.matcherFiltered[i]
 			maxW := width - 8
 			if maxW > 0 && len(display) > maxW {
-				display = display[:maxW-1] + "…"
+				display = truncate(display, maxW)
 			}
 			if i == e.matcherCompIdx {
 				b.WriteString("      " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))

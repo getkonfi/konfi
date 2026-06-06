@@ -60,12 +60,7 @@ func (e *structListEditor) Init(field pkg.Field, currentValue string, th *theme.
 	}
 	e.cursor = 0
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 	return nil
 }
 

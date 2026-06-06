@@ -36,11 +36,7 @@ func (e *sliderEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 	e.step = (e.max - e.min) / 50.0
 	e.prec = precisionForStep(e.step)
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 	e.input.Validate = numberValidateChar
 	return nil
 }

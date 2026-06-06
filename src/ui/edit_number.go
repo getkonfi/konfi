@@ -29,12 +29,7 @@ func (e *numberEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 	e.isFloat = strings.Contains(currentValue, ".")
 	e.errStyle = th.Error
 
-	e.input = textinput.New()
-	e.input.Prompt = "┊ "
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.input.SetStyles(s)
+	e.input = newFieldInput(th)
 	e.input.Validate = numberValidateChar
 	e.input.SetValue(currentValue)
 	e.input.CursorEnd()

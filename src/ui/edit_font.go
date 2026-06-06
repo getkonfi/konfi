@@ -70,13 +70,8 @@ func (e *fontEditor) Init(field pkg.Field, currentValue string, th *theme.Theme)
 	e.loading = true
 	e.val = currentValue
 
-	e.filter = textinput.New()
-	e.filter.Prompt = "┊ "
+	e.filter = newFieldInput(th)
 	e.filter.Placeholder = "filter fonts..."
-	s := textinput.DefaultDarkStyles()
-	s.Focused.Prompt = th.Muted
-	s.Focused.Text = th.Text
-	e.filter.SetStyles(s)
 	// don't pre-fill filter — show full list, cursor finds current font after load
 
 	return tea.Batch(e.filter.Focus(), loadFontsCmd())
@@ -226,7 +221,7 @@ func (e *fontEditor) View(width int) string {
 		display := name
 		maxW := width - 6
 		if maxW > 0 && len(display) > maxW {
-			display = display[:maxW-1] + "…"
+			display = truncate(display, maxW)
 		}
 
 		if i == e.cursor {
