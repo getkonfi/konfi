@@ -1,11 +1,10 @@
 package ui
 
 import (
-	"strconv"
-
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/theme"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -23,6 +22,12 @@ type FieldEditor interface {
 type InlineEditor interface {
 	FieldEditor
 	InlineView(width int) string
+}
+
+// offsetEditor is optionally implemented by multi-line editors that track an
+// internal cursor offset, so scroll positioning can follow the active line.
+type offsetEditor interface {
+	cursorOffset() int
 }
 
 // editorForField returns the appropriate editor for a field type.
@@ -68,14 +73,14 @@ func editorForField(f pkg.Field) FieldEditor {
 	}
 }
 
-// formatValue serializes a value for writing back to a config file.
-// TOML string/color/enum values need quoting; ghostty/hyprland values are raw.
-func formatValue(value, fieldType, configFormat string) string {
-	if configFormat == "toml" {
-		switch fieldType {
-		case "string", "color", "enum", "multi":
-			return strconv.Quote(value)
-		}
-	}
-	return value
+// newFieldInput returns a textinput configured with the shared inline-editor
+// prompt and focus styling. callers set their own value, validator, placeholder.
+func newFieldInput(th *theme.Theme) textinput.Model {
+	ti := textinput.New()
+	ti.Prompt = "┊ "
+	s := textinput.DefaultDarkStyles()
+	s.Focused.Prompt = th.Muted
+	s.Focused.Text = th.Text
+	ti.SetStyles(s)
+	return ti
 }

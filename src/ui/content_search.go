@@ -43,6 +43,33 @@ func (c *content) changedFieldKeys() map[string]bool {
 	return changed
 }
 
+// clearTopFilter clears the highest-priority active filter (bookmarks, then
+// effective, new, changed, configured) and refilters. cleared reports whether
+// any filter was active; clearStatus reports whether the caller should also
+// reset the status line (only the filters that set a status message on toggle).
+func (c *content) clearTopFilter() (cleared, clearStatus bool) {
+	switch {
+	case c.bookmarkedOnly:
+		c.bookmarkedOnly = false
+		clearStatus = true
+	case c.showEffective:
+		c.showEffective = false
+	case c.showNewOnly:
+		c.showNewOnly = false
+		clearStatus = true
+	case c.changedOnly:
+		c.changedOnly = false
+		clearStatus = true
+	case c.configuredOnly:
+		c.configuredOnly = false
+	default:
+		return false, false
+	}
+	c.refilter()
+	c.syncDetail()
+	return true, clearStatus
+}
+
 // refilter rebuilds the visible row slice with interleaved section headers.
 func (c *content) refilter() {
 	c.visible = c.visible[:0]
