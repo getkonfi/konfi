@@ -1,4 +1,4 @@
-# konfigurator settings
+# konfi settings
 theme: catppuccin
 log_level: info
 some_key: value

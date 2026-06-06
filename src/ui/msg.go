@@ -48,7 +48,7 @@ type logoAnimTickMsg struct{ gen int }
 // DocOpenedMsg is sent after attempting to open a doc URL in the browser.
 type DocOpenedMsg struct{ URL string }
 
-// KonfSettingChangedMsg is sent when a konfigurator setting is edited.
+// KonfSettingChangedMsg is sent when a konfi setting is edited.
 type KonfSettingChangedMsg struct {
 	Key   string
 	Value string

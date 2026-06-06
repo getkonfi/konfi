@@ -38,7 +38,7 @@ func TestFindValue(t *testing.T) {
 	})
 
 	t.Run("skips comments", func(t *testing.T) {
-		_, ok := p.FindValue(data, "konfigurator")
+		_, ok := p.FindValue(data, "konfi")
 		if ok {
 			t.Fatal("should not match inside comments")
 		}
@@ -185,7 +185,7 @@ func TestRoundTrip(t *testing.T) {
 func TestRoundTripGolden(t *testing.T) {
 	p := newParser()
 
-	src := []byte(`# konfigurator settings
+	src := []byte(`# konfi settings
 theme: catppuccin
 log_level: info
 
@@ -215,7 +215,7 @@ backup: enabled
 	}
 
 	// step 3: verify comments survived
-	if !bytes.Contains(out, []byte("# konfigurator settings")) {
+	if !bytes.Contains(out, []byte("# konfi settings")) {
 		t.Error("comment line lost during round-trip")
 	}
 	if !bytes.Contains(out, []byte("# editor preferences")) {

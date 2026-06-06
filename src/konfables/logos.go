@@ -5,21 +5,21 @@ import "github.com/eminert/konfi/pkg/pixelart"
 // Logos maps app names to their pixel art representations.
 // each logo is 16×12 pixels using 256-color indices (0 = transparent).
 var Logos = map[string]pixelart.PixelArt{
-	"ghostty":      ghosttyLogo,
-	"alacritty":    alacrittyLogo,
-	"starship":     starshipLogo,
-	"hyprland":     hyprlandLogo,
-	"konfigurator": konfiguratorLogo,
-	"git":          gitLogo,
-	"tmux":         tmuxLogo,
-	"ssh":          sshLogo,
-	"pacman":       pacmanLogo,
-	"dconf":        dconfLogo,
-	"claude":       claudeLogo,
-	"gnome":        dconfLogo,
-	"kitty":        kittyLogo,
-	"helix":        helixLogo,
-	"rio":          rioLogo,
+	"ghostty":   ghosttyLogo,
+	"alacritty": alacrittyLogo,
+	"starship":  starshipLogo,
+	"hyprland":  hyprlandLogo,
+	"konfi":     konfiLogo,
+	"git":       gitLogo,
+	"tmux":      tmuxLogo,
+	"ssh":       sshLogo,
+	"pacman":    pacmanLogo,
+	"dconf":     dconfLogo,
+	"claude":    claudeLogo,
+	"gnome":     dconfLogo,
+	"kitty":     kittyLogo,
+	"helix":     helixLogo,
+	"rio":       rioLogo,
 }
 
 // color aliases for readability
@@ -100,8 +100,8 @@ var starshipLogo = pixelart.PixelArt{
 	},
 }
 
-// konfigurator — gear/cog icon
-var konfiguratorLogo = pixelart.PixelArt{
+// konfi — gear/cog icon
+var konfiLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
 		{__, __, __, __, __, lg, lg, __, __, lg, lg, __, __, __, __, __},

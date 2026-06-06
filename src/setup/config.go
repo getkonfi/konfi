@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// KonfConfig holds konfigurator's own preferences.
+// KonfConfig holds konfi's own preferences.
 type KonfConfig struct {
 	Theme          string            `yaml:"theme"`
 	LogLevel       string            `yaml:"log_level"`

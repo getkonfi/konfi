@@ -438,7 +438,7 @@ func containerCases(t *testing.T) []containerCase {
 			fileBacked:   true,
 		},
 		{
-			name: "konfigurator",
+			name: "konfi",
 			newApp: func(_ *testing.T, root string) konfables.Konfable {
 				return appkonfi.New(filePersister(filepath.Join(root, "config.yaml")))
 			},

@@ -20,7 +20,7 @@ func New(p *pkg.FilePersister) *Konfi {
 
 func (k *Konfi) Info() konfables.AppInfo {
 	return konfables.AppInfo{
-		Name:       "konfigurator",
+		Name:       "konfi",
 		Binary:     "",
 		ConfigPath: k.Path,
 		Format:     "yaml",
@@ -29,7 +29,7 @@ func (k *Konfi) Info() konfables.AppInfo {
 	}
 }
 
-func (k *Konfi) Name() string             { return "konfigurator" }
+func (k *Konfi) Name() string             { return "konfi" }
 func (k *Konfi) ConfigPath() string       { return k.Path }
 func (k *Konfi) Parser() konfables.Parser { return newParser() }
 func (k *Konfi) Schema() ([]byte, error)  { return schemaData, nil }

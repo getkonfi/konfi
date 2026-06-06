@@ -2,7 +2,7 @@ version: 2
 
 builds:
   - main: ./src
-    binary: konfigurator
+    binary: konfi
     env:
       - CGO_ENABLED=0
     goos:

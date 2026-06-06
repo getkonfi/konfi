@@ -23,7 +23,7 @@ func ConfigDir() string {
 	return filepath.Join(base, AppName)
 }
 
-// ConfigFilePath returns the full path to konfigurator's own config.
+// ConfigFilePath returns the full path to konfi's own config.
 func ConfigFilePath() string {
 	return filepath.Join(ConfigDir(), ConfigFileName)
 }
@@ -32,4 +32,3 @@ func ConfigFilePath() string {
 func LogFilePath() string {
 	return filepath.Join(ConfigDir(), LogFileName)
 }
-

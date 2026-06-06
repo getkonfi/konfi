@@ -1,4 +1,4 @@
-# konfigurator
+# konfi
 
 go TUI for editing dotfiles (ghostty, starship, alacritty, hyprland) with ASCII box-drawing aesthetic and cross-app theme sync.
 

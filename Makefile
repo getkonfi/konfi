@@ -45,7 +45,7 @@ run: ## run the TUI
 	@cd src && go run .
 
 build: ## build binary
-	@cd src && CGO_ENABLED=0 go build -ldflags="-w -s" -o ../konfigurator .
+	@cd src && CGO_ENABLED=0 go build -ldflags="-w -s" -o ../konfi .
 
 test: ## clean cache and run all tests with gotestsum
 	@cd src && go clean -testcache
@@ -73,6 +73,6 @@ e2e-arch-container: ## run Arch container parser/editing e2e suite
 	@e2e/arch-container/run.sh
 
 clean: ## remove build artifacts
-	rm -f konfigurator
+	rm -f konfi
 
 .PHONY: help tools run build test lint clean schema-verify schema-check upstream-check e2e-arch-container

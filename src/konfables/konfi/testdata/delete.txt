@@ -1,2 +1,2 @@
-# konfigurator settings
+# konfi settings
 theme: catppuccin
