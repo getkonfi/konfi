@@ -1,7 +1,8 @@
-package ui
+package editors
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -18,6 +19,12 @@ func testTheme() *theme.Theme {
 
 func keyMsg(key string) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: 0, Text: key}
+}
+
+var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiRE.ReplaceAllString(s, "")
 }
 
 // ── toggleMapEditor ─────────────────────────────────────────────────────────

@@ -1,8 +1,7 @@
-package ui
+package editors
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/eminert/konfi/pkg"
@@ -11,23 +10,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
-
-var stylestringRe = regexp.MustCompile(`^\[(.+?)\]\((.+?)\)$`)
-
-// parseStyleString extracts symbol and style from "[symbol](style)".
-// returns (raw, "") if the format doesn't match.
-func parseStyleString(s string) (symbol, style string) {
-	m := stylestringRe.FindStringSubmatch(strings.TrimSpace(s))
-	if m == nil {
-		return s, ""
-	}
-	return m[1], m[2]
-}
-
-// composeStyleString produces "[symbol](style)".
-func composeStyleString(symbol, style string) string {
-	return "[" + symbol + "](" + style + ")"
-}
 
 type stylestringEditor struct {
 	symbols    []string
@@ -70,7 +52,7 @@ func (e *stylestringEditor) Init(field pkg.Field, currentValue string, th *theme
 	e.symCurrent = -1
 	e.styCurrent = -1
 
-	sym, sty := parseStyleString(currentValue)
+	sym, sty := theme.ParseStyleString(currentValue)
 
 	for i, o := range e.symbols {
 		if o == sym {
@@ -141,7 +123,7 @@ func (e *stylestringEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		if e.styCursor < len(e.styles) {
 			sty = e.styles[e.styCursor]
 		}
-		e.val = composeStyleString(sym, sty)
+		e.val = theme.ComposeStyleString(sym, sty)
 		return nil, true, false
 	case "esc":
 		return nil, true, true
@@ -239,7 +221,7 @@ func (e *stylestringEditor) View(width int) string {
 	if e.styCursor < len(e.styles) {
 		sty = e.styles[e.styCursor]
 	}
-	preview := composeStyleString(sym, sty)
+	preview := theme.ComposeStyleString(sym, sty)
 	b.WriteByte('\n')
 	b.WriteString("    " + e.th.Muted.Render("preview: ") + e.th.Accent.Render(preview))
 
@@ -256,7 +238,7 @@ func (e *stylestringEditor) PreviewValue() string {
 	if e.styCursor < len(e.styles) {
 		sty = e.styles[e.styCursor]
 	}
-	return composeStyleString(sym, sty)
+	return theme.ComposeStyleString(sym, sty)
 }
 
 func (e *stylestringEditor) Value() string { return e.val }

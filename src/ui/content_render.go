@@ -3,6 +3,8 @@ package ui
 import (
 	"strings"
 
+	"github.com/eminert/konfi/ui/editors"
+
 	"charm.land/lipgloss/v2"
 )
 
@@ -187,10 +189,10 @@ func (c *content) View() string {
 		}
 		cursorBottom := cl
 		if c.detail.editor != nil {
-			if _, ok := c.detail.editor.(InlineEditor); !ok {
+			if _, ok := c.detail.editor.(editors.InlineEditor); !ok {
 				// for list/hook editors, track the active cursor, not the editor bottom
-				if oe, ok := c.detail.editor.(offsetEditor); ok {
-					cursorBottom += oe.cursorOffset() + 1
+				if oe, ok := c.detail.editor.(editors.OffsetEditor); ok {
+					cursorBottom += oe.CursorOffset() + 1
 				} else {
 					cursorBottom += c.detail.editor.Height() + 1
 				}

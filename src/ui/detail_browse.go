@@ -6,6 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
+	"github.com/eminert/konfi/ui/editors"
 )
 
 // typeBadgeStyle returns a styled badge for the field type with per-type coloring.
@@ -18,7 +20,7 @@ func (d *detail) typeBadgeStyle(typ, colorHex string) lipgloss.Style {
 	case "enum":
 		return base.Background(d.theme.Palette.Primary).Foreground(d.theme.Palette.Base)
 	case "color":
-		hex := colorRenderHex(colorHex)
+		hex := theme.ColorRenderHex(colorHex)
 		if hex != "" {
 			return base.Background(lipgloss.Color(hex)).Foreground(d.theme.Palette.Base)
 		}
@@ -73,8 +75,8 @@ func (d *detail) viewBrowse(width, height int) string {
 			colorHex = v
 		}
 		if d.editor != nil {
-			if ce, ok := d.editor.(*colorEditor); ok {
-				colorHex = ce.PreviewValue()
+			if pv, ok := d.editor.(editors.Previewer); ok {
+				colorHex = pv.PreviewValue()
 			}
 		}
 	}
@@ -208,8 +210,8 @@ func (d *detail) renderTypeVisual(f *pkg.Field, width int) string {
 
 	if f.Widget == "stylestring" {
 		if d.editor != nil {
-			if se, ok := d.editor.(*stylestringEditor); ok {
-				val = se.PreviewValue()
+			if pv, ok := d.editor.(editors.Previewer); ok {
+				val = pv.PreviewValue()
 			}
 		}
 		return d.renderStylestringPreview(val)
@@ -222,19 +224,19 @@ func (d *detail) renderTypeVisual(f *pkg.Field, width int) string {
 		}
 		colorVal := val
 		if d.editor != nil {
-			if ce, ok := d.editor.(*colorEditor); ok {
-				colorVal = ce.PreviewValue()
+			if pv, ok := d.editor.(editors.Previewer); ok {
+				colorVal = pv.PreviewValue()
 			}
 		}
-		display := colorDisplayValue(colorVal)
+		display := theme.ColorDisplayValue(colorVal)
 		if display == "" {
 			return ""
 		}
 		colorStyle := d.theme.FieldValue
-		if hex := colorRenderHex(colorVal); hex != "" {
+		if hex := theme.ColorRenderHex(colorVal); hex != "" {
 			colorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
 		}
-		return colorValue(colorVal, d.theme.Palette.BaseHex()) + " " + colorStyle.Render(f.Key+" = "+display)
+		return theme.ColorValue(colorVal, d.theme.Palette.BaseHex()) + " " + colorStyle.Render(f.Key+" = "+display)
 
 	case "number":
 		if f.Min == nil && f.Max == nil {
@@ -300,7 +302,7 @@ func (d *detail) renderEnumPills(f *pkg.Field, val string) string {
 
 // renderStylestringPreview renders a stylestring value as symbol + style pills.
 func (d *detail) renderStylestringPreview(val string) string {
-	sym, sty := parseStyleString(val)
+	sym, sty := theme.ParseStyleString(val)
 	if sty == "" {
 		return d.theme.Text.Bold(true).Render(val)
 	}

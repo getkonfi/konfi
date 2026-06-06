@@ -55,6 +55,10 @@ func stripANSI(s string) string {
 	return ansiRE.ReplaceAllString(s, "")
 }
 
+func testTheme() *theme.Theme {
+	return theme.NewTheme(theme.PaletteByName("catppuccin"))
+}
+
 func TestDetailMissingFieldShowsTailContextAndAddLine(t *testing.T) {
 	th := theme.NewTheme(&theme.Catppuccin)
 	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}

@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"github.com/eminert/konfi/pkg"

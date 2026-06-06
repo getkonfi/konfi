@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"github.com/eminert/konfi/pkg"
@@ -24,15 +24,45 @@ type InlineEditor interface {
 	InlineView(width int) string
 }
 
-// offsetEditor is optionally implemented by multi-line editors that track an
+// OffsetEditor is optionally implemented by multi-line editors that track an
 // internal cursor offset, so scroll positioning can follow the active line.
-type offsetEditor interface {
-	cursorOffset() int
+type OffsetEditor interface {
+	CursorOffset() int
 }
 
-// editorForField returns the appropriate editor for a field type.
+// Previewer is implemented by editors that expose a live preview of the
+// currently composed value (color swatch, styled string).
+type Previewer interface {
+	FieldEditor
+	PreviewValue() string
+}
+
+// InteractionKind classifies an editor's key UX so callers can render the
+// matching hint set without knowing concrete editor types.
+type InteractionKind int
+
+const (
+	InteractionSingle    InteractionKind = iota // single value: confirm/cancel/switch
+	InteractionList                             // add/delete/edit list rows
+	InteractionToggleMap                        // toggle/add/delete map entries
+	InteractionEnum                             // select from options
+)
+
+// Interactor is optionally implemented by editors with a non-default key UX.
+// editors that don't implement it are treated as InteractionSingle.
+type Interactor interface {
+	Interaction() InteractionKind
+}
+
+// MultiValueEditor is optionally implemented by editors that consume every
+// occurrence of a repeated key, joined by newlines (list, structlist).
+type MultiValueEditor interface {
+	AcceptsMultiValue() bool
+}
+
+// ForField returns the appropriate editor for a field type.
 // widget hint takes priority over type dispatch.
-func editorForField(f pkg.Field) FieldEditor {
+func ForField(f pkg.Field) FieldEditor {
 	switch f.Widget {
 	case "font":
 		return &fontEditor{}

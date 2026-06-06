@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"fmt"
@@ -37,10 +37,10 @@ func (e *numberEditor) Init(field pkg.Field, currentValue string, th *theme.Them
 	if field.Min != nil || field.Max != nil {
 		lo, hi := "*", "*"
 		if field.Min != nil {
-			lo = formatNum(*field.Min)
+			lo = theme.FormatNum(*field.Min)
 		}
 		if field.Max != nil {
-			hi = formatNum(*field.Max)
+			hi = theme.FormatNum(*field.Max)
 		}
 		e.hint = th.Muted.Render(fmt.Sprintf(" (%s — %s)", lo, hi))
 	}
@@ -128,10 +128,10 @@ func (e *numberEditor) validate() string {
 		return "invalid number"
 	}
 	if e.field.Min != nil && n < *e.field.Min {
-		return fmt.Sprintf("min %s", formatNum(*e.field.Min))
+		return fmt.Sprintf("min %s", theme.FormatNum(*e.field.Min))
 	}
 	if e.field.Max != nil && n > *e.field.Max {
-		return fmt.Sprintf("max %s", formatNum(*e.field.Max))
+		return fmt.Sprintf("max %s", theme.FormatNum(*e.field.Max))
 	}
 	return ""
 }
@@ -143,11 +143,4 @@ func numberValidateChar(s string) error {
 		}
 	}
 	return nil
-}
-
-func formatNum(f float64) string {
-	if f == float64(int(f)) {
-		return strconv.Itoa(int(f))
-	}
-	return fmt.Sprintf("%.1f", f)
 }

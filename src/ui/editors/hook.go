@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"encoding/json"
@@ -305,8 +305,8 @@ func (e *hookEditor) View(width int) string {
 	return b.String()
 }
 
-// cursorOffset returns the line offset of the active cursor for scroll tracking.
-func (e *hookEditor) cursorOffset() int {
+// CursorOffset returns the line offset of the active cursor for scroll tracking.
+func (e *hookEditor) CursorOffset() int {
 	if e.editing && e.editIdx < len(e.groups) {
 		// editing existing: item line + input line below
 		return e.editIdx + 1
@@ -328,6 +328,8 @@ func (e *hookEditor) Value() string {
 	}
 	return string(data)
 }
+
+func (e *hookEditor) Interaction() InteractionKind { return InteractionList }
 
 func (e *hookEditor) Height() int {
 	h := len(e.groups)

@@ -6,6 +6,7 @@ import (
 	"github.com/eminert/konfi/konfables"
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/theme"
+	"github.com/eminert/konfi/ui/editors"
 
 	"charm.land/lipgloss/v2"
 	"github.com/yuin/goldmark"
@@ -22,7 +23,7 @@ type detail struct {
 	theme        *theme.Theme
 
 	// editor state
-	editor      FieldEditor
+	editor      editors.FieldEditor
 	editField   int    // index into fields slice
 	editOrigVal string // for cancel restoration
 

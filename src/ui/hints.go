@@ -1,5 +1,7 @@
 package ui
 
+import "github.com/eminert/konfi/ui/editors"
+
 func (r *root) updateHints() {
 	// wire mode indicator and undo count into statusbar
 	switch {
@@ -13,18 +15,22 @@ func (r *root) updateHints() {
 	r.status.SetUndoCount(r.content.undoStack.Len())
 
 	if r.content.Editing() {
-		switch r.content.detail.editor.(type) {
-		case *listEditor, *hookEditor, *structListEditor:
+		kind := editors.InteractionSingle
+		if it, ok := r.content.detail.editor.(editors.Interactor); ok {
+			kind = it.Interaction()
+		}
+		switch kind {
+		case editors.InteractionList:
 			r.content.hints = []keyHint{
 				{"a", "add"}, {"d", "delete"},
 				{"⏎", "edit"}, {"^S", "done"}, {"esc", "cancel"},
 			}
-		case *toggleMapEditor:
+		case editors.InteractionToggleMap:
 			r.content.hints = []keyHint{
 				{"␣", "toggle"}, {"a", "add"}, {"d", "delete"},
 				{"⏎", "done"}, {"esc", "cancel"},
 			}
-		case *enumEditor:
+		case editors.InteractionEnum:
 			r.content.hints = []keyHint{
 				{"↑↓", "select"}, {"⏎", "confirm"}, {"esc", "cancel"},
 			}

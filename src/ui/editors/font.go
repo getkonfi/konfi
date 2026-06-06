@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"os/exec"
@@ -12,6 +12,12 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 )
+
+// FontsLoadedMsg delivers system font families from fc-list.
+type FontsLoadedMsg struct {
+	Fonts []string // sorted, deduplicated family names
+	Err   error    // nil on success, non-nil triggers freetext fallback
+}
 
 // font cache shared across editor instances
 var (
@@ -234,7 +240,7 @@ func (e *fontEditor) View(width int) string {
 
 	// count + help
 	count := e.th.Muted.Render(
-		formatCount(e.cursor+1, len(e.filtered)) + "  " + "j/k:nav  ⏎:select  tab:freetext  esc:cancel",
+		theme.FormatCount(e.cursor+1, len(e.filtered)) + "  " + "j/k:nav  ⏎:select  tab:freetext  esc:cancel",
 	)
 	b.WriteString("    " + count)
 
@@ -252,11 +258,4 @@ func (e *fontEditor) Height() int {
 	}
 	rows := min(len(e.filtered), 8)
 	return 1 + rows + 1 // filter + list + help
-}
-
-func formatCount(cur, total int) string {
-	if total == 0 {
-		return "(0)"
-	}
-	return strings.Join([]string{"(", strings.TrimSpace(formatNum(float64(cur))), " of ", strings.TrimSpace(formatNum(float64(total))), ")"}, "")
 }

@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"fmt"
@@ -75,5 +75,6 @@ func (e *enumEditor) View(width int) string {
 	return b.String()
 }
 
-func (e *enumEditor) Value() string { return e.val }
-func (e *enumEditor) Height() int   { return len(e.options) }
+func (e *enumEditor) Value() string                { return e.val }
+func (e *enumEditor) Height() int                  { return len(e.options) }
+func (e *enumEditor) Interaction() InteractionKind { return InteractionEnum }

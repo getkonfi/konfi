@@ -4,9 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/pkg/parser"
+	"github.com/eminert/konfi/theme"
 )
 
 func TestStripKeyPrefix(t *testing.T) {
@@ -47,57 +45,14 @@ func TestSingleLine(t *testing.T) {
 
 func TestLowContrast(t *testing.T) {
 	const bg = "#1e1e2e" // catppuccin base
-	if !lowContrast(bg, bg) {
+	if !theme.LowContrast(bg, bg) {
 		t.Fatal("identical color/background should be low contrast")
 	}
-	if !lowContrast("#222232", bg) {
+	if !theme.LowContrast("#222232", bg) {
 		t.Fatal("near-background color should be low contrast")
 	}
-	if lowContrast("#ffffff", bg) {
+	if theme.LowContrast("#ffffff", bg) {
 		t.Fatal("white on dark base should not be low contrast")
-	}
-}
-
-// a ghostty-style repeated key (keybind) must read and write every occurrence,
-// not just the first — mirrors the openEditor/commitEdit dispatch for
-// type:list + structlist + MultiValueParser fields.
-func TestKeybindRepeatedKeyRoundTrip(t *testing.T) {
-	p := &parser.FlatParser{Split: parser.SplitEquals, Format: parser.FormatEquals}
-	cfg := []byte("keybind = ctrl+a=new_tab\n" +
-		"keybind = ctrl+b=close_surface\n" +
-		"keybind = ctrl+c=copy_to_clipboard\n" +
-		"font-size = 14\n")
-
-	// read path
-	vals, ok := p.FindValues(cfg, "keybind")
-	if !ok || len(vals) != 3 {
-		t.Fatalf("FindValues = %v (ok=%v), want 3", vals, ok)
-	}
-
-	// editor round-trip through structListEditor
-	field := pkg.Field{
-		Key: "keybind", Type: "list", Widget: "structlist", Separator: "=",
-		ItemSchema: []pkg.FieldPart{{Name: "keys"}, {Name: "action"}},
-	}
-	e := &structListEditor{}
-	e.Init(field, strings.Join(vals, "\n"), testTheme())
-
-	// write path
-	newData, err := p.SetValues(cfg, "keybind", konfables.SplitListValue(e.Value()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, _ := p.FindValues(newData, "keybind")
-	if len(got) != 3 {
-		t.Fatalf("after round-trip got %d keybinds, want 3:\n%s", len(got), newData)
-	}
-	for i, want := range vals {
-		if got[i] != want {
-			t.Fatalf("keybind[%d] = %q, want %q", i, got[i], want)
-		}
-	}
-	if v, _ := p.FindValue(newData, "font-size"); v != "14" {
-		t.Fatalf("unrelated key not preserved: font-size = %q", v)
 	}
 }
 
@@ -105,12 +60,12 @@ func TestKeybindRepeatedKeyRoundTrip(t *testing.T) {
 func TestColorValueContrastBackdrop(t *testing.T) {
 	const bg = "#1e1e2e"
 
-	nearBg := colorValue("#1f1f30", bg)
+	nearBg := theme.ColorValue("#1f1f30", bg)
 	if !strings.Contains(nearBg, "48;2") {
 		t.Fatalf("near-background color should get a contrast backdrop, got %q", nearBg)
 	}
 
-	readable := colorValue("#ffffff", bg)
+	readable := theme.ColorValue("#ffffff", bg)
 	if strings.Contains(readable, "48;2") {
 		t.Fatalf("readable color should not get a backdrop, got %q", readable)
 	}

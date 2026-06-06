@@ -57,12 +57,6 @@ type KonfSettingChangedMsg struct {
 // fileStateClearMsg resets the transient file state after a delay.
 type fileStateClearMsg struct{}
 
-// FontsLoadedMsg delivers system font families from fc-list.
-type FontsLoadedMsg struct {
-	Fonts []string // sorted, deduplicated family names
-	Err   error    // nil on success, non-nil triggers freetext fallback
-}
-
 // SelectAppMsg requests navigating to a specific app by index.
 type SelectAppMsg struct {
 	Index int

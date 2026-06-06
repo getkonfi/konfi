@@ -15,6 +15,7 @@ src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
 
 - `setup/` — unit pattern: sequential init with measurement, reverse shutdown
 - `ui/` — bubble tea model tree. thin glue layer
+  - `ui/editors/` — field editor implementations (color, enum, font, …); depends only on `pkg`, `theme`
 - `theme/` — palette definitions, semantic lipgloss styles
 - `konfables/` — feature-first domains. each app owns parser, schema, editor
 - `pkg/` — shared foundation: config file, schema types, search, file utils
@@ -28,6 +29,7 @@ main → setup → ui → theme → pkg
               │ └→ konfables/*
               │         └────→ pkg, pkg/parser
               └──────────────→ pkg
+ui → ui/editors → pkg, theme
 ui → pkg/pixelart, pkg (search, schema, config)
 konfables/logos → pkg/pixelart
 ```

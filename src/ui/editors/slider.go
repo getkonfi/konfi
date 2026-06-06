@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"fmt"
@@ -120,7 +120,7 @@ func (e *sliderEditor) InlineView(width int) string {
 	valStr := strconv.FormatFloat(e.val, 'f', e.prec, 64)
 
 	// try full layout with range hint, drop hint if it won't fit
-	rangeHint := fmt.Sprintf("(%s — %s)", formatNum(e.min), formatNum(e.max))
+	rangeHint := fmt.Sprintf("(%s — %s)", theme.FormatNum(e.min), theme.FormatNum(e.max))
 	suffix := "  " + valStr + "  " + e.th.Muted.Render(rangeHint)
 	suffixW := lipgloss.Width(suffix)
 	barW := width - suffixW - 2

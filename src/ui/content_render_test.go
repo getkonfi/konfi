@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 )
 
 func TestRenderFieldValueBoolUsesTextOnly(t *testing.T) {
@@ -101,7 +102,7 @@ func TestColorRenderHexParsesAlphaFormats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := colorRenderHex(tt.value); got != tt.want {
+			if got := theme.ColorRenderHex(tt.value); got != tt.want {
 				t.Fatalf("colorRenderHex(%q) = %q, want %q", tt.value, got, tt.want)
 			}
 		})
@@ -123,23 +124,10 @@ func TestFormatPaletteColorPreservesHyprlandAlpha(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := formatPaletteColor(tt.template, tt.selected); got != tt.want {
+			if got := theme.FormatPaletteColor(tt.template, tt.selected); got != tt.want {
 				t.Fatalf("formatPaletteColor(%q, %q) = %q, want %q", tt.template, tt.selected, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestColorEditorSelectionDoesNotUseSquareBrackets(t *testing.T) {
-	var e colorEditor
-	_ = e.Init(pkg.Field{Palette: []string{"#112233"}}, "#112233", testTheme())
-
-	got := stripANSI(e.View(80))
-	firstLine := strings.Split(got, "\n")[0]
-	if strings.ContainsAny(firstLine, "[]") {
-		t.Fatalf("selected color cell should not use square brackets: %q", firstLine)
-	}
-	if !strings.Contains(firstLine, "#112233") {
-		t.Fatalf("selected color cell should show the hex code: %q", firstLine)
-	}
-}

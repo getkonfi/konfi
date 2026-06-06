@@ -12,6 +12,7 @@ import (
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/pkg/pixelart"
 	"github.com/eminert/konfi/theme"
+	"github.com/eminert/konfi/ui/editors"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -480,7 +481,7 @@ func (c *content) openEditor() tea.Cmd {
 	c.detail.editField = c.visible[c.cursor].fieldIdx
 	c.detail.editOrigVal = c.values[f.Key]
 
-	e := editorForField(*f)
+	e := editors.ForField(*f)
 
 	initVal := c.detail.editOrigVal
 	mvp, isMVP := c.konfable.Parser().(konfables.MultiValueParser)
@@ -491,13 +492,10 @@ func (c *content) openEditor() tea.Cmd {
 		// newline-joined values; a widget override (font picker) takes the first.
 		initVal = ""
 		if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
-			switch e.(type) {
-			case *listEditor, *structListEditor:
+			if mv, ok := e.(editors.MultiValueEditor); ok && mv.AcceptsMultiValue() {
 				initVal = strings.Join(vals, "\n")
-			default:
-				if len(vals) > 0 {
-					initVal = vals[0]
-				}
+			} else if len(vals) > 0 {
+				initVal = vals[0]
 			}
 		}
 	case f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist":
@@ -526,7 +524,7 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 	c.detail.editField = c.visible[c.cursor].fieldIdx
 	c.detail.editOrigVal = c.values[f.Key]
 
-	e := editorForField(*f)
+	e := editors.ForField(*f)
 	c.detail.editor = e
 
 	initCmd := e.Init(*f, "", c.theme)

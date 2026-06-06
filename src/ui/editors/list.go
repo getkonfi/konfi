@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"fmt"
@@ -308,15 +308,19 @@ func (e *listEditor) filterCompletions() {
 	}
 }
 
-// cursorOffset returns the line offset of the active cursor within the editor output.
+// CursorOffset returns the line offset of the active cursor within the editor output.
 // the content uses this to scroll the viewport to keep the active item visible.
-func (e *listEditor) cursorOffset() int {
+func (e *listEditor) CursorOffset() int {
 	return e.cursor
 }
 
 func (e *listEditor) Value() string {
 	return strings.Join(e.items, "\n")
 }
+
+func (e *listEditor) Interaction() InteractionKind { return InteractionList }
+
+func (e *listEditor) AcceptsMultiValue() bool { return true }
 
 func (e *listEditor) Height() int {
 	if e.subEditor != nil {

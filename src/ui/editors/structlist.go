@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"fmt"
@@ -322,7 +322,7 @@ func (e *structListEditor) renderEditForm(width int) string {
 	return e.th.Muted.Render(label+": ") + e.input.View()
 }
 
-func (e *structListEditor) cursorOffset() int {
+func (e *structListEditor) CursorOffset() int {
 	if e.editing && e.editIdx < len(e.items) {
 		offset := e.editIdx + 1 // item line + edit form below
 		if e.schema[e.editStep].Type == "enum" && len(e.schema[e.editStep].Options) > 0 {
@@ -343,6 +343,10 @@ func (e *structListEditor) Value() string {
 	}
 	return strings.Join(flat, "\n")
 }
+
+func (e *structListEditor) Interaction() InteractionKind { return InteractionList }
+
+func (e *structListEditor) AcceptsMultiValue() bool { return true }
 
 func (e *structListEditor) Height() int {
 	h := len(e.items)

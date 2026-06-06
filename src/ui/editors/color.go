@@ -1,7 +1,6 @@
-package ui
+package editors
 
 import (
-	"strconv"
 	"strings"
 	"sync"
 
@@ -34,7 +33,7 @@ type colorEditor struct {
 
 func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme) tea.Cmd {
 	e.th = th
-	e.oldHex = normalizeHex(currentValue)
+	e.oldHex = theme.NormalizeHex(currentValue)
 	e.groups = nil
 
 	// build palette: field colors first, then all theme palettes
@@ -54,7 +53,7 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 	// collect colors from all palettes, current theme first
 	existing := make(map[string]bool)
 	for _, hex := range e.palette {
-		existing[normalizeHex(hex)] = true
+		existing[theme.NormalizeHex(hex)] = true
 	}
 
 	// order: current palette first, then the rest
@@ -94,11 +93,11 @@ func (e *colorEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 	// start in palette mode if palette is available
 	if len(e.palette) > 0 {
 		e.inPalette = true
-		currentRenderHex := colorRenderHex(currentValue)
-		currentDisplay := normalizeHex(currentValue)
+		currentRenderHex := theme.ColorRenderHex(currentValue)
+		currentDisplay := theme.NormalizeHex(currentValue)
 		for i, hex := range e.palette {
-			if hex == currentValue || normalizeHex(hex) == currentDisplay ||
-				(currentRenderHex != "" && colorRenderHex(hex) == currentRenderHex) {
+			if hex == currentValue || theme.NormalizeHex(hex) == currentDisplay ||
+				(currentRenderHex != "" && theme.ColorRenderHex(hex) == currentRenderHex) {
 				e.palCursor = i
 				break
 			}
@@ -146,7 +145,7 @@ func (e *colorEditor) updatePalette(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 			e.palCursor += cols
 		}
 	case "enter":
-		e.val = formatPaletteColor(e.input.Value(), e.palette[e.palCursor])
+		e.val = theme.FormatPaletteColor(e.input.Value(), e.palette[e.palCursor])
 		return nil, true, false
 	case "esc":
 		return nil, true, true
@@ -206,7 +205,7 @@ func (e *colorEditor) viewHexOnly(width int) string {
 
 	inputLine := "    " + e.input.View()
 
-	newHex := normalizeHex(e.input.Value())
+	newHex := theme.NormalizeHex(e.input.Value())
 	swatchLine := "    " + swatch(e.oldHex) +
 		e.th.Muted.Render(" → ") +
 		swatch(newHex) +
@@ -258,7 +257,7 @@ func (e *colorEditor) viewWithPalette(width int) string {
 			b.WriteString("    ")
 		}
 
-		sw := swatch(normalizeHex(hex))
+		sw := swatch(theme.NormalizeHex(hex))
 		label := e.labels[i]
 		if len(label) > 8 {
 			label = label[:8]
@@ -281,7 +280,7 @@ func (e *colorEditor) viewWithPalette(width int) string {
 		if e.palCursor < len(e.palette) {
 			sel = e.palette[e.palCursor]
 		}
-		newHex := normalizeHex(sel)
+		newHex := theme.NormalizeHex(sel)
 		b.WriteString("    " + swatch(e.oldHex) +
 			e.th.Muted.Render(" → ") +
 			swatch(newHex) +
@@ -319,7 +318,7 @@ func (e *colorEditor) Height() int {
 var swatchCache sync.Map // string → string
 
 func swatch(hex string) string {
-	renderHex := colorRenderHex(hex)
+	renderHex := theme.ColorRenderHex(hex)
 	if renderHex == "" {
 		return "  "
 	}
@@ -329,191 +328,4 @@ func swatch(hex string) string {
 	s := lipgloss.NewStyle().Foreground(lipgloss.Color(renderHex)).Render("██")
 	swatchCache.Store(renderHex, s)
 	return s
-}
-
-// colorValue renders a color's hex tinted in its own color. when the tint sits
-// too close to bgHex to stay legible, it adds a contrasting backdrop so the
-// value remains readable. bgHex "" skips the contrast guard.
-func colorValue(hex, bgHex string) string {
-	display := colorDisplayValue(hex)
-	if display == "" {
-		return ""
-	}
-	renderHex := colorRenderHex(hex)
-	if renderHex == "" {
-		return display
-	}
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color(renderHex))
-	if bgHex != "" && lowContrast(renderHex, bgHex) {
-		style = style.Background(lipgloss.Color(contrastBackdrop(renderHex)))
-	}
-	return style.Render(display)
-}
-
-// hexRGB parses the rgb channels of a "#rrggbb[aa]" hex, ignoring any alpha.
-func hexRGB(hex string) (r, g, b int, ok bool) {
-	h := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(hex)), "#")
-	if len(h) < 6 || !isHex(h[:6]) {
-		return 0, 0, 0, false
-	}
-	v, err := strconv.ParseInt(h[:6], 16, 64)
-	if err != nil {
-		return 0, 0, 0, false
-	}
-	return int(v>>16) & 0xff, int(v>>8) & 0xff, int(v) & 0xff, true
-}
-
-// relLuminance returns perceptual luminance 0..1 for a hex color (0 on parse failure).
-func relLuminance(hex string) float64 {
-	r, g, b, ok := hexRGB(hex)
-	if !ok {
-		return 0
-	}
-	return (0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)) / 255
-}
-
-// lowContrast reports whether fg is too close to bg to read, using a WCAG-style
-// luminance contrast ratio.
-func lowContrast(fg, bg string) bool {
-	hi, lo := relLuminance(fg), relLuminance(bg)
-	if lo > hi {
-		hi, lo = lo, hi
-	}
-	return (hi+0.05)/(lo+0.05) < 2.5
-}
-
-// contrastBackdrop picks a backdrop that maximizes contrast with fg: a light
-// chip for dark colors, a dark chip for light ones.
-func contrastBackdrop(fg string) string {
-	if relLuminance(fg) < 0.5 {
-		return "#e6e6e6"
-	}
-	return "#1a1a1a"
-}
-
-// normalizeHex returns the color value used for display.
-func normalizeHex(s string) string {
-	return colorDisplayValue(s)
-}
-
-func colorDisplayValue(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	lower := strings.ToLower(s)
-	if strings.HasPrefix(lower, "#0x") && len(lower) == 11 && isHex(lower[3:]) {
-		return lower[1:]
-	}
-	if strings.HasPrefix(lower, "#") {
-		digits := lower[1:]
-		if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
-			return "#" + digits
-		}
-		return s
-	}
-	if (len(lower) == 6 || len(lower) == 8) && isHex(lower) {
-		return "#" + lower
-	}
-	return s
-}
-
-func colorRenderHex(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	if hex := colorRenderHexToken(s); hex != "" {
-		return hex
-	}
-	if fields := strings.Fields(s); len(fields) > 0 {
-		return colorRenderHexToken(fields[0])
-	}
-	return ""
-}
-
-func colorRenderHexToken(s string) string {
-	lower := strings.ToLower(strings.TrimSpace(s))
-	if lower == "" {
-		return ""
-	}
-	if strings.HasPrefix(lower, "#0x") {
-		lower = lower[1:]
-	}
-	if strings.HasPrefix(lower, "0x") {
-		digits := lower[2:]
-		if len(digits) == 8 && isHex(digits) {
-			return "#" + digits[2:]
-		}
-		return ""
-	}
-	for _, prefix := range []string{"rgba(", "rgb("} {
-		if !strings.HasPrefix(lower, prefix) {
-			continue
-		}
-		closeIdx := strings.IndexByte(lower, ')')
-		if closeIdx < len(prefix) {
-			return ""
-		}
-		digits := strings.TrimSpace(lower[len(prefix):closeIdx])
-		if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
-			return "#" + digits[:6]
-		}
-		return ""
-	}
-	if strings.HasPrefix(lower, "#") {
-		digits := lower[1:]
-		if (len(digits) == 6 || len(digits) == 8) && isHex(digits) {
-			return "#" + digits[:6]
-		}
-		return ""
-	}
-	if (len(lower) == 6 || len(lower) == 8) && isHex(lower) {
-		return "#" + lower[:6]
-	}
-	return ""
-}
-
-func formatPaletteColor(template, selected string) string {
-	rgb := strings.TrimPrefix(colorRenderHex(selected), "#")
-	if rgb == "" {
-		return selected
-	}
-	t := strings.TrimSpace(template)
-	lower := strings.ToLower(t)
-	if strings.HasPrefix(lower, "#0x") {
-		lower = lower[1:]
-	}
-	if strings.HasPrefix(lower, "0x") {
-		digits := lower[2:]
-		if len(digits) == 8 && isHex(digits) {
-			return "0x" + digits[:2] + rgb
-		}
-	}
-	for _, prefix := range []string{"rgba(", "rgb("} {
-		if strings.HasPrefix(lower, prefix) {
-			closeIdx := strings.IndexByte(lower, ')')
-			if closeIdx != len(lower)-1 {
-				return selected
-			}
-			digits := strings.TrimSpace(lower[len(prefix):closeIdx])
-			switch {
-			case prefix == "rgba(" && len(digits) == 8 && isHex(digits):
-				return "rgba(" + rgb + digits[6:] + ")"
-			case prefix == "rgb(" && len(digits) == 6 && isHex(digits):
-				return "rgb(" + rgb + ")"
-			}
-		}
-	}
-	return selected
-}
-
-func isHex(s string) bool {
-	for _, r := range s {
-		if (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F') {
-			continue
-		}
-		return false
-	}
-	return s != ""
 }

@@ -311,7 +311,7 @@ func (p palette) View() string {
 	if len(p.results) > paletteMaxVisible {
 		countLine = p.theme.Muted.Render(
 			strings.Repeat(" ", innerW-20) + // rough right-align
-				formatCount(p.selected+1, len(p.results)),
+				theme.FormatCount(p.selected+1, len(p.results)),
 		)
 	}
 

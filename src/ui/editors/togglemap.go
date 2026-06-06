@@ -1,4 +1,4 @@
-package ui
+package editors
 
 import (
 	"encoding/json"
@@ -192,6 +192,8 @@ func (e *toggleMapEditor) Value() string {
 	data, _ := json.Marshal(m)
 	return string(data)
 }
+
+func (e *toggleMapEditor) Interaction() InteractionKind { return InteractionToggleMap }
 
 func (e *toggleMapEditor) Height() int {
 	h := len(e.entries)

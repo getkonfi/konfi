@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/theme"
+	"github.com/eminert/konfi/ui/editors"
 )
 
 // field type icons — nerd font glyphs
@@ -208,16 +209,19 @@ func (c *content) renderBody(width int) string {
 
 		// inline editor: replace value portion with InlineView or live preview
 		if isEditRow {
-			switch e := c.detail.editor.(type) {
-			case InlineEditor:
-				renderedVal = e.InlineView(width / 2)
-			case *colorEditor:
-				bg := c.theme.Palette.BaseHex()
-				renderedVal = colorValue(e.oldHex, bg) +
-					c.theme.Muted.Render(" → ") +
-					colorValue(e.PreviewValue(), bg)
-			case *stylestringEditor:
-				renderedVal = c.theme.Accent.Render(e.PreviewValue())
+			switch ed := c.detail.editor.(type) {
+			case editors.InlineEditor:
+				renderedVal = ed.InlineView(width / 2)
+			case editors.Previewer:
+				switch {
+				case f.Type == "color":
+					bg := c.theme.Palette.BaseHex()
+					renderedVal = theme.ColorValue(c.detail.editOrigVal, bg) +
+						c.theme.Muted.Render(" → ") +
+						theme.ColorValue(ed.PreviewValue(), bg)
+				case f.Widget == "stylestring":
+					renderedVal = c.theme.Accent.Render(ed.PreviewValue())
+				}
 			}
 		}
 
@@ -254,10 +258,10 @@ func (c *content) renderBody(width int) string {
 		if showBounds && !isDiffRow {
 			lo, hi := "*", "*"
 			if f.Min != nil {
-				lo = formatNum(*f.Min)
+				lo = theme.FormatNum(*f.Min)
 			}
 			if f.Max != nil {
-				hi = formatNum(*f.Max)
+				hi = theme.FormatNum(*f.Max)
 			}
 			boundsStr := fmt.Sprintf(" (%s\u2013%s)", lo, hi)
 			usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + 2 + lipgloss.Width(renderedVal)
@@ -304,7 +308,7 @@ func (c *content) renderBody(width int) string {
 
 		// expanded editor: render below cursor row for non-inline editors
 		if isEditRow {
-			if _, ok := c.detail.editor.(InlineEditor); !ok {
+			if _, ok := c.detail.editor.(editors.InlineEditor); !ok {
 				editorView := c.detail.editor.View(width)
 				b.WriteString(editorView)
 				b.WriteByte('\n')
@@ -356,7 +360,7 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 	val = singleLine(val)
 	// stylestring rendering (widget takes priority)
 	if f.Widget == "stylestring" {
-		sym, sty := parseStyleString(val)
+		sym, sty := theme.ParseStyleString(val)
 		if sty != "" {
 			style := c.theme.FieldDefault
 			if !isDefault {
@@ -375,10 +379,10 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 		case "bool":
 			return c.theme.FieldDefault.Render(val)
 		case "color":
-			if colorDisplayValue(val) == "" {
+			if theme.ColorDisplayValue(val) == "" {
 				return c.theme.FieldDefault.Render("not set")
 			}
-			return colorValue(val, c.theme.Palette.BaseHex())
+			return theme.ColorValue(val, c.theme.Palette.BaseHex())
 		default:
 			return c.theme.FieldDefault.Render(val)
 		}
@@ -388,10 +392,10 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 	case "bool":
 		return c.theme.FieldValue.Render(val)
 	case "color":
-		if colorDisplayValue(val) == "" {
+		if theme.ColorDisplayValue(val) == "" {
 			return c.theme.Muted.Render("not set")
 		}
-		return colorValue(val, c.theme.Palette.BaseHex())
+		return theme.ColorValue(val, c.theme.Palette.BaseHex())
 	default:
 		return c.theme.FieldValue.Render(val)
 	}
@@ -407,7 +411,7 @@ func (c *content) typeIconStyle(typ, colorHex string) lipgloss.Style {
 	case "enum":
 		return c.theme.Primary
 	case "color":
-		hex := colorRenderHex(colorHex)
+		hex := theme.ColorRenderHex(colorHex)
 		if hex != "" {
 			return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
 		}
