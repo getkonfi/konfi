@@ -66,7 +66,7 @@ func TestDetailMissingFieldShowsTailContextAndAddLine(t *testing.T) {
 	d.sync(f, cf, k, map[string]string{}, true)
 
 	got := stripANSI(d.renderFileSnippet(80, 4))
-	if !strings.Contains(got, "  b = 2\n  c = 3\n+ d = four") {
+	if !strings.Contains(got, "  3 b = 2\n  4 c = 3\n+ 5 d = four") {
 		t.Fatalf("missing preview did not include tail context plus add line:\n%s", got)
 	}
 }
@@ -80,7 +80,7 @@ func TestDetailPreviewLineRescansWhenConfigChanges(t *testing.T) {
 
 	d := newDetail(th)
 	d.sync(f, cf, k, map[string]string{}, true)
-	if !strings.Contains(stripANSI(d.renderFileSnippet(80, 3)), "+ d = four") {
+	if !strings.Contains(stripANSI(d.renderFileSnippet(80, 3)), "+ 2 d = four") {
 		t.Fatal("initial missing preview did not show add line")
 	}
 
@@ -88,11 +88,42 @@ func TestDetailPreviewLineRescansWhenConfigChanges(t *testing.T) {
 	d.sync(f, cf, k, map[string]string{"d": "four"}, true)
 
 	got := stripANSI(d.renderFileSnippet(80, 3))
-	if !strings.Contains(got, "▶ d = four") {
+	if !strings.Contains(got, "▶ 2 d = four") {
 		t.Fatalf("preview did not rescan to existing line after config change:\n%s", got)
 	}
-	if strings.Contains(got, "+ d = four") {
+	if strings.Contains(got, "+ 2 d = four") {
 		t.Fatalf("preview still showed add line after config change:\n%s", got)
+	}
+}
+
+func TestDetailConfigSnippetShowsChangeAsHunk(t *testing.T) {
+	th := theme.NewTheme(&theme.Catppuccin)
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Format: "ghostty"}}
+	// config already holds the new value (edits update content live)
+	cf := newDetailTestConfig(t, "a = 1\nfont = 14\n")
+	f := &pkg.Field{Key: "font", Type: "string", Default: "12"}
+
+	d := newDetail(th)
+	d.sync(f, cf, k, map[string]string{"font": "14"}, true)
+	d.origValues = map[string]string{"font": "12"} // baseline differs from current
+
+	got := stripANSI(d.renderFileSnippet(80, 5))
+	if !strings.Contains(got, "- 2 font = 12") {
+		t.Fatalf("config snippet did not show removed old line:\n%s", got)
+	}
+	if !strings.Contains(got, "+ 2 font = 14") {
+		t.Fatalf("config snippet did not show added new line:\n%s", got)
+	}
+
+	// unchanged field: no hunk, just the focused line
+	d.origValues = map[string]string{"font": "14"}
+	got = stripANSI(d.renderFileSnippet(80, 5))
+	if strings.Contains(got, "- 2 font") || strings.Contains(got, "+ 2 font") {
+		t.Fatalf("unchanged field should not render a hunk:\n%s", got)
+	}
+	if !strings.Contains(got, "▶ 2 font = 14") {
+		t.Fatalf("unchanged field should render the focused line:\n%s", got)
 	}
 }
 

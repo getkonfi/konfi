@@ -35,11 +35,12 @@ type detail struct {
 	nerdFont bool
 
 	// context synced from content on state changes
-	field    *pkg.Field
-	config   *pkg.ConfigFile
-	konfable konfables.Konfable
-	values   map[string]string
-	focused  bool
+	field      *pkg.Field
+	config     *pkg.ConfigFile
+	konfable   konfables.Konfable
+	values     map[string]string
+	origValues map[string]string // on-disk baseline for inline old→new diff
+	focused    bool
 
 	// cached config lines for renderFileSnippet
 	snippetLines []string
@@ -85,6 +86,7 @@ func (d *detail) reset() {
 	d.config = nil
 	d.konfable = nil
 	d.values = nil
+	d.origValues = nil
 	d.focused = false
 	d.snippetLines = nil
 }
@@ -456,9 +458,14 @@ func (d *detail) viewBrowse(width, height int) string {
 		b.WriteByte('\n')
 	}
 
-	// file snippet (generous — 12 lines context)
-	b.WriteByte('\n')
-	b.WriteString(d.renderFileSnippet(width, 12))
+	// file snippet (generous — 12 lines context), fenced off from the
+	// explanation above with a labeled rule
+	if snippet := d.renderFileSnippet(width, 12); snippet != "" {
+		b.WriteByte('\n')
+		b.WriteString(d.sectionRule("config", width))
+		b.WriteByte('\n')
+		b.WriteString(snippet)
+	}
 
 	// apply scroll + viewport clipping
 	full := b.String()
@@ -488,6 +495,22 @@ func (d *detail) viewBrowse(width, height int) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// sectionRule renders a faint "── label ─────" horizontal divider spanning
+// width, used to separate the explanation block from the live config snippet.
+func (d *detail) sectionRule(label string, width int) string {
+	if width < 8 {
+		return d.theme.FaintSeparator.Render(strings.Repeat("─", max(0, width)))
+	}
+	lead := "── "
+	tail := width - lipgloss.Width(lead) - lipgloss.Width(label) - 1
+	if tail < 0 {
+		tail = 0
+	}
+	return d.theme.FaintSeparator.Render(lead) +
+		d.theme.Muted.Render(label) + " " +
+		d.theme.FaintSeparator.Render(strings.Repeat("─", tail))
 }
 
 // renderTypeVisual returns type-aware visuals for the current field value.
@@ -662,7 +685,19 @@ func (d *detail) renderConfigSnippet(rawLines []string, focusLine, height, width
 
 	var b strings.Builder
 	for i := startLine; i < endLine; i++ {
-		b.WriteString(d.renderConfigSnippetLine(rawLines[i], i == focusLine, addedLines[i], width))
+		// the focused line of a modified field renders as a -/+ hunk in place
+		if i == focusLine {
+			if minus, plus, ok := d.diffHunk(rawLines[i], i, len(rawLines), width); ok {
+				b.WriteString(minus)
+				b.WriteByte('\n')
+				b.WriteString(plus)
+				if i < endLine-1 {
+					b.WriteByte('\n')
+				}
+				continue
+			}
+		}
+		b.WriteString(d.renderConfigSnippetLine(rawLines[i], i, len(rawLines), i == focusLine, addedLines[i], width))
 		if i < endLine-1 {
 			b.WriteByte('\n')
 		}
@@ -670,8 +705,64 @@ func (d *detail) renderConfigSnippet(rawLines []string, focusLine, height, width
 	return b.String()
 }
 
-func (d *detail) renderConfigSnippetLine(line string, focused, added bool, width int) string {
-	maxW := width - 2
+// diffHunk renders the focused field's config line as a removed/added pair when
+// its value differs from the on-disk baseline: the old value as a red "-" line
+// and the current line as a green "+" line, word-highlighting the changed run.
+// line is the current (new-value) line. ok is false for unchanged fields or
+// when no baseline is available, in which case the caller renders normally.
+func (d *detail) diffHunk(line string, idx, total, width int) (minus, plus string, ok bool) {
+	if d.field == nil || d.origValues == nil {
+		return "", "", false
+	}
+	oldVal, hadOld := d.origValues[d.field.Key]
+	newVal, hasNew := d.values[d.field.Key]
+	if !hadOld || !hasNew || oldVal == newVal {
+		return "", "", false // only in-place value changes get a -/+ pair
+	}
+
+	// locate the value span so key/separator/indent are preserved on both sides
+	start, end := findKeySpan(line, d.field.Key)
+	if start < 0 {
+		return "", "", false
+	}
+	valStart := findValueStart(line, end)
+	if valStart < 0 {
+		return "", "", false
+	}
+	keyPart := line[:valStart]
+	newText := line[valStart:]
+	oldText := d.serializedFieldValue(oldVal)
+
+	gutterW := len(fmt.Sprintf("%d", total))
+	if gutterW < 1 {
+		gutterW = 1
+	}
+	gutter := fmt.Sprintf("%*d ", gutterW, idx+1)
+	valW := width - 2 - len(gutter) - lipgloss.Width(keyPart)
+	if valW < 4 {
+		valW = 4
+	}
+	oldText = truncate(oldText, valW)
+	newText = truncate(newText, valW)
+
+	minus = d.theme.Error.Render("- ") +
+		d.theme.Error.Faint(true).Render(gutter) +
+		d.theme.Error.Render(keyPart) +
+		renderWordDiff(oldText, newText, diffRemoved, d.theme)
+	plus = d.theme.Success.Render("+ ") +
+		d.theme.Success.Faint(true).Render(gutter) +
+		d.theme.Success.Render(keyPart) +
+		renderWordDiff(newText, oldText, diffAdded, d.theme)
+	return minus, plus, true
+}
+
+func (d *detail) renderConfigSnippetLine(line string, idx, total int, focused, added bool, width int) string {
+	gutterW := len(fmt.Sprintf("%d", total))
+	if gutterW < 1 {
+		gutterW = 1
+	}
+	gutter := fmt.Sprintf("%*d ", gutterW, idx+1)
+	maxW := width - 2 - len(gutter)
 	if maxW < 1 {
 		maxW = 1
 	}
@@ -679,11 +770,16 @@ func (d *detail) renderConfigSnippetLine(line string, focused, added bool, width
 
 	switch {
 	case added:
-		return d.theme.Success.Render("+ ") + d.renderHighlightedConfigLine(line, d.theme.Success)
+		return d.theme.Success.Render("+ ") +
+			d.theme.Success.Faint(true).Render(gutter) +
+			d.renderHighlightedConfigLine(line, d.theme.Success)
 	case focused:
-		return d.theme.Primary.Render("▶ ") + d.renderHighlightedConfigLine(line, d.theme.Text)
+		return d.theme.Primary.Render("▶ ") +
+			d.theme.Muted.Render(gutter) +
+			d.renderHighlightedConfigLine(line, d.theme.Text)
 	default:
-		return d.theme.Muted.Render("  " + line)
+		return d.theme.Muted.Faint(true).Render("  "+gutter) +
+			d.theme.Muted.Render(line)
 	}
 }
 
@@ -862,15 +958,20 @@ func (d *detail) renderBottomWithAddedLine(width, height int) string {
 		start = 0
 	}
 
+	total := len(lines)
+	if added != "" {
+		total++
+	}
+
 	var b strings.Builder
 	for i := start; i < len(lines); i++ {
-		b.WriteString(d.renderConfigSnippetLine(lines[i], false, false, width))
+		b.WriteString(d.renderConfigSnippetLine(lines[i], i, total, false, false, width))
 		if i < len(lines)-1 || added != "" {
 			b.WriteByte('\n')
 		}
 	}
 	if added != "" {
-		b.WriteString(d.renderConfigSnippetLine(added, false, true, width))
+		b.WriteString(d.renderConfigSnippetLine(added, len(lines), total, false, true, width))
 	}
 	return b.String()
 }

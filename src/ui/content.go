@@ -828,6 +828,11 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.search.SetValue("")
 	c.search.Blur()
 	c.values = make(map[string]string)
+	// keep the baseline in lockstep with values: until appLoadedMsg snapshots
+	// the real config, an empty baseline must diff against empty values (0
+	// changes), never against the previous app's leftover baseline.
+	c.origValues = make(map[string]string)
+	c.cachedChangesDirty = true
 	c.config = nil
 	c.schema = nil
 	c.detail.editing = false
@@ -835,6 +840,9 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.detail.reset()
 	c.undoStack.Clear()
 	c.diffView.SetEntries(nil)
+	// clear the file-state indicator so a stale "unsaved" from the previous app
+	// can't leak onto the next one; appLoadedMsg re-sets it (new/restored).
+	c.fileState = ""
 
 	// load schema — use cache from startup if available, else parse
 	if cached, ok := c.schemaCache[k.Name()]; ok {
@@ -1082,7 +1090,9 @@ func (c *content) pendingChanges() []pendingChange {
 }
 
 func (c *content) computePendingChanges() []pendingChange {
-	if c.schema == nil || c.origValues == nil {
+	// inert until a config is actually loaded — guards the async load window
+	// where schema/values belong to the new app but config is still nil.
+	if c.schema == nil || c.origValues == nil || c.config == nil {
 		return nil
 	}
 	var changes []pendingChange
@@ -1153,6 +1163,7 @@ func (c *content) snapshotOrigValues() {
 // syncDetail pushes content state into the detail sub-model and updates breadcrumb.
 func (c *content) syncDetail() {
 	c.detail.sync(c.currentField(), c.config, c.konfable, c.values, c.focused && c.detailFocused)
+	c.detail.origValues = c.origValues
 
 	// update breadcrumb path
 	app := ""

@@ -860,6 +860,8 @@ func (c *content) renderBody(width int) string {
 
 		// is this row the one being edited?
 		isEditRow := editingInline && isCursor && r.fieldIdx == c.detail.editField
+		// changed-only (tab) view renders the value as an old → new diff
+		isDiffRow := false
 
 		// type icon (widget hint takes precedence)
 		icon := icons[f.Widget]
@@ -928,7 +930,18 @@ func (c *content) renderBody(width int) string {
 			label = c.theme.Warning.Render("★") + label
 		}
 
-		if showBounds {
+		// changed-only view: replace the value with an old → new diff
+		if c.changedOnly && !isEditRow {
+			oldVal, hadOld := c.origValues[f.Key]
+			newVal, hasNew := c.values[f.Key]
+			if (hadOld || hasNew) && (hadOld != hasNew || oldVal != newVal) {
+				usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + lipgloss.Width(" "+dot+" ")
+				renderedVal = c.renderInlineDiff(oldVal, hadOld, newVal, hasNew, width-usedW-1)
+				isDiffRow = true
+			}
+		}
+
+		if showBounds && !isDiffRow {
 			lo, hi := "*", "*"
 			if f.Min != nil {
 				lo = formatNum(*f.Min)
@@ -945,8 +958,8 @@ func (c *content) renderBody(width int) string {
 
 		line := prefix + label + " " + dot + " " + renderedVal
 
-		// truncate value with ellipsis if line exceeds available width (skip for inline editors)
-		if lipgloss.Width(line) > width && !isEditRow {
+		// truncate value with ellipsis if line exceeds available width (skip for inline editors and diffs)
+		if lipgloss.Width(line) > width && !isEditRow && !isDiffRow {
 			// re-render with truncated value
 			usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + lipgloss.Width(" "+dot+" ")
 			maxValW := width - usedW - 1
@@ -990,6 +1003,32 @@ func (c *content) renderBody(width int) string {
 	}
 
 	return b.String()
+}
+
+// renderInlineDiff renders a changed field's value as "old → new" with
+// word-level highlighting, fit within maxW total display cells. ∅ marks a value
+// that was absent (newly set) or removed.
+func (c *content) renderInlineDiff(oldVal string, hadOld bool, newVal string, hasNew bool, maxW int) string {
+	th := c.theme
+	if maxW < 8 {
+		maxW = 8
+	}
+	arrow := th.Muted.Render(" → ")
+
+	switch {
+	case !hadOld:
+		return th.Muted.Render("∅") + arrow + th.Success.Render(truncate(newVal, maxW-3))
+	case !hasNew:
+		return th.Error.Render(truncate(oldVal, maxW-3)) + arrow + th.Muted.Render("∅")
+	default:
+		side := (maxW - 3) / 2 // split remaining width across both sides of the arrow
+		if side < 4 {
+			side = 4
+		}
+		ot := truncate(oldVal, side)
+		nt := truncate(newVal, side)
+		return renderWordDiff(ot, nt, diffRemoved, th) + arrow + renderWordDiff(nt, ot, diffAdded, th)
+	}
 }
 
 // renderFieldValue renders a field value with type-specific formatting.

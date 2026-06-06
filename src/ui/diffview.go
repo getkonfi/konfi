@@ -61,10 +61,12 @@ func (d *diffView) View() string {
 			n = th.Muted.Render("  + ∅")
 		case ch.IsNew:
 			old = th.Muted.Render("  - ∅")
-			n = th.Accent.Render("  + " + truncate(ch.NewVal, maxValWidth))
+			n = th.Success.Render("  + " + truncate(ch.NewVal, maxValWidth))
 		default:
-			old = th.Error.Render("  - " + truncate(ch.OldVal, maxValWidth))
-			n = th.Accent.Render("  + " + truncate(ch.NewVal, maxValWidth))
+			ot := truncate(ch.OldVal, maxValWidth)
+			nt := truncate(ch.NewVal, maxValWidth)
+			old = th.Error.Render("  - ") + renderWordDiff(ot, nt, diffRemoved, th)
+			n = th.Success.Render("  + ") + renderWordDiff(nt, ot, diffAdded, th)
 		}
 
 		block := fmt.Sprintf("  %s\n%s\n%s", header, old, n)
