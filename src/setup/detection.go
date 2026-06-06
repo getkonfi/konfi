@@ -65,7 +65,7 @@ var allKonfables = []konfableEntry{
 	}, true, nil},
 	{"gsettings", func() Konfable {
 		return gnome.New(gnome.NewPersister())
-	}, false, probeGsettings},
+	}, false, probeGnome},
 	{"dconf", func() Konfable {
 		return dconf.New(dconf.NewPersister())
 	}, false, probeDconf},
@@ -104,8 +104,14 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 }
 
-// probeGsettings checks whether the gnome desktop interface schema is available.
-func probeGsettings() bool {
+// probeGnome reports whether a GNOME desktop is actually installed. The
+// org.gnome.desktop.interface schema alone is a false positive: it ships with
+// gsettings-desktop-schemas, a common GTK dependency present on non-GNOME
+// systems. gnome-shell in PATH is the reliable signal that GNOME is installed.
+func probeGnome() bool {
+	if _, err := exec.LookPath("gnome-shell"); err != nil {
+		return false
+	}
 	out, err := exec.Command("gsettings", "list-keys", "org.gnome.desktop.interface").Output()
 	return err == nil && len(out) > 0
 }

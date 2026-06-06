@@ -1659,7 +1659,7 @@ func (r *root) yankField() tea.Cmd {
 	}
 	r.status.status = "copied!"
 	return tea.Batch(
-		tea.SetClipboard(val),
+		tea.SetClipboard(f.Key+" = "+val),
 		tea.Tick(2*time.Second, func(time.Time) tea.Msg {
 			return statusClearMsg{}
 		}),
@@ -1675,6 +1675,21 @@ func (r *root) pasteField() tea.Cmd {
 	return tea.ReadClipboard
 }
 
+// stripKeyPrefix removes a leading "<key> =" / "<key>=" assignment prefix from
+// a pasted snippet, so a value copied as "key = value" pastes as just the value.
+// returns value unchanged when the prefix does not match this field's key.
+func stripKeyPrefix(value, key string) string {
+	trimmed := strings.TrimLeft(value, " \t")
+	if key == "" || !strings.HasPrefix(trimmed, key) {
+		return value
+	}
+	rest := strings.TrimLeft(trimmed[len(key):], " \t")
+	if !strings.HasPrefix(rest, "=") {
+		return value
+	}
+	return strings.TrimLeft(rest[1:], " \t")
+}
+
 // applyPaste writes clipboard content to the focused field with undo support.
 func (r *root) applyPaste(value string) {
 	f := r.content.currentField()
@@ -1685,6 +1700,9 @@ func (r *root) applyPaste(value string) {
 	if p == nil {
 		return
 	}
+	// tolerate "key = value" snippets (the form yankField copies) so an in-app
+	// copy → paste round-trips to just the value.
+	value = stripKeyPrefix(value, f.Key)
 	oldVal := r.content.values[f.Key]
 	if value == oldVal {
 		return

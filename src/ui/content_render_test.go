@@ -49,13 +49,16 @@ func TestSplitWidthsGivesDetailMoreContentArea(t *testing.T) {
 	}
 }
 
-func TestRenderFieldValueColorUsesHashMarkerAndHex(t *testing.T) {
+func TestRenderFieldValueColorShowsHexWithoutMarker(t *testing.T) {
 	c := &content{theme: testTheme()}
 	f := pkg.Field{Type: "color"}
 
 	got := stripANSI(c.renderFieldValue(f, "aabbcc", false))
-	if got != "## #aabbcc" {
-		t.Fatalf("renderFieldValue() = %q, want %q", got, "## #aabbcc")
+	if got != "#aabbcc" {
+		t.Fatalf("renderFieldValue() = %q, want %q", got, "#aabbcc")
+	}
+	if strings.Contains(got, "##") {
+		t.Fatalf("color field value should not render a ## marker: %q", got)
 	}
 	if strings.Contains(got, "██") {
 		t.Fatalf("color field value should not render block swatches: %q", got)
@@ -69,8 +72,8 @@ func TestRenderFieldValueColorKeepsHyprlandARGB(t *testing.T) {
 	for _, value := range []string{"0xee1a1a1a", "#0xee1a1a1a"} {
 		t.Run(value, func(t *testing.T) {
 			got := stripANSI(c.renderFieldValue(f, value, false))
-			if got != "## 0xee1a1a1a" {
-				t.Fatalf("renderFieldValue() = %q, want %q", got, "## 0xee1a1a1a")
+			if got != "0xee1a1a1a" {
+				t.Fatalf("renderFieldValue() = %q, want %q", got, "0xee1a1a1a")
 			}
 			if strings.Contains(got, "#0x") {
 				t.Fatalf("hyprland argb color should not be displayed as rgb hex: %q", got)

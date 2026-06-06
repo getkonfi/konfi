@@ -393,7 +393,7 @@ func (d *detail) viewBrowse(width, height int) string {
 		}
 	}
 	badgeStyle := d.typeBadgeStyle(f.Type, colorHex)
-	b.WriteString(badgeStyle.Render(icon + " " + f.Type))
+	b.WriteString(badgeStyle.Render(icon + " " + fieldBadgeName(*f)))
 
 	// tier provenance badge
 	if d.config != nil {
@@ -548,7 +548,7 @@ func (d *detail) renderTypeVisual(f *pkg.Field, width int) string {
 		if hex := colorRenderHex(colorVal); hex != "" {
 			colorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
 		}
-		return colorValue(colorVal) + " " + colorStyle.Render(f.Key+" = "+display)
+		return colorValue(colorVal, d.theme.Palette.BaseHex()) + " " + colorStyle.Render(f.Key+" = "+display)
 
 	case "number":
 		if f.Min == nil && f.Max == nil {

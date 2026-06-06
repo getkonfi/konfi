@@ -63,6 +63,13 @@ func colorToHex(c color.Color) string {
 	return fmt.Sprintf("#%02x%02x%02x", r>>8, g>>8, b>>8)
 }
 
+// BaseHex returns the base background color as "#rrggbb" (dark-mode TrueColor,
+// matching Hexes). used to detect color values that would render unreadably
+// close to the background.
+func (p Palette) BaseHex() string {
+	return colorToHex(p.Base.Dark.TrueColor)
+}
+
 // Hexes returns the palette's accent and semantic colors as hex strings.
 // uses dark-mode TrueColor values.
 func (p Palette) Hexes() []PaletteHex {

@@ -15,27 +15,27 @@ import (
 var fieldTypeIconNerd = map[string]string{
 	"string": "\uf031",
 	"number": "\uf292",
-	"bool":   "\uf444",
+	"bool":   "\uf205",
 	"enum":   "\uf150",
-	"color":  "##",
+	"color":  "\uf1fc",
 	"list":   "\uf03a",
 	"multi":  "\uf046",
 
 	"font":        "\uf031",
 	"slider":      "\U000F1A8A",
 	"path":        "\uf115",
-	"stylestring": "\uf893",
+	"stylestring": "\uf0d0",
 	"hook":        "\uf0e7",
 	"structlist":  "\uf00b",
 	"patternlist": "\uf03a",
-	"togglemap":   "\uf444",
+	"togglemap":   "\uf205",
 }
 
 // field type icons — plain ASCII fallback
 var fieldTypeIconASCII = map[string]string{
 	"string": "Aa",
 	"number": "#",
-	"bool":   "?!",
+	"bool":   "<>",
 	"enum":   "[]",
 	"color":  "##",
 	"list":   "=",
@@ -48,7 +48,7 @@ var fieldTypeIconASCII = map[string]string{
 	"hook":        "!",
 	"structlist":  "=",
 	"patternlist": "=",
-	"togglemap":   "?!",
+	"togglemap":   "<>",
 }
 
 // fieldIcons returns the nerd or ASCII icon map based on the flag.
@@ -59,15 +59,32 @@ func fieldIcons(nerd bool) map[string]string {
 	return fieldTypeIconASCII
 }
 
+// widgetBadgeLabels overrides the badge text for widgets whose underlying
+// type reads wrong — e.g. a stylestring symbol picker has type "string" but
+// is really a pick-from-options select, not free text.
+var widgetBadgeLabels = map[string]string{
+	"stylestring": "select",
+}
+
+// fieldBadgeName returns the label shown in a field's type badge. when a widget
+// is set the badge follows the widget (the icon already does), since the raw
+// type is often misleading for widget fields.
+func fieldBadgeName(f pkg.Field) string {
+	if f.Widget != "" {
+		if name, ok := widgetBadgeLabels[f.Widget]; ok {
+			return name
+		}
+		return f.Widget
+	}
+	return f.Type
+}
+
 // logoBlockH is the fixed height of the header/logo block (lines).
 const logoBlockH = 6
 
 // wideLayoutMinW is the content panel width threshold for switching
 // to the wide layout where the detail pane spans the full height.
 const wideLayoutMinW = 100
-
-// footerH is the fixed height of the bottom preview bar.
-const footerH = 1
 
 const detailPaneWidthPercent = 45
 
@@ -96,7 +113,7 @@ func (c *content) splitWidths(innerW int) (fieldW, detailW int) {
 }
 
 func (c *content) fieldListHeight() int {
-	bodyH := c.height - logoBlockH - footerH
+	bodyH := c.height - logoBlockH
 	// breadcrumb takes 1 line when an app is loaded
 	if c.breadcrumb.app != "" {
 		bodyH--
@@ -316,14 +333,14 @@ func (c *content) renderDashboard(width int) string {
 	var b strings.Builder
 
 	// logo
-	if logo, ok := konfables.Logos["konfigurator"]; ok {
+	if logo, ok := konfables.Logos["konfi"]; ok {
 		art := logo.Render()
 		b.WriteString(centerBlock(art, width))
 		b.WriteByte('\n')
 	}
 
 	// title + version
-	title := c.theme.Primary.Bold(true).Render("konfigurator")
+	title := c.theme.Primary.Bold(true).Render("konfi")
 	ver := c.theme.Muted.Render(" v" + c.appVersion)
 	b.WriteString(centerLine(title+ver, width))
 	b.WriteByte('\n')
@@ -488,89 +505,6 @@ func (c *content) renderDashboard(width int) string {
 	return b.String()
 }
 
-// renderFooter builds the 1-line preview bar showing key = value for the focused field.
-func (c *content) renderFooter(width int) string {
-	f := c.currentField()
-	if f == nil {
-		return c.theme.Muted.Render(strings.Repeat("─", width))
-	}
-
-	key := f.Key
-	val := f.Default
-	if v, ok := c.values[f.Key]; ok {
-		val = v
-	}
-
-	// live editor preview override
-	if c.detail.editing && c.detail.editor != nil {
-		switch e := c.detail.editor.(type) {
-		case *stylestringEditor:
-			val = e.PreviewValue()
-		case *colorEditor:
-			val = e.PreviewValue()
-		default:
-			val = c.detail.editor.Value()
-		}
-	}
-
-	// type-aware value rendering
-	sep := c.theme.Muted.Render("─ ")
-	keyStr := c.theme.PreviewHL.Render(key)
-	eq := c.theme.Muted.Render(" = ")
-	var valStr string
-
-	switch {
-	case f.Widget == "stylestring":
-		sym, sty := parseStyleString(val)
-		if sty != "" {
-			valStr = c.theme.Primary.Render("[") +
-				c.theme.Accent.Render(sym) +
-				c.theme.Primary.Render("](") +
-				c.theme.Muted.Render(sty) +
-				c.theme.Primary.Render(")")
-		} else {
-			valStr = c.theme.Accent.Render(val)
-		}
-	case f.Type == "color":
-		colorVal := val
-		display := colorDisplayValue(colorVal)
-		if c.detail.editing {
-			if ce, ok := c.detail.editor.(*colorEditor); ok {
-				colorVal = ce.PreviewValue()
-				display = colorDisplayValue(colorVal)
-			}
-		}
-		if display != "" {
-			valStr = colorValue(colorVal)
-		} else {
-			valStr = c.theme.Muted.Render("not set")
-		}
-	case f.Type == "bool":
-		if val == "true" {
-			valStr = c.theme.Success.Render("●") + " " + c.theme.Accent.Render("true")
-		} else {
-			valStr = c.theme.Muted.Render("○") + " " + c.theme.Accent.Render("false")
-		}
-	default:
-		valStr = c.theme.Accent.Render(val)
-	}
-
-	line := sep + keyStr + eq + valStr
-
-	// truncate to width
-	if lipgloss.Width(line) > width {
-		// rough truncation: re-render with shortened val
-		maxVal := width - lipgloss.Width(sep+keyStr+eq) - 1
-		if maxVal > 0 && len(val) > maxVal {
-			val = val[:maxVal] + "…"
-			valStr = c.theme.Accent.Render(val)
-			line = sep + keyStr + eq + valStr
-		}
-	}
-
-	return line
-}
-
 func (c *content) View() string {
 	// no border — structural division from sidebar edge and detail's left border
 	innerW := c.width - 2 // 2 padding (1 each side)
@@ -593,7 +527,7 @@ func (c *content) View() string {
 	outerStyle := c.outerStyle
 
 	// body area below header, minus footer
-	bodyH := c.height - logoBlockH - footerH
+	bodyH := c.height - logoBlockH
 	if bodyH < 3 {
 		bodyH = 3
 	}
@@ -694,8 +628,7 @@ func (c *content) View() string {
 	fieldView := strings.Join(lines, "\n")
 
 	if detailW == 0 {
-		footerStr := c.renderFooter(innerW)
-		return outerStyle.Render(headerStr + crumbStr + fieldView + "\n" + footerStr)
+		return outerStyle.Render(headerStr + crumbStr + fieldView)
 	}
 
 	detailContentW := detailW - 3
@@ -705,8 +638,7 @@ func (c *content) View() string {
 
 	if wide {
 		// wide layout: detail spans full height, header lives in left column
-		footerStr := c.renderFooter(fieldListW)
-		leftContent := headerStr + crumbStr + fieldView + "\n" + footerStr
+		leftContent := headerStr + crumbStr + fieldView
 		leftLines := strings.Count(leftContent, "\n") + 1
 		for leftLines < c.height {
 			leftContent += "\n"
@@ -764,9 +696,8 @@ func (c *content) View() string {
 		Render(fieldView)
 
 	bodyRow := lipgloss.JoinHorizontal(lipgloss.Top, fieldCol, detailStyled)
-	footerStr := c.renderFooter(fieldListW)
 
-	return outerStyle.Render(headerStr + crumbStr + bodyRow + "\n" + footerStr)
+	return outerStyle.Render(headerStr + crumbStr + bodyRow)
 }
 
 // renderBody produces the scrollable field area: search + field rows.
@@ -875,8 +806,9 @@ func (c *content) renderBody(width int) string {
 		// single map lookup for current value
 		val, hasVal := c.values[f.Key]
 
-		// configured indicator (only green when value differs from default)
-		isConfigured := hasVal && val != f.Default
+		// configured indicator: green when the key is present in the config file,
+		// even if its value matches the default (consistent with the configured-only filter)
+		isConfigured := hasVal
 		var dot string
 		if isConfigured {
 			dot = c.theme.Success.Render("●")
@@ -903,9 +835,10 @@ func (c *content) renderBody(width int) string {
 			case InlineEditor:
 				renderedVal = e.InlineView(width / 2)
 			case *colorEditor:
-				renderedVal = colorValue(e.oldHex) +
+				bg := c.theme.Palette.BaseHex()
+				renderedVal = colorValue(e.oldHex, bg) +
 					c.theme.Muted.Render(" → ") +
-					colorValue(e.PreviewValue())
+					colorValue(e.PreviewValue(), bg)
 			case *stylestringEditor:
 				renderedVal = c.theme.Accent.Render(e.PreviewValue())
 			}
@@ -1031,8 +964,19 @@ func (c *content) renderInlineDiff(oldVal string, hadOld bool, newVal string, ha
 	}
 }
 
+// singleLine flattens a value for one-row display: newlines and tabs become
+// visible escapes so a multi-line value (e.g. a collapsed TOML """ string)
+// can't break row alignment.
+func singleLine(s string) string {
+	if !strings.ContainsAny(s, "\n\r\t") {
+		return s
+	}
+	return strings.NewReplacer("\r\n", "\\n", "\n", "\\n", "\r", "\\n", "\t", "\\t").Replace(s)
+}
+
 // renderFieldValue renders a field value with type-specific formatting.
 func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) string {
+	val = singleLine(val)
 	// stylestring rendering (widget takes priority)
 	if f.Widget == "stylestring" {
 		sym, sty := parseStyleString(val)
@@ -1057,7 +1001,7 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 			if colorDisplayValue(val) == "" {
 				return c.theme.FieldDefault.Render("not set")
 			}
-			return colorValue(val)
+			return colorValue(val, c.theme.Palette.BaseHex())
 		default:
 			return c.theme.FieldDefault.Render(val)
 		}
@@ -1070,7 +1014,7 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 		if colorDisplayValue(val) == "" {
 			return c.theme.Muted.Render("not set")
 		}
-		return colorValue(val)
+		return colorValue(val, c.theme.Palette.BaseHex())
 	default:
 		return c.theme.FieldValue.Render(val)
 	}

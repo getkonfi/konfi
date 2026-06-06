@@ -62,7 +62,7 @@ func (s *sidebar) refilter() {
 	query := strings.ToLower(s.search.Value())
 	s.filtered = s.filtered[:0]
 
-	var home, regular, system []int
+	var home, installed, uninstalled, system []int
 	for i, item := range s.items {
 		if query != "" && !strings.Contains(strings.ToLower(item.name), query) {
 			continue
@@ -72,12 +72,15 @@ func (s *sidebar) refilter() {
 			home = append(home, i)
 		case item.system:
 			system = append(system, i)
+		case item.installed:
+			installed = append(installed, i)
 		default:
-			regular = append(regular, i)
+			uninstalled = append(uninstalled, i)
 		}
 	}
 	s.filtered = append(s.filtered, home...)
-	s.filtered = append(s.filtered, regular...)
+	s.filtered = append(s.filtered, installed...)
+	s.filtered = append(s.filtered, uninstalled...)
 	s.filtered = append(s.filtered, system...)
 
 	if s.cursor >= len(s.filtered) {
@@ -380,31 +383,40 @@ func (s *sidebar) viewExpanded() string {
 		top.WriteByte('\n')
 		top.WriteString(s.theme.Muted.Render("no matches"))
 	} else {
+		divider := s.theme.Muted.Render(strings.Repeat("─", innerW))
 		afterHome := false
+		uninstalledHeaderShown := false
 		for fi, origIdx := range s.filtered {
 			item := s.items[origIdx]
 			isCursor := fi == s.cursor
 			line := s.renderItem(item, isCursor, innerW)
 
-			if item.system {
+			switch {
+			case item.system:
 				if bot.Len() > 0 {
 					bot.WriteByte('\n')
 				}
 				bot.WriteString(line)
-			} else {
-				if item.home {
+			case item.home:
+				top.WriteByte('\n')
+				top.WriteString(line)
+				afterHome = true
+			default:
+				// start the not-installed group with a labeled divider
+				if !item.installed && !uninstalledHeaderShown {
 					top.WriteByte('\n')
-					top.WriteString(line)
-					afterHome = true
-				} else {
-					if afterHome {
-						top.WriteByte('\n')
-						top.WriteString(s.theme.Muted.Render(strings.Repeat("─", innerW)))
-						afterHome = false
-					}
+					top.WriteString(divider)
 					top.WriteByte('\n')
-					top.WriteString(line)
+					top.WriteString(s.theme.Muted.Bold(true).Render("NOT INSTALLED"))
+					uninstalledHeaderShown = true
+					afterHome = false
+				} else if afterHome {
+					top.WriteByte('\n')
+					top.WriteString(divider)
+					afterHome = false
 				}
+				top.WriteByte('\n')
+				top.WriteString(line)
 			}
 		}
 	}

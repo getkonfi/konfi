@@ -149,7 +149,7 @@ func newContent(th *theme.Theme) content {
 	ti.Prompt = ""
 
 	return content{
-		title:         "konfigurator",
+		title:         "konfi",
 		values:        make(map[string]string),
 		collapsed:     make(map[int]bool),
 		search:        ti,
@@ -498,32 +498,32 @@ func (c *content) openEditor() tea.Cmd {
 
 	e := editorForField(*f)
 
-	// for raw JSON widgets, use FindValue (not MultiValueParser)
 	initVal := c.detail.editOrigVal
-	if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
+	mvp, isMVP := c.konfable.Parser().(konfables.MultiValueParser)
+	switch {
+	case f.Type == "list" && isMVP:
+		// repeated-key list (e.g. ghostty keybind, brew mas): read every
+		// occurrence, not just the first. list and structlist editors both take
+		// newline-joined values; a widget override (font picker) takes the first.
+		initVal = ""
+		if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
+			switch e.(type) {
+			case *listEditor, *structListEditor:
+				initVal = strings.Join(vals, "\n")
+			default:
+				if len(vals) > 0 {
+					initVal = vals[0]
+				}
+			}
+		}
+	case f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist":
+		// raw JSON widgets: single value via FindValue
 		if raw, ok := c.konfable.Parser().FindValue(c.config.Content(), f.Key); ok {
 			initVal = raw
 		} else if f.Widget == "structlist" {
 			initVal = ""
 		} else {
 			initVal = "[]"
-		}
-	} else if f.Type == "list" {
-		// for list fields, resolve the init value based on which editor was chosen
-		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
-			if vals, found := mvp.FindValues(c.config.Content(), f.Key); found {
-				if _, isListEd := e.(*listEditor); isListEd {
-					// list editor: pass all values newline-joined
-					initVal = strings.Join(vals, "\n")
-				} else if len(vals) > 0 {
-					// widget override (e.g. font picker): pass first value only
-					initVal = vals[0]
-				} else {
-					initVal = ""
-				}
-			} else {
-				initVal = ""
-			}
 		}
 	}
 
@@ -555,7 +555,7 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 }
 
 // commitEdit writes the edited value back to the config and returns
-// a cmd to propagate konfigurator setting changes (theme, log_level).
+// a cmd to propagate konfi setting changes (theme, log_level).
 func (c *content) commitEdit(value string) tea.Cmd {
 	c.detail.editing = false
 	c.detail.editor = nil
@@ -573,19 +573,8 @@ func (c *content) commitEdit(value string) tea.Cmd {
 	oldValue := c.detail.editOrigVal
 	data := c.config.Content()
 
-	// raw JSON widgets: write via SetValue (not MultiValueParser)
-	if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
-		newData, err := c.konfable.Parser().SetValue(data, f.Key, value)
-		if err != nil {
-			return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
-		}
-		c.config.SetContent(newData)
-		c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
-		c.refreshValues()
-		return c.settingChangedCmd(f.Key, value)
-	}
-
-	// list fields use MultiValueParser
+	// repeated-key list fields (incl. structlist editors like ghostty keybind,
+	// brew mas) write every value back via SetValues, not just the first
 	if f.Type == "list" {
 		if mvp, ok := c.konfable.Parser().(konfables.MultiValueParser); ok {
 			vals := splitListValue(value)
@@ -598,6 +587,18 @@ func (c *content) commitEdit(value string) tea.Cmd {
 			c.refreshValues()
 			return c.settingChangedCmd(f.Key, value)
 		}
+	}
+
+	// raw JSON widgets: write via SetValue (not MultiValueParser)
+	if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
+		newData, err := c.konfable.Parser().SetValue(data, f.Key, value)
+		if err != nil {
+			return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
+		}
+		c.config.SetContent(newData)
+		c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
+		c.refreshValues()
+		return c.settingChangedCmd(f.Key, value)
 	}
 
 	serialized := formatValue(value, f.Type, c.konfable.Info().Format)
@@ -613,9 +614,9 @@ func (c *content) commitEdit(value string) tea.Cmd {
 }
 
 // settingChangedCmd returns a cmd that emits a KonfSettingChangedMsg,
-// or nil if not editing the konfigurator app.
+// or nil if not editing the konfi app.
 func (c *content) settingChangedCmd(key, value string) tea.Cmd {
-	if c.konfable == nil || c.konfable.Name() != "konfigurator" {
+	if c.konfable == nil || c.konfable.Name() != "konfi" {
 		return nil
 	}
 	return func() tea.Msg {
@@ -624,7 +625,7 @@ func (c *content) settingChangedCmd(key, value string) tea.Cmd {
 }
 
 // toggleBool flips a boolean field value immediately and returns a cmd
-// that propagates konfigurator setting changes (e.g. nerd_font, browse_loads_app).
+// that propagates konfi setting changes (e.g. nerd_font, browse_loads_app).
 func (c *content) toggleBool(f pkg.Field) tea.Cmd {
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return nil
@@ -761,7 +762,7 @@ func (c *content) stopWatching() {
 func (c *content) showDashboard() {
 	c.stopWatching()
 	c.konfable = nil
-	c.title = "konfigurator"
+	c.title = "konfi"
 	c.config = nil
 	c.schema = nil
 	c.fields = nil
@@ -949,7 +950,7 @@ func (c *content) detailPaneHeight() int {
 	if c.width > wideLayoutMinW && detailW > 0 {
 		return c.height
 	}
-	bodyH := c.height - logoBlockH - footerH
+	bodyH := c.height - logoBlockH
 	if c.breadcrumb.app != "" {
 		bodyH--
 	}

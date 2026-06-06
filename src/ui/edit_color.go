@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strconv"
 	"strings"
 	"sync"
 
@@ -335,17 +336,64 @@ func swatch(hex string) string {
 	return s
 }
 
-func colorValue(hex string) string {
+// colorValue renders a color's hex tinted in its own color. when the tint sits
+// too close to bgHex to stay legible, it adds a contrasting backdrop so the
+// value remains readable. bgHex "" skips the contrast guard.
+func colorValue(hex, bgHex string) string {
 	display := colorDisplayValue(hex)
 	if display == "" {
-		return "##"
+		return ""
 	}
 	renderHex := colorRenderHex(hex)
 	if renderHex == "" {
-		return "## " + display
+		return display
 	}
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color(renderHex))
-	return style.Render("##") + " " + style.Render(display)
+	if bgHex != "" && lowContrast(renderHex, bgHex) {
+		style = style.Background(lipgloss.Color(contrastBackdrop(renderHex)))
+	}
+	return style.Render(display)
+}
+
+// hexRGB parses the rgb channels of a "#rrggbb[aa]" hex, ignoring any alpha.
+func hexRGB(hex string) (r, g, b int, ok bool) {
+	h := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(hex)), "#")
+	if len(h) < 6 || !isHex(h[:6]) {
+		return 0, 0, 0, false
+	}
+	v, err := strconv.ParseInt(h[:6], 16, 64)
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	return int(v>>16) & 0xff, int(v>>8) & 0xff, int(v) & 0xff, true
+}
+
+// relLuminance returns perceptual luminance 0..1 for a hex color (0 on parse failure).
+func relLuminance(hex string) float64 {
+	r, g, b, ok := hexRGB(hex)
+	if !ok {
+		return 0
+	}
+	return (0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)) / 255
+}
+
+// lowContrast reports whether fg is too close to bg to read, using a WCAG-style
+// luminance contrast ratio.
+func lowContrast(fg, bg string) bool {
+	hi, lo := relLuminance(fg), relLuminance(bg)
+	if lo > hi {
+		hi, lo = lo, hi
+	}
+	return (hi+0.05)/(lo+0.05) < 2.5
+}
+
+// contrastBackdrop picks a backdrop that maximizes contrast with fg: a light
+// chip for dark colors, a dark chip for light ones.
+func contrastBackdrop(fg string) string {
+	if relLuminance(fg) < 0.5 {
+		return "#e6e6e6"
+	}
+	return "#1a1a1a"
 }
 
 // normalizeHex returns the color value used for display.
