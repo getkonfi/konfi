@@ -264,7 +264,7 @@ func (e *listEditor) View(width int) string {
 			display := e.completionFiltered[i]
 			maxW := width - 8
 			if maxW > 0 && len(display) > maxW {
-				display = truncate(display, maxW)
+				display = theme.Truncate(display, maxW)
 			}
 			if i == e.completionIdx {
 				b.WriteString("      " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))

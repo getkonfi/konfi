@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/theme"
 )
 
 func (d *detail) viewConfigFile(width, height int) string {
@@ -100,7 +101,7 @@ func (d *detail) configFileHeader(width, focusLine int) string {
 	if focusLine >= 0 {
 		path += fmt.Sprintf(" · line %d", focusLine+1)
 	}
-	return d.theme.Subtext.Render(truncate(path, width))
+	return d.theme.Subtext.Render(theme.Truncate(path, width))
 }
 
 func (d *detail) configScrollIndicator(start, end, total, focusLine, width int) string {
@@ -114,7 +115,7 @@ func (d *detail) configScrollIndicator(start, end, total, focusLine, width int) 
 	if focusLine >= 0 {
 		label += fmt.Sprintf(" · target %d", focusLine+1)
 	}
-	return d.theme.Muted.Render(truncate(label, width))
+	return d.theme.Muted.Render(theme.Truncate(label, width))
 }
 
 func (d *detail) renderConfigFileLine(line string, idx, total int, focused, added bool, width int) string {
@@ -126,7 +127,7 @@ func (d *detail) renderConfigFileLine(line string, idx, total int, focused, adde
 	if maxW < 1 {
 		maxW = 1
 	}
-	line = truncate(line, maxW)
+	line = theme.Truncate(line, maxW)
 	gutter := fmt.Sprintf("%*d ", gutterW, idx+1)
 
 	switch {
@@ -262,8 +263,8 @@ func (d *detail) diffHunk(line string, idx, total, width int) (minus, plus strin
 	if valW < 4 {
 		valW = 4
 	}
-	oldText = truncate(oldText, valW)
-	newText = truncate(newText, valW)
+	oldText = theme.Truncate(oldText, valW)
+	newText = theme.Truncate(newText, valW)
 
 	minus = d.theme.Error.Render("- ") +
 		d.theme.Error.Faint(true).Render(gutter) +
@@ -286,7 +287,7 @@ func (d *detail) renderConfigSnippetLine(line string, idx, total int, focused, a
 	if maxW < 1 {
 		maxW = 1
 	}
-	line = truncate(line, maxW)
+	line = theme.Truncate(line, maxW)
 
 	switch {
 	case added:

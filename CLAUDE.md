@@ -25,7 +25,7 @@ src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
 ## import flow (no cycles)
 ```
 main → setup → ui → theme → pkg
-              │ └→ konfables/* → theme
+              │ └→ konfables/*
               │         └────→ pkg, pkg/parser
               └──────────────→ pkg
 ui → pkg/pixelart, pkg (search, schema, config)
@@ -47,7 +47,7 @@ konfables/logos → pkg/pixelart
 - user approval before any config writes (no silent dotfile modification)
 - `setup/detection.go` imports concrete konfable packages — one-directional
 - `theme/` never imports `konfables/`
-- konfables import `theme` (for Theme in editors), `pkg` (for ConfigFile, Schema), and `pkg/parser` (for format parsers)
+- konfables import `pkg` (for ConfigFile, Schema), and `pkg/parser` (for format parsers)
 
 ## aim
  - main aim is to bring ease of use by having a single tui for various apps

@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/eminert/konfi/pkg"
+	"github.com/eminert/konfi/theme"
 )
 
 // field type icons — nerd font glyphs
@@ -278,7 +279,7 @@ func (c *content) renderBody(width int) string {
 					valPlain = f.Default
 				}
 				if len(valPlain) > maxValW {
-					valPlain = truncate(valPlain, maxValW)
+					valPlain = theme.Truncate(valPlain, maxValW)
 				}
 				if !hasVal {
 					renderedVal = c.renderFieldValue(*f, valPlain, true)
@@ -326,16 +327,16 @@ func (c *content) renderInlineDiff(oldVal string, hadOld bool, newVal string, ha
 
 	switch {
 	case !hadOld:
-		return th.Muted.Render("∅") + arrow + th.Success.Render(truncate(newVal, maxW-3))
+		return th.Muted.Render("∅") + arrow + th.Success.Render(theme.Truncate(newVal, maxW-3))
 	case !hasNew:
-		return th.Error.Render(truncate(oldVal, maxW-3)) + arrow + th.Muted.Render("∅")
+		return th.Error.Render(theme.Truncate(oldVal, maxW-3)) + arrow + th.Muted.Render("∅")
 	default:
 		side := (maxW - 3) / 2 // split remaining width across both sides of the arrow
 		if side < 4 {
 			side = 4
 		}
-		ot := truncate(oldVal, side)
-		nt := truncate(newVal, side)
+		ot := theme.Truncate(oldVal, side)
+		nt := theme.Truncate(newVal, side)
 		return renderWordDiff(ot, nt, diffRemoved, th) + arrow + renderWordDiff(nt, ot, diffAdded, th)
 	}
 }

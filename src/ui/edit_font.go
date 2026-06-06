@@ -221,7 +221,7 @@ func (e *fontEditor) View(width int) string {
 		display := name
 		maxW := width - 6
 		if maxW > 0 && len(display) > maxW {
-			display = truncate(display, maxW)
+			display = theme.Truncate(display, maxW)
 		}
 
 		if i == e.cursor {

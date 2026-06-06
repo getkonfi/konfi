@@ -57,14 +57,14 @@ func (d *diffView) View() string {
 
 		switch {
 		case ch.Deleted:
-			old = th.Error.Render("  - " + truncate(ch.OldVal, maxValWidth))
+			old = th.Error.Render("  - " + theme.Truncate(ch.OldVal, maxValWidth))
 			n = th.Muted.Render("  + ∅")
 		case ch.IsNew:
 			old = th.Muted.Render("  - ∅")
-			n = th.Success.Render("  + " + truncate(ch.NewVal, maxValWidth))
+			n = th.Success.Render("  + " + theme.Truncate(ch.NewVal, maxValWidth))
 		default:
-			ot := truncate(ch.OldVal, maxValWidth)
-			nt := truncate(ch.NewVal, maxValWidth)
+			ot := theme.Truncate(ch.OldVal, maxValWidth)
+			nt := theme.Truncate(ch.NewVal, maxValWidth)
 			old = th.Error.Render("  - ") + renderWordDiff(ot, nt, diffRemoved, th)
 			n = th.Success.Render("  + ") + renderWordDiff(nt, ot, diffAdded, th)
 		}
@@ -108,17 +108,4 @@ func countEntries(lines []string) int {
 		}
 	}
 	return count
-}
-
-// truncate shortens s to fit within maxWidth, appending "…" if needed.
-func truncate(s string, maxWidth int) string {
-	if lipgloss.Width(s) <= maxWidth {
-		return s
-	}
-	for i := range s {
-		if lipgloss.Width(s[:i]) > maxWidth-1 {
-			return s[:i] + "…"
-		}
-	}
-	return s
 }

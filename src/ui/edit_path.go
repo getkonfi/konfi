@@ -172,7 +172,7 @@ func (e *pathEditor) View(width int) string {
 			display := entry
 			maxW := width - 6
 			if maxW > 0 && len(display) > maxW {
-				display = truncate(display, maxW)
+				display = theme.Truncate(display, maxW)
 			}
 			if i == e.compCursor {
 				b.WriteString("    " + e.th.Primary.Render("> ") + e.th.Text.Bold(true).Render(display))

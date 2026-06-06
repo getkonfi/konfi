@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/theme"
 )
 
 // labelColumnWidth computes the max label width for the active section.
@@ -107,7 +108,7 @@ func (c *content) renderHeader(width int) string {
 	for i, line := range leftData {
 		// truncate to leftW (plain text before styling)
 		if len(line) > leftW {
-			line = truncate(line, leftW)
+			line = theme.Truncate(line, leftW)
 		}
 		s := c.theme.Text
 		if i < len(styles) {
