@@ -81,6 +81,8 @@ func ForField(f pkg.Field) FieldEditor {
 		return &toggleMapEditor{}
 	case "structlist":
 		return &structListEditor{}
+	case "blocklist":
+		return &blockEditor{}
 	case "patternlist":
 		return &listEditor{}
 	}

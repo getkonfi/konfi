@@ -32,6 +32,23 @@ func TestRenderFieldValueBoolUsesTextOnly(t *testing.T) {
 	}
 }
 
+func TestRenderFieldValueBlocklistShowsSummary(t *testing.T) {
+	c := &content{theme: testTheme()}
+	f := pkg.Field{Widget: "blocklist", Type: "string"}
+
+	cfg := "Host web\n    User git\nMatch host bastion\n    ForwardAgent yes\n"
+	enc := pkg.Encode(pkg.Parse([]byte(cfg), []string{"Host", "Match"}, nil))
+
+	got := stripANSI(c.renderFieldValue(f, enc, false))
+	if !strings.Contains(got, "Host web") || !strings.Contains(got, "Match host bastion") {
+		t.Fatalf("blocklist summary = %q, want it to mention block headers", got)
+	}
+	// must not leak the opaque encoding (tags, byte-lengths, embedded newlines).
+	if strings.ContainsAny(got, "\n") {
+		t.Fatalf("blocklist summary should be single-line, got %q", got)
+	}
+}
+
 func TestSplitWidthsGivesDetailMoreContentArea(t *testing.T) {
 	c := &content{
 		schema: &pkg.Schema{},

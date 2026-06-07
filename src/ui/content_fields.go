@@ -27,6 +27,7 @@ var fieldTypeIconNerd = map[string]string{
 	"stylestring": "\uf0d0",
 	"hook":        "\uf0e7",
 	"structlist":  "\uf00b",
+	"blocklist":   "\uf0e8",
 	"patternlist": "\uf03a",
 	"togglemap":   "\uf205",
 }
@@ -47,6 +48,7 @@ var fieldTypeIconASCII = map[string]string{
 	"stylestring": "Ss",
 	"hook":        "!",
 	"structlist":  "=",
+	"blocklist":   "[+]",
 	"patternlist": "=",
 	"togglemap":   "<>",
 }
@@ -250,6 +252,9 @@ func (c *content) renderBody(width int) string {
 			oldVal, hadOld := c.origValues[f.Key]
 			newVal, hasNew := c.values[f.Key]
 			if (hadOld || hasNew) && (hadOld != hasNew || oldVal != newVal) {
+				if f.Widget == "blocklist" {
+					oldVal, newVal = blockSummary(oldVal), blockSummary(newVal)
+				}
 				usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + lipgloss.Width(" "+dot+" ")
 				renderedVal = c.renderInlineDiff(oldVal, hadOld, newVal, hasNew, width-usedW-1)
 				isDiffRow = true
@@ -274,7 +279,7 @@ func (c *content) renderBody(width int) string {
 		line := prefix + label + " " + dot + " " + renderedVal
 
 		// truncate value with ellipsis if line exceeds available width (skip for inline editors and diffs)
-		if lipgloss.Width(line) > width && !isEditRow && !isDiffRow {
+		if lipgloss.Width(line) > width && !isEditRow && !isDiffRow && f.Widget != "blocklist" {
 			// re-render with truncated value
 			usedW := lipgloss.Width(prefix) + lipgloss.Width(label) + lipgloss.Width(" "+dot+" ")
 			maxValW := width - usedW - 1
@@ -356,8 +361,48 @@ func singleLine(s string) string {
 	return strings.NewReplacer("\r\n", "\\n", "\n", "\\n", "\r", "\\n", "\t", "\\t").Replace(s)
 }
 
+// blockSummary decodes a blocklist field's opaque value into a short, readable
+// list of block headers (e.g. "Host web, Match host bastion  +2 more"). empty
+// or unconfigured values render as nothing.
+func blockSummary(encoded string) string {
+	if strings.TrimSpace(encoded) == "" {
+		return ""
+	}
+	m := pkg.Decode(encoded)
+	if len(m.Blocks) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(m.Blocks))
+	for _, blk := range m.Blocks {
+		label := blk.Opener
+		if blk.Header != "" {
+			label += " " + blk.Header
+		}
+		parts = append(parts, label)
+	}
+	const maxShown = 3
+	extra := 0
+	if len(parts) > maxShown {
+		extra = len(parts) - maxShown
+		parts = parts[:maxShown]
+	}
+	s := strings.Join(parts, ", ")
+	if extra > 0 {
+		s += fmt.Sprintf("  +%d more", extra)
+	}
+	return s
+}
+
 // renderFieldValue renders a field value with type-specific formatting.
 func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) string {
+	// blocklist value is an opaque encoding; show a readable block summary.
+	if f.Widget == "blocklist" {
+		style := c.theme.FieldValue
+		if isDefault {
+			style = c.theme.FieldDefault
+		}
+		return style.Render(blockSummary(val))
+	}
 	val = singleLine(val)
 	// stylestring rendering (widget takes priority)
 	if f.Widget == "stylestring" {

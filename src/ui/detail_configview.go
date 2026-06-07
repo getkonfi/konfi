@@ -450,7 +450,7 @@ func (d *detail) serializedFieldValue(value string) string {
 		return value
 	}
 	switch d.field.Widget {
-	case "hook", "togglemap", "structlist":
+	case "hook", "togglemap", "structlist", "blocklist":
 		return value
 	}
 	format := ""

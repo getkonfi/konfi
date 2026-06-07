@@ -484,6 +484,15 @@ func (c *content) openEditor() tea.Cmd {
 
 	e := editors.ForField(*f)
 
+	// stamp the per-directive palette for block editors so they can dispatch a
+	// nested ForField per directive. fires only when the parser provides one.
+	fld := *f
+	if f.Widget == "blocklist" {
+		if pp, ok := c.konfable.Parser().(konfables.PaletteProvider); ok {
+			fld.BlockPalette = pp.Palette()
+		}
+	}
+
 	initVal := c.detail.editOrigVal
 	mvp, isMVP := c.konfable.Parser().(konfables.MultiValueParser)
 	switch {
@@ -499,11 +508,11 @@ func (c *content) openEditor() tea.Cmd {
 				initVal = vals[0]
 			}
 		}
-	case f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist":
-		// raw JSON widgets: single value via FindValue
+	case f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" || f.Widget == "blocklist":
+		// raw single-value widgets: read the verbatim value via FindValue
 		if raw, ok := c.konfable.Parser().FindValue(c.config.Content(), f.Key); ok {
 			initVal = raw
-		} else if f.Widget == "structlist" {
+		} else if f.Widget == "structlist" || f.Widget == "blocklist" {
 			initVal = ""
 		} else {
 			initVal = "[]"
@@ -511,7 +520,7 @@ func (c *content) openEditor() tea.Cmd {
 	}
 
 	c.detail.editor = e
-	return e.Init(*f, initVal, c.theme)
+	return e.Init(fld, initVal, c.theme)
 }
 
 // openEditorWithSeed starts the editor in replace mode (empty value) and
@@ -957,7 +966,7 @@ func (c *content) refreshValues() {
 		for _, sec := range c.schema.Sections {
 			for i := range sec.Fields {
 				f := &sec.Fields[i]
-				if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" {
+				if f.Widget == "hook" || f.Widget == "togglemap" || f.Widget == "structlist" || f.Widget == "blocklist" {
 					if v, ok := p.FindValue(data, f.Key); ok {
 						c.values[f.Key] = v
 					}
