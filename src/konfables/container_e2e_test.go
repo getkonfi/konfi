@@ -18,6 +18,7 @@ import (
 	appghostty "github.com/eminert/konfi/konfables/ghostty"
 	appgit "github.com/eminert/konfi/konfables/git"
 	appgnome "github.com/eminert/konfi/konfables/gnome"
+	appgtk "github.com/eminert/konfi/konfables/gtk"
 	apphelix "github.com/eminert/konfi/konfables/helix"
 	apphyprland "github.com/eminert/konfi/konfables/hyprland"
 	appkitty "github.com/eminert/konfi/konfables/kitty"
@@ -367,6 +368,24 @@ func containerCases(t *testing.T) []containerCase {
 			fileBacked:   true,
 		},
 		{
+			name: "gtk",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return appgtk.New(appgtk.NewMirrorPersister(filepath.Join(root, "settings.ini")))
+			},
+			sample:       sampleGTK,
+			existingKey:  "Settings.gtk-theme-name",
+			existingWant: "Adwaita-dark",
+			replaceWrite: "Adwaita",
+			replaceWant:  "Adwaita",
+			addKey:       "Settings.gtk-enable-animations",
+			addWrite:     "false",
+			addWant:      "false",
+			deleteKey:    "Settings.gtk-icon-theme-name",
+			survivorKey:  "Settings.gtk-font-name",
+			survivorWant: "JetBrainsMono Nerd Font 11",
+			fileBacked:   true,
+		},
+		{
 			name: "gnome",
 			newApp: func(_ *testing.T, root string) konfables.Konfable {
 				return appgnome.New(filePersister(filepath.Join(root, "gnome.txt")))
@@ -576,6 +595,15 @@ var sampleGit = []byte(`[user]
 	autocrlf = input
 [init]
 	defaultBranch = main
+`)
+
+var sampleGTK = []byte(`[Settings]
+gtk-theme-name=Adwaita-dark
+gtk-icon-theme-name=Papirus-Dark
+gtk-cursor-theme-name=Bibata-Modern-Classic
+gtk-cursor-theme-size=24
+gtk-font-name=JetBrainsMono Nerd Font 11
+gtk-application-prefer-dark-theme=true
 `)
 
 var sampleGnome = []byte(`org.gnome.desktop.interface/color-scheme = prefer-dark

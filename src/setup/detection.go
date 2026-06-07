@@ -19,6 +19,7 @@ import (
 	"github.com/eminert/konfi/konfables/ghostty"
 	"github.com/eminert/konfi/konfables/git"
 	"github.com/eminert/konfi/konfables/gnome"
+	"github.com/eminert/konfi/konfables/gtk"
 	"github.com/eminert/konfi/konfables/helix"
 	"github.com/eminert/konfi/konfables/hyprland"
 	"github.com/eminert/konfi/konfables/kitty"
@@ -80,6 +81,10 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"git", func() Konfable {
 		return git.New(pkg.NewFilePersister(git.DefaultConfigPath()))
+	}, false, nil},
+	{"gtk-launch", func() Konfable {
+		primary, mirrors := gtk.ResolvePaths()
+		return gtk.New(gtk.NewMirrorPersister(primary, mirrors...))
 	}, false, nil},
 	{"tmux", func() Konfable {
 		return tmux.New(pkg.NewFilePersister(tmux.DefaultConfigPath()))
