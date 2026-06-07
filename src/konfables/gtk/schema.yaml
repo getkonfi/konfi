@@ -1,0 +1,87 @@
+app: gtk
+format: ini
+schema_version: 1.0.0
+docs_url: "https://docs.gtk.org/gtk4/class.Settings.html"
+coverage: partial
+hints:
+  - "edits are mirrored to both ~/.config/gtk-3.0/settings.ini and gtk-4.0/settings.ini"
+  - "gtk reads settings at app start — restart apps to see changes"
+
+sections:
+  - name: Settings
+    key: Settings
+    fields:
+      - key: Settings.gtk-theme-name
+        label: Theme
+        type: string
+        description: name of the widget theme (a dir under ~/.themes or /usr/share/themes)
+        example: "[Settings]\ngtk-theme-name=Adwaita-dark"
+        hint: "ls /usr/share/themes ~/.themes to list installed themes"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-theme-name.html"
+
+      - key: Settings.gtk-icon-theme-name
+        label: Icon Theme
+        type: string
+        description: name of the icon theme (a dir under ~/.icons or /usr/share/icons)
+        example: "[Settings]\ngtk-icon-theme-name=Papirus-Dark"
+        hint: "ls /usr/share/icons ~/.icons to list installed icon themes"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-icon-theme-name.html"
+
+      - key: Settings.gtk-cursor-theme-name
+        label: Cursor Theme
+        type: string
+        description: name of the mouse cursor theme
+        example: "[Settings]\ngtk-cursor-theme-name=Bibata-Modern-Classic"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-cursor-theme-name.html"
+
+      - key: Settings.gtk-cursor-theme-size
+        label: Cursor Size
+        type: number
+        default: "24"
+        min: 0
+        max: 128
+        description: size of the mouse cursor in pixels (0 uses the theme default)
+        example: "[Settings]\ngtk-cursor-theme-size=24"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-cursor-theme-size.html"
+
+      - key: Settings.gtk-font-name
+        label: Font
+        type: string
+        widget: font
+        description: default UI font as a pango description (family followed by size)
+        example: "[Settings]\ngtk-font-name=JetBrainsMono Nerd Font 11"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-font-name.html"
+
+      - key: Settings.gtk-application-prefer-dark-theme
+        label: Prefer Dark Theme
+        type: bool
+        default: "false"
+        description: ask themes to use their dark variant when one exists
+        example: "[Settings]\ngtk-application-prefer-dark-theme=true"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-application-prefer-dark-theme.html"
+
+      - key: Settings.gtk-enable-animations
+        label: Enable Animations
+        type: bool
+        default: "true"
+        description: whether widgets should use animations
+        example: "[Settings]\ngtk-enable-animations=true"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-enable-animations.html"
+
+      - key: Settings.gtk-xft-antialias
+        label: Font Antialiasing
+        type: enum
+        default: "1"
+        options: ["1", "0"]
+        description: antialias fonts (1 on, 0 off)
+        example: "[Settings]\ngtk-xft-antialias=1"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-xft-antialias.html"
+
+      - key: Settings.gtk-xft-hinting
+        label: Font Hinting
+        type: enum
+        default: "1"
+        options: ["1", "0"]
+        description: hint fonts (1 on, 0 off)
+        example: "[Settings]\ngtk-xft-hinting=1"
+        doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-xft-hinting.html"
