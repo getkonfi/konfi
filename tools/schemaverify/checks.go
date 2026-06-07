@@ -25,6 +25,7 @@ var validWidgets = map[string]bool{
 	"stylestring": true,
 	"hook":        true,
 	"structlist":  true,
+	"blocklist":   true,
 	"patternlist": true,
 	"togglemap":   true,
 }

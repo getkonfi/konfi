@@ -58,3 +58,9 @@ type BatchMultiParser interface {
 type Versioned interface {
 	Version(ctx context.Context) (string, error)
 }
+
+// PaletteProvider is an optional interface for parsers that expose a
+// schema-derived directive palette for block editing.
+type PaletteProvider interface {
+	Palette() []pkg.Field
+}

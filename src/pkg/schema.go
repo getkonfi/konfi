@@ -60,24 +60,25 @@ type FieldPart struct {
 
 // Field describes a single config entry.
 type Field struct {
-	Key         string      `yaml:"key"`
-	Label       string      `yaml:"label"`
-	Type        string      `yaml:"type"`
-	Widget      string      `yaml:"widget,omitempty"` // ui hint: "font", "slider", "path", "structlist"
-	Default     string      `yaml:"default"`
-	Description string      `yaml:"description"`
-	Options     []string    `yaml:"options,omitempty"`
-	AltOptions  []string    `yaml:"alt_options,omitempty"`
-	Min         *float64    `yaml:"min,omitempty"`
-	Max         *float64    `yaml:"max,omitempty"`
-	Palette     []string    `yaml:"palette,omitempty"`
-	Example     string      `yaml:"example,omitempty"`
-	Hint        string      `yaml:"hint,omitempty"`
-	DocURL      string      `yaml:"doc_url,omitempty"`
-	Since       string      `yaml:"since,omitempty"`
-	Until       string      `yaml:"until,omitempty"`
-	ItemSchema  []FieldPart `yaml:"item_schema,omitempty"`
-	Separator   string      `yaml:"separator,omitempty"` // how parts join in flat formats (e.g. "=")
+	Key          string      `yaml:"key"`
+	Label        string      `yaml:"label"`
+	Type         string      `yaml:"type"`
+	Widget       string      `yaml:"widget,omitempty"` // ui hint: "font", "slider", "path", "structlist"
+	Default      string      `yaml:"default"`
+	Description  string      `yaml:"description"`
+	Options      []string    `yaml:"options,omitempty"`
+	AltOptions   []string    `yaml:"alt_options,omitempty"`
+	Min          *float64    `yaml:"min,omitempty"`
+	Max          *float64    `yaml:"max,omitempty"`
+	Palette      []string    `yaml:"palette,omitempty"`
+	Example      string      `yaml:"example,omitempty"`
+	Hint         string      `yaml:"hint,omitempty"`
+	DocURL       string      `yaml:"doc_url,omitempty"`
+	Since        string      `yaml:"since,omitempty"`
+	Until        string      `yaml:"until,omitempty"`
+	ItemSchema   []FieldPart `yaml:"item_schema,omitempty"`
+	Separator    string      `yaml:"separator,omitempty"`     // how parts join in flat formats (e.g. "=")
+	BlockPalette []Field     `yaml:"block_palette,omitempty"` // per-directive field defs for a block editor
 }
 
 // FilterByVersion returns a new schema containing only fields compatible with v.
