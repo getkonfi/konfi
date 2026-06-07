@@ -46,7 +46,7 @@ func SplitListValue(s string) []string {
 // written verbatim (no quoting, no list-splitting).
 func isRawJSONWidget(widget string) bool {
 	switch widget {
-	case "hook", "togglemap", "structlist":
+	case "hook", "togglemap", "structlist", "blocklist":
 		return true
 	}
 	return false

@@ -2,11 +2,11 @@ package ssh
 
 import (
 	"strings"
+
+	"github.com/eminert/konfi/pkg"
 )
 
-const hostsKey = "Hosts"
-
-var hostRowDirectives = []string{"HostName", "User", "Port", "IdentityFile", "ProxyJump"}
+const blocksKey = "Blocks"
 
 var canonicalSSHKeys = map[string]string{
 	"addkeystoagent":           "AddKeysToAgent",
@@ -21,17 +21,22 @@ var canonicalSSHKeys = map[string]string{
 	"forwardx11":               "ForwardX11",
 	"forwardx11trusted":        "ForwardX11Trusted",
 	"hashknownhosts":           "HashKnownHosts",
+	"hostname":                 "HostName",
 	"identitiesonly":           "IdentitiesOnly",
 	"identityagent":            "IdentityAgent",
+	"identityfile":             "IdentityFile",
 	"kexalgorithms":            "KexAlgorithms",
 	"localforward":             "LocalForward",
 	"loglevel":                 "LogLevel",
 	"macs":                     "MACs",
 	"passwordauthentication":   "PasswordAuthentication",
+	"port":                     "Port",
 	"preferredauthentications": "PreferredAuthentications",
 	"proxycommand":             "ProxyCommand",
+	"proxyjump":                "ProxyJump",
 	"pubkeyauthentication":     "PubkeyAuthentication",
 	"remoteforward":            "RemoteForward",
+	"user":                     "User",
 	"requesttty":               "RequestTTY",
 	"serveralivecountmax":      "ServerAliveCountMax",
 	"serveraliveinterval":      "ServerAliveInterval",
@@ -43,12 +48,21 @@ var canonicalSSHKeys = map[string]string{
 }
 
 // parser handles OpenSSH client config. ordinary fields are read from global
-// scope and Host * defaults; Hosts is a synthetic field for named Host blocks.
-type parser struct{}
+// scope and Host * defaults; Blocks is a synthetic field backed by the block
+// engine over named Host/Match blocks.
+type parser struct {
+	palette []pkg.Field
+	openers []string
+	isNamed func(opener, header string) bool
+	place   pkg.PlacementRule
+}
+
+// Palette exposes the schema-derived directive palette for block editing.
+func (p *parser) Palette() []pkg.Field { return p.palette }
 
 func (p *parser) FindValue(data []byte, key string) (string, bool) {
-	if isHostsKey(key) {
-		return findHostsValue(data)
+	if isBlocksKey(key) {
+		return p.findBlocksValue(data)
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -85,20 +99,15 @@ func (p *parser) FindAll(data []byte) map[string]string {
 		}
 		m[canonicalSSHKey(k)] = v
 	}
-	if v, ok := findHostsValue(data); ok {
-		m[hostsKey] = v
+	if v, ok := p.findBlocksValue(data); ok {
+		m[blocksKey] = v
 	}
 	return m
 }
 
 func (p *parser) FindLine(data []byte, key string) (int, bool) {
-	if isHostsKey(key) {
-		for _, block := range parseHostBlocks(strings.Split(string(data), "\n")) {
-			if !block.defaultHost {
-				return block.start, true
-			}
-		}
-		return -1, false
+	if isBlocksKey(key) {
+		return p.findBlocksLine(data)
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -120,8 +129,8 @@ func (p *parser) FindLine(data []byte, key string) (int, bool) {
 }
 
 func (p *parser) SetValue(data []byte, key, value string) ([]byte, error) {
-	if isHostsKey(key) {
-		return setHostsValue(data, value), nil
+	if isBlocksKey(key) {
+		return p.setBlocksValue(data, value), nil
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -145,8 +154,8 @@ func (p *parser) SetValue(data []byte, key, value string) ([]byte, error) {
 }
 
 func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
-	if isHostsKey(key) {
-		return deleteHostBlocks(data), nil
+	if isBlocksKey(key) {
+		return p.deleteBlocks(data), nil
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -182,8 +191,8 @@ func (p *parser) ListKeys(data []byte) []string {
 			keys = append(keys, canonicalSSHKey(k))
 		}
 	}
-	if _, ok := findHostsValue(data); ok {
-		keys = append(keys, hostsKey)
+	if _, ok := p.findBlocksValue(data); ok {
+		keys = append(keys, blocksKey)
 	}
 	return keys
 }
@@ -297,300 +306,111 @@ func insertSSHKey(lines []string, key, value string) []byte {
 		return []byte(strings.Join(result, "\n"))
 	}
 
-	result := key + " " + value
-	if len(lines) == 0 || len(lines) == 1 && lines[0] == "" {
-		return []byte(result + "\n")
-	}
-	return []byte(result + "\n" + strings.Join(lines, "\n"))
+	// no Host * block exists: create one at lowest precedence (after all
+	// host-specific blocks). ssh is first-match-wins, so prepending at root
+	// would create a HIGH-precedence global, not a default — never do that.
+	return appendDefaultHostBlock(lines, key, value)
 }
 
-type hostBlock struct {
-	start       int
-	end         int
-	patterns    string
-	defaultHost bool
-	indent      string
-	lines       []string
-}
+// appendDefaultHostBlock appends a new "Host *" block (lowest precedence) with a
+// single directive. it preserves a trailing-newline-or-not input shape.
+func appendDefaultHostBlock(lines []string, key, value string) []byte {
+	block := "Host *\n    " + key + " " + value
 
-type hostRow struct {
-	patterns     string
-	hostName     string
-	user         string
-	port         string
-	identityFile string
-	proxyJump    string
-}
-
-func findHostsValue(data []byte) (string, bool) {
-	lines := strings.Split(string(data), "\n")
-	blocks := parseHostBlocks(lines)
-	rows := make([]string, 0, len(blocks))
-	for _, block := range blocks {
-		if block.defaultHost {
-			continue
-		}
-		row := hostRow{
-			patterns:     block.patterns,
-			hostName:     firstHostDirective(block.lines, "HostName"),
-			user:         firstHostDirective(block.lines, "User"),
-			port:         firstHostDirective(block.lines, "Port"),
-			identityFile: firstHostDirective(block.lines, "IdentityFile"),
-			proxyJump:    firstHostDirective(block.lines, "ProxyJump"),
-		}
-		rows = append(rows, formatHostRow(row))
-	}
-	if len(rows) == 0 {
-		return "", false
-	}
-	return strings.Join(rows, "\n"), true
-}
-
-func setHostsValue(data []byte, value string) []byte {
-	rows := parseHostRows(value)
-	lines := strings.Split(string(data), "\n")
-	blocks := parseHostBlocks(lines)
-
-	blocksByStart := make(map[int]hostBlock, len(blocks))
-	for _, block := range blocks {
-		if !block.defaultHost {
-			blocksByStart[block.start] = block
-		}
+	// empty / blank-only input: emit just the block (no leading newline).
+	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
+		return []byte(block + "\n")
 	}
 
-	rowsByPattern := make(map[string]hostRow, len(rows))
-	rowOrder := make([]string, 0, len(rows))
-	for _, row := range rows {
-		key := normalizeHostPattern(row.patterns)
-		if key == "" {
-			continue
-		}
-		if _, seen := rowsByPattern[key]; !seen {
-			rowOrder = append(rowOrder, key)
-		}
-		rowsByPattern[key] = row
-	}
-
-	out := make([]string, 0, len(lines)+len(rows)*6)
-	used := make(map[string]bool, len(rowsByPattern))
-	insertedNew := false
-
-	for i := 0; i < len(lines); {
-		if block, ok := blocksByStart[i]; ok {
-			key := normalizeHostPattern(block.patterns)
-			if row, keep := rowsByPattern[key]; keep {
-				out = append(out, renderHostBlock(row, &block)...)
-				used[key] = true
-			}
-			i = block.end
-			continue
-		}
-
-		if !insertedNew && isDefaultHostLine(lines[i]) {
-			before := len(out)
-			out = appendMissingHostRows(out, rowOrder, rowsByPattern, used)
-			if len(out) > before && strings.TrimSpace(out[len(out)-1]) != "" {
-				out = append(out, "")
-			}
-			insertedNew = true
-		}
-
-		out = append(out, lines[i])
-		i++
-	}
-
-	if !insertedNew {
-		out = appendMissingHostRows(out, rowOrder, rowsByPattern, used)
-	}
-
-	return []byte(strings.Join(out, "\n"))
-}
-
-func deleteHostBlocks(data []byte) []byte {
-	lines := strings.Split(string(data), "\n")
-	blocks := parseHostBlocks(lines)
-	blocksByStart := make(map[int]hostBlock, len(blocks))
-	for _, block := range blocks {
-		if !block.defaultHost {
-			blocksByStart[block.start] = block
-		}
-	}
-
-	out := make([]string, 0, len(lines))
-	for i := 0; i < len(lines); {
-		if block, ok := blocksByStart[i]; ok {
-			i = block.end
-			continue
-		}
-		out = append(out, lines[i])
-		i++
-	}
-	return []byte(strings.Join(out, "\n"))
-}
-
-func parseHostBlocks(lines []string) []hostBlock {
-	var blocks []hostBlock
-	for i := 0; i < len(lines); i++ {
-		key, value, ok := parseSSHLine(lines[i])
-		if !ok || !strings.EqualFold(key, "Host") {
-			continue
-		}
-
-		end := len(lines)
-		for j := i + 1; j < len(lines); j++ {
-			nextKey, _, nextOK := parseSSHLine(lines[j])
-			if nextOK && (strings.EqualFold(nextKey, "Host") || strings.EqualFold(nextKey, "Match")) {
-				end = j
-				break
-			}
-		}
-
-		blockLines := append([]string(nil), lines[i:end]...)
-		blocks = append(blocks, hostBlock{
-			start:       i,
-			end:         end,
-			patterns:    value,
-			defaultHost: isDefaultHostPattern(value),
-			indent:      inferHostIndent(blockLines),
-			lines:       blockLines,
-		})
-		i = end - 1
-	}
-	return blocks
-}
-
-func inferHostIndent(lines []string) string {
-	for _, line := range lines[1:] {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || trimmed[0] == '#' {
-			continue
-		}
-		key, _, ok := parseSSHLine(line)
-		if ok && !isBlockDirective(key) {
-			return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
-		}
-	}
-	return "    "
-}
-
-func firstHostDirective(lines []string, want string) string {
-	for _, line := range lines[1:] {
-		key, value, ok := parseSSHLine(line)
-		if ok && strings.EqualFold(key, want) {
-			return value
-		}
-	}
-	return ""
-}
-
-func parseHostRows(value string) []hostRow {
-	var rows []hostRow
-	for _, line := range strings.Split(value, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "|", len(hostRowDirectives)+1)
-		for len(parts) < len(hostRowDirectives)+1 {
-			parts = append(parts, "")
-		}
-		for i := range parts {
-			parts[i] = strings.TrimSpace(parts[i])
-		}
-		if parts[0] == "" {
-			continue
-		}
-		rows = append(rows, hostRow{
-			patterns:     parts[0],
-			hostName:     parts[1],
-			user:         parts[2],
-			port:         parts[3],
-			identityFile: parts[4],
-			proxyJump:    parts[5],
-		})
-	}
-	return rows
-}
-
-func formatHostRow(row hostRow) string {
-	return strings.Join([]string{
-		row.patterns,
-		row.hostName,
-		row.user,
-		row.port,
-		row.identityFile,
-		row.proxyJump,
-	}, " | ")
-}
-
-func renderHostBlock(row hostRow, existing *hostBlock) []string {
-	if existing == nil {
-		out := []string{"Host " + row.patterns}
-		return appendHostRowDirectives(out, row, "    ")
-	}
-
-	out := []string{existing.lines[0]}
-	body := make([]string, 0, len(existing.lines))
-	for _, line := range existing.lines[1:] {
-		key, _, ok := parseSSHLine(line)
-		if ok && isHostRowDirective(key) {
-			continue
-		}
-		body = append(body, line)
-	}
-
-	trailingBlank := make([]string, 0)
-	for len(body) > 0 && strings.TrimSpace(body[len(body)-1]) == "" {
-		trailingBlank = append(trailingBlank, body[len(body)-1])
+	// honor an original trailing newline: a final empty element means the
+	// source ended in "\n". drop it, append the block, restore the newline.
+	hadTrailingNewline := lines[len(lines)-1] == ""
+	body := lines
+	if hadTrailingNewline {
 		body = body[:len(body)-1]
 	}
 
-	out = append(out, body...)
-	out = appendHostRowDirectives(out, row, existing.indent)
-	for i := len(trailingBlank) - 1; i >= 0; i-- {
-		out = append(out, trailingBlank[i])
+	out := append([]string(nil), body...)
+	if len(out) > 0 && strings.TrimSpace(out[len(out)-1]) != "" {
+		out = append(out, "")
 	}
-	return out
+	out = append(out, "Host *", "    "+key+" "+value)
+	if hadTrailingNewline {
+		out = append(out, "")
+	}
+	return []byte(strings.Join(out, "\n"))
 }
 
-func appendHostRowDirectives(out []string, row hostRow, indent string) []string {
-	values := []string{row.hostName, row.user, row.port, row.identityFile, row.proxyJump}
-	for i, directive := range hostRowDirectives {
-		if values[i] != "" {
-			out = append(out, indent+directive+" "+values[i])
-		}
-	}
-	return out
+func isBlocksKey(key string) bool {
+	return strings.EqualFold(key, blocksKey)
 }
 
-func appendMissingHostRows(out, order []string, rows map[string]hostRow, used map[string]bool) []string {
-	if len(out) == 1 && out[0] == "" {
-		out = out[:0]
+// isNamedBlock reports whether a block is "named" for the engine: any Match
+// block, or a Host block whose header is NOT the default "*" pattern.
+func isNamedBlock(opener, header string) bool {
+	if strings.EqualFold(opener, "Match") {
+		return true
 	}
-	for _, key := range order {
-		if used[key] {
-			continue
-		}
-		if len(out) > 0 && strings.TrimSpace(out[len(out)-1]) != "" {
-			out = append(out, "")
-		}
-		out = append(out, renderHostBlock(rows[key], nil)...)
-		used[key] = true
+	if strings.EqualFold(opener, "Host") {
+		return !isDefaultHostPattern(header)
 	}
-	return out
+	return false
 }
 
-func isHostsKey(key string) bool {
-	return strings.EqualFold(key, hostsKey)
+// isLowPrecedenceBlock identifies the flat block kept at lowest precedence: the
+// default "Host *" stanza.
+func isLowPrecedenceBlock(opener, header string) bool {
+	return strings.EqualFold(opener, "Host") && isDefaultHostPattern(header)
+}
+
+// findBlocksValue encodes the named-block model. it reports ok=false when there
+// are no named blocks, preserving "not configured when empty" semantics.
+func (p *parser) findBlocksValue(data []byte) (string, bool) {
+	model := pkg.Parse(data, p.openers, p.isNamed)
+	if len(model.Blocks) == 0 {
+		return "", false
+	}
+	return pkg.Encode(model), true
+}
+
+// setBlocksValue reconciles a decoded named-block model back into data, leaving
+// root directives and the default Host * block byte-stable.
+func (p *parser) setBlocksValue(data []byte, value string) []byte {
+	return pkg.Reconcile(data, pkg.Decode(value), p.openers, p.isNamed, p.place)
+}
+
+// deleteBlocks drops every named block, keeping flat regions byte-stable.
+func (p *parser) deleteBlocks(data []byte) []byte {
+	return pkg.Reconcile(data, pkg.BlockModel{}, p.openers, p.isNamed, p.place)
+}
+
+// findBlocksLine returns the source line index of the first named block.
+func (p *parser) findBlocksLine(data []byte) (int, bool) {
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		opener, header, ok := openerHeader(line)
+		if ok && p.isNamed(opener, header) {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// openerHeader reports whether line opens a Host/Match block, returning the
+// canonical opener and its raw header text.
+func openerHeader(line string) (opener, header string, ok bool) {
+	key, value, parsed := parseSSHLine(line)
+	if !parsed {
+		return "", "", false
+	}
+	if strings.EqualFold(key, "Host") || strings.EqualFold(key, "Match") {
+		return key, value, true
+	}
+	return "", "", false
 }
 
 func isBlockDirective(key string) bool {
 	return strings.EqualFold(key, "Host") || strings.EqualFold(key, "Match")
-}
-
-func isDefaultHostLine(line string) bool {
-	key, value, ok := parseSSHLine(line)
-	return ok && strings.EqualFold(key, "Host") && isDefaultHostPattern(value)
 }
 
 func isDefaultHostPattern(patterns string) bool {
@@ -598,28 +418,7 @@ func isDefaultHostPattern(patterns string) bool {
 	return len(fields) == 1 && fields[0] == "*"
 }
 
-func isHostRowDirective(key string) bool {
-	for _, directive := range hostRowDirectives {
-		if strings.EqualFold(key, directive) {
-			return true
-		}
-	}
-	return false
-}
-
-func normalizeHostPattern(patterns string) string {
-	return strings.Join(strings.Fields(patterns), " ")
-}
-
 func canonicalSSHKey(key string) string {
-	if strings.EqualFold(key, hostsKey) {
-		return hostsKey
-	}
-	for _, directive := range hostRowDirectives {
-		if strings.EqualFold(key, directive) {
-			return directive
-		}
-	}
 	if v, ok := canonicalSSHKeys[strings.ToLower(key)]; ok {
 		return v
 	}

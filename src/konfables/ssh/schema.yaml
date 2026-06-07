@@ -9,45 +9,18 @@ hints:
   - "`ssh-add -l` to list keys loaded in the agent"
 
 sections:
-  - name: Host Aliases
+  - name: Host & Match Blocks
     fields:
-      - key: Hosts
-        label: Host Entries
-        type: list
-        widget: structlist
+      - key: Blocks
+        label: Host & Match Blocks
+        type: string
+        widget: blocklist
         default: ""
-        description: named OpenSSH client `Host` stanzas
+        description: per-block editing of named `Host` and `Match` stanzas (any pattern other than the global `Host *` defaults)
         example: "Host github.com\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/gh_ed25519"
-        hint: "edits non-`Host *` stanzas; defaults for all hosts are in the sections below"
-        item_schema:
-          - name: patterns
-            label: Host
-            type: string
-            required: true
-            placeholder: "e.g. github.com"
-          - name: hostname
-            label: HostName
-            type: string
-            placeholder: "e.g. github.com"
-          - name: user
-            label: User
-            type: string
-            placeholder: "git"
-          - name: port
-            label: Port
-            type: number
-            placeholder: "22"
-          - name: identity_file
-            label: IdentityFile
-            type: string
-            placeholder: "~/.ssh/id_ed25519"
-          - name: proxy_jump
-            label: ProxyJump
-            type: string
-            placeholder: "bastion"
-        separator: " | "
+        hint: "edit, add, reorder, or delete individual `Host`/`Match` blocks and their directives; global `Host *` defaults live in the sections below"
 
-  - name: Connection
+  - name: Connection — Global (Host *) defaults
     fields:
       - key: Port
         label: Port
@@ -133,7 +106,7 @@ sections:
         example: "Host ci-*\n  BatchMode yes"
         hint: "fails immediately instead of prompting for passwords or confirmations"
 
-  - name: Authentication
+  - name: Authentication — Global (Host *) defaults
     fields:
       - key: PubkeyAuthentication
         label: Pubkey Authentication
@@ -194,7 +167,7 @@ sections:
         widget: path
         example: "Host *.corp.example.com\n  CertificateFile ~/.ssh/id_ed25519-cert.pub"
 
-  - name: Security
+  - name: Security — Global (Host *) defaults
     fields:
       - key: StrictHostKeyChecking
         label: Strict Host Key Checking
@@ -248,7 +221,7 @@ sections:
         example: "Host *\n  MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com"
         hint: "prefer `-etm` (encrypt-then-MAC) variants for better security"
 
-  - name: Forwarding
+  - name: Forwarding — Global (Host *) defaults
     fields:
       - key: ForwardAgent
         label: Forward Agent
@@ -295,7 +268,7 @@ sections:
         example: "Host proxy\n  DynamicForward 1080"
         hint: "creates a SOCKS5 proxy on `[bind_addr:]port`"
 
-  - name: General
+  - name: General — Global (Host *) defaults
     fields:
       - key: Compression
         label: Compression
