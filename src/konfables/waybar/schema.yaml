@@ -1,0 +1,104 @@
+app: waybar
+format: json
+docs_url: "https://github.com/Alexays/Waybar/wiki/Configuration"
+hints:
+  - "jsonc comments and trailing commas are accepted; writes normalize to json"
+  - "restart waybar after config changes if your compositor does not reload it"
+sections:
+  - name: Bar
+    key: ""
+    fields:
+      - key: position
+        label: Position
+        type: enum
+        default: top
+        description: bar edge
+        options: [top, bottom, left, right]
+        example: '"position": "top"'
+      - key: layer
+        label: Layer
+        type: enum
+        default: top
+        description: layer shell surface level
+        options: [top, bottom, overlay]
+        example: '"layer": "top"'
+      - key: height
+        label: Height
+        type: number
+        default: "30"
+        description: bar height in pixels
+        min: 1
+        max: 200
+        example: '"height": 30'
+      - key: modules-left
+        label: Left Modules
+        type: list
+        default: '[]'
+        description: modules rendered on the left side
+        example: '"modules-left": ["hyprland/workspaces", "hyprland/window"]'
+        options:
+          - hyprland/workspaces
+          - sway/workspaces
+          - wlr/taskbar
+          - custom/menu
+      - key: modules-center
+        label: Center Modules
+        type: list
+        default: '[]'
+        description: modules rendered in the center
+        example: '"modules-center": ["clock"]'
+        options:
+          - clock
+          - custom/clock
+          - hyprland/window
+      - key: modules-right
+        label: Right Modules
+        type: list
+        default: '[]'
+        description: modules rendered on the right side
+        example: '"modules-right": ["network", "pulseaudio", "battery", "tray"]'
+        options:
+          - network
+          - pulseaudio
+          - battery
+          - backlight
+          - cpu
+          - memory
+          - temperature
+          - tray
+
+  - name: Modules
+    key: ""
+    fields:
+      - key: clock.format
+        label: Clock Format
+        type: string
+        default: "{:%H:%M}"
+        description: strftime-like clock label
+        example: '"format": "{:%Y-%m-%d %H:%M}"'
+      - key: battery.format
+        label: Battery Format
+        type: string
+        default: "{capacity}% {icon}"
+        description: battery label template
+        example: '"format": "{capacity}% {icon}"'
+      - key: network.format-wifi
+        label: Wi-Fi Format
+        type: string
+        default: "{essid} ({signalStrength}%)"
+        description: wifi network label template
+        example: '"format-wifi": "{essid} ({signalStrength}%)"'
+      - key: pulseaudio.format
+        label: Audio Format
+        type: string
+        default: "{volume}% {icon}"
+        description: pulseaudio volume label template
+        example: '"format": "{volume}% {icon}"'
+      - key: tray.spacing
+        label: Tray Spacing
+        type: number
+        default: "10"
+        description: spacing between tray items in pixels
+        min: 0
+        max: 64
+        example: '"spacing": 10'
