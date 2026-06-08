@@ -16,7 +16,20 @@ func FormatValue(value, fieldType, format string) string {
 			return strconv.Quote(value)
 		}
 	}
+	if format == "zsh" {
+		switch fieldType {
+		case "string", "color", "enum", "multi":
+			return quoteZsh(value)
+		}
+	}
 	return value
+}
+
+func quoteZsh(value string) string {
+	if value == "" {
+		return "''"
+	}
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 // SplitListValue parses a list-field value into items, accepting either the

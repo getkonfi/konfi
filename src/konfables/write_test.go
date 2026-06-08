@@ -53,3 +53,18 @@ func TestFormatValueQuotesTOMLStrings(t *testing.T) {
 		t.Errorf("FormatValue toml number = %q, want raw", got)
 	}
 }
+
+func TestFormatValueQuotesZshStrings(t *testing.T) {
+	if got := FormatValue("${P9K_CONTENT}", "string", "zsh"); got != "'${P9K_CONTENT}'" {
+		t.Errorf("FormatValue zsh string = %q", got)
+	}
+	if got := FormatValue("don't", "string", "zsh"); got != "'don'\\''t'" {
+		t.Errorf("FormatValue zsh single quote = %q", got)
+	}
+	if got := FormatValue("true", "bool", "zsh"); got != "true" {
+		t.Errorf("FormatValue zsh bool = %q, want raw", got)
+	}
+	if got := FormatValue("42", "number", "zsh"); got != "42" {
+		t.Errorf("FormatValue zsh number = %q, want raw", got)
+	}
+}
