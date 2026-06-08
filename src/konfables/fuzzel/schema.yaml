@@ -1,0 +1,134 @@
+app: fuzzel
+format: ini
+schema_version: 1.0.0
+docs_url: "https://man.archlinux.org/man/fuzzel.ini.5.en"
+coverage: partial
+hints:
+  - "fuzzel reads config on launch"
+  - "colors are RGBA hex without a leading #"
+
+sections:
+  - name: Main
+    key: ""
+    fields:
+      - key: font
+        label: Font
+        type: string
+        widget: font
+        default: monospace
+        description: comma-separated fontconfig font list
+        example: "font = JetBrains Mono:size=11"
+        hint: "fc-list : family | sort -u"
+      - key: dpi-aware
+        label: DPI Aware
+        type: enum
+        default: auto
+        options: [auto, "yes", "no"]
+        description: font scaling mode for monitor DPI and compositor scaling
+        example: "dpi-aware = auto"
+      - key: terminal
+        label: Terminal
+        type: string
+        default: "$TERMINAL -e"
+        description: terminal command used for desktop entries that need a terminal
+        example: "terminal = foot -e"
+        hint: "use {cmd} to place the launched command explicitly"
+      - key: prompt
+        label: Prompt
+        type: string
+        default: "> "
+        description: input prompt string
+        example: 'prompt = "> "'
+        hint: "quote the value to preserve trailing spaces"
+      - key: icon-theme
+        label: Icon Theme
+        type: string
+        default: default
+        description: icon theme name
+        example: "icon-theme = Papirus-Dark"
+      - key: width
+        label: Width
+        type: number
+        default: "30"
+        min: 1
+        max: 300
+        description: window width in characters
+        example: "width = 50"
+      - key: tabs
+        label: Tabs
+        type: number
+        default: "8"
+        min: 1
+        max: 32
+        description: number of spaces used to expand tabs
+        example: "tabs = 4"
+
+  - name: Colors
+    key: colors
+    fields:
+      - key: colors.background
+        label: Background
+        type: color
+        default: fdf6e3ff
+        description: background color
+        example: "[colors]\nbackground = 1e1e2eff"
+        palette:
+          - fdf6e3ff
+          - 1e1e2eff
+          - 282828ff
+          - 000000dd
+      - key: colors.text
+        label: Text
+        type: color
+        default: 657b83ff
+        description: unselected entry text color
+        example: "[colors]\ntext = cdd6f4ff"
+        palette:
+          - 657b83ff
+          - cdd6f4ff
+          - ebdbb2ff
+          - ffffffff
+      - key: colors.match
+        label: Match
+        type: color
+        default: cb4b16ff
+        description: matched substring text color
+        example: "[colors]\nmatch = f38ba8ff"
+        palette:
+          - cb4b16ff
+          - f38ba8ff
+          - fab387ff
+          - b8bb26ff
+      - key: colors.selection
+        label: Selection
+        type: color
+        default: eee8d5ff
+        description: selected entry background color
+        example: "[colors]\nselection = 313244ff"
+        palette:
+          - eee8d5ff
+          - 313244ff
+          - 3c3836ff
+          - 44475aff
+      - key: colors.selection-text
+        label: Selection Text
+        type: color
+        default: 586e75ff
+        description: selected entry text color
+        example: "[colors]\nselection-text = cdd6f4ff"
+        palette:
+          - 586e75ff
+          - cdd6f4ff
+          - fbf1c7ff
+          - f8f8f2ff
+      - key: colors.border
+        label: Border
+        type: color
+        default: 002b36ff
+        description: border color
+        example: "[colors]\nborder = 89b4faff"
+        palette:
+          - 002b36ff
+          - 89b4faff
+          - 7aa2f7ff
+          - 458588ff
