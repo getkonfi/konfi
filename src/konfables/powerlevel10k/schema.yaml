@@ -1,0 +1,495 @@
+app: powerlevel10k
+format: zsh
+schema_version: 1.0.0
+max_app_version: "1.20.0"
+docs_url: "https://github.com/romkatv/powerlevel10k#configuration"
+coverage: partial
+upstream:
+  kind: github
+  repo: romkatv/powerlevel10k
+  tag_prefix: v
+hints:
+  - "`p10k configure` regenerates ~/.p10k.zsh from the wizard"
+  - "`source ~/.p10k.zsh` reloads this file in the current zsh session"
+  - "generated configs are zsh scripts; custom functions are preserved as raw text"
+
+sections:
+  - name: Prompt Layout
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_LEFT_PROMPT_ELEMENTS
+        label: Left Segments
+        type: list
+        widget: patternlist
+        default: "dir, vcs, newline, prompt_char"
+        description: prompt segments rendered on the left side
+        example: "typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(dir vcs prompt_char)"
+        hint: "order matters; use newline to split prompt lines"
+        options: ["os_icon", "dir", "vcs", "newline", "prompt_char", "status", "command_execution_time", "background_jobs", "direnv", "asdf", "virtualenv", "anaconda", "pyenv", "goenv", "nodenv", "nvm", "nodeenv", "node_version", "go_version", "rust_version", "dotnet_version", "php_version", "java_version", "package", "rbenv", "rvm", "kubecontext", "terraform", "aws", "azure", "gcloud", "context", "toolbox", "nix_shell", "battery", "time", "load", "ram", "disk_usage", "ip", "public_ip", "wifi", "proxy"]
+      - key: POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS
+        label: Right Segments
+        type: list
+        widget: patternlist
+        default: "status, command_execution_time, background_jobs"
+        description: prompt segments rendered on the right side
+        example: "typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time time)"
+        hint: "right prompt hides automatically when it would overlap input"
+        options: ["status", "command_execution_time", "background_jobs", "direnv", "asdf", "virtualenv", "anaconda", "pyenv", "goenv", "nodenv", "nvm", "nodeenv", "node_version", "go_version", "rust_version", "dotnet_version", "php_version", "java_version", "package", "rbenv", "rvm", "kubecontext", "terraform", "aws", "aws_eb_env", "azure", "gcloud", "google_app_cred", "context", "toolbox", "nix_shell", "chezmoi_shell", "battery", "time", "todo", "timewarrior", "taskwarrior", "per_directory_history", "load", "ram", "swap", "disk_usage", "ip", "public_ip", "wifi", "proxy"]
+      - key: POWERLEVEL9K_MODE
+        label: Icon Mode
+        type: enum
+        default: nerdfont-complete
+        description: icon and glyph compatibility mode
+        options: ["nerdfont-complete", "nerdfont-fontconfig", "awesome-fontconfig", "compatible", "ascii"]
+      - key: POWERLEVEL9K_ICON_PADDING
+        label: Icon Padding
+        type: enum
+        default: none
+        description: extra padding after icons for terminals with wide glyph issues
+        options: ["none", "moderate"]
+      - key: POWERLEVEL9K_ICON_BEFORE_CONTENT
+        label: Icons Before Content
+        type: bool
+        default: "true"
+        description: place segment icons before segment text
+      - key: POWERLEVEL9K_PROMPT_ADD_NEWLINE
+        label: Add Newline
+        type: bool
+        default: "true"
+        description: insert an empty line before each prompt
+      - key: POWERLEVEL9K_TRANSIENT_PROMPT
+        label: Transient Prompt
+        type: enum
+        default: "off"
+        description: collapse older prompts after command execution
+        options: ["off", "always", "same-dir"]
+      - key: POWERLEVEL9K_INSTANT_PROMPT
+        label: Instant Prompt
+        type: enum
+        default: verbose
+        description: render prompt before the rest of zsh startup completes
+        options: ["verbose", "quiet", "off"]
+      - key: POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD
+        label: Disable Wizard
+        type: bool
+        default: "true"
+        description: prevent the configuration wizard from starting automatically
+
+  - name: Shape
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_BACKGROUND
+        label: Background
+        type: string
+        default: ""
+        description: default segment background color; empty means transparent
+        example: "typeset -g POWERLEVEL9K_BACKGROUND=236"
+      - key: POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR
+        label: Left Subseparator
+        type: string
+        default: " "
+        description: separator between adjacent left prompt segments
+      - key: POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR
+        label: Right Subseparator
+        type: string
+        default: " "
+        description: separator between adjacent right prompt segments
+      - key: POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR
+        label: Left End Separator
+        type: string
+        default: ""
+        description: symbol drawn after the left prompt
+      - key: POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR
+        label: Right End Separator
+        type: string
+        default: ""
+        description: symbol drawn before the right prompt
+      - key: POWERLEVEL9K_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL
+        label: Left Start Symbol
+        type: string
+        default: ""
+        description: symbol inserted before the first left segment
+      - key: POWERLEVEL9K_RIGHT_PROMPT_LAST_SEGMENT_END_SYMBOL
+        label: Right End Symbol
+        type: string
+        default: ""
+        description: symbol inserted after the last right segment
+      - key: POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_CHAR
+        label: First Line Gap
+        type: string
+        default: " "
+        description: filler between left and right prompt on the first line
+        example: "typeset -g POWERLEVEL9K_MULTILINE_FIRST_PROMPT_GAP_CHAR='─'"
+      - key: POWERLEVEL9K_SHOW_RULER
+        label: Show Ruler
+        type: bool
+        default: "false"
+        description: draw a horizontal ruler before each prompt
+      - key: POWERLEVEL9K_RULER_CHAR
+        label: Ruler Character
+        type: string
+        default: "─"
+        description: character used when the ruler is enabled
+      - key: POWERLEVEL9K_RULER_FOREGROUND
+        label: Ruler Color
+        type: number
+        default: "240"
+        description: 256-color index for the ruler
+        min: 0
+        max: 255
+
+  - name: Prompt Character
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_CONTENT_EXPANSION
+        label: Success Symbol
+        type: string
+        default: "❯"
+        description: prompt symbol in insert mode after a successful command
+        options: ["❯", "❮", "▶", "→", "➜", "λ", "$", "#"]
+      - key: POWERLEVEL9K_PROMPT_CHAR_ERROR_VIINS_CONTENT_EXPANSION
+        label: Error Symbol
+        type: string
+        default: "❯"
+        description: prompt symbol in insert mode after a failed command
+        options: ["❯", "❮", "▶", "→", "➜", "λ", "$", "#"]
+      - key: POWERLEVEL9K_PROMPT_CHAR_OK_VICMD_CONTENT_EXPANSION
+        label: Vi Command Symbol
+        type: string
+        default: "❮"
+        description: prompt symbol in vi command mode after a successful command
+        options: ["❯", "❮", "▶", "→", "➜", "N", "λ"]
+      - key: POWERLEVEL9K_PROMPT_CHAR_ERROR_VICMD_CONTENT_EXPANSION
+        label: Vi Command Error
+        type: string
+        default: "❮"
+        description: prompt symbol in vi command mode after a failed command
+        options: ["❯", "❮", "▶", "→", "➜", "N", "λ"]
+      - key: POWERLEVEL9K_PROMPT_CHAR_OVERWRITE_STATE
+        label: Overwrite State
+        type: bool
+        default: "true"
+        description: show a distinct symbol for overwrite mode
+      - key: POWERLEVEL9K_PROMPT_CHAR_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL
+        label: Prompt Char Suffix
+        type: string
+        default: ""
+        description: suffix after prompt_char when it is the last left segment
+
+  - name: Directory
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_DIR_FOREGROUND
+        label: Directory Color
+        type: number
+        default: "31"
+        description: 256-color index for the current directory segment
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_SHORTEN_STRATEGY
+        label: Shorten Strategy
+        type: enum
+        default: truncate_to_unique
+        description: strategy used when the directory path needs shortening
+        options: ["truncate_to_unique", "truncate_to_last", "truncate_to_first_and_last", "truncate_with_package_name", "truncate_folders", "truncate_absolute", "none"]
+      - key: POWERLEVEL9K_SHORTEN_DIR_LENGTH
+        label: Shorten Length
+        type: number
+        default: "1"
+        description: number of trailing directory segments kept unshortened
+        min: 0
+        max: 20
+      - key: POWERLEVEL9K_SHORTEN_DELIMITER
+        label: Shorten Delimiter
+        type: string
+        default: ""
+        description: suffix inserted after shortened directory segments
+      - key: POWERLEVEL9K_DIR_MAX_LENGTH
+        label: Max Directory Length
+        type: string
+        default: "80"
+        description: maximum rendered directory width; accepts absolute columns or percentages
+        example: "typeset -g POWERLEVEL9K_DIR_MAX_LENGTH='50%'"
+      - key: POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS
+        label: Min Command Columns
+        type: number
+        default: "40"
+        description: minimum command input columns preserved when dir is on the last prompt line
+        min: 0
+        max: 300
+      - key: POWERLEVEL9K_DIR_MIN_COMMAND_COLUMNS_PCT
+        label: Min Command Percent
+        type: number
+        default: "50"
+        description: percentage of terminal width preserved for command input
+        min: 0
+        max: 100
+      - key: POWERLEVEL9K_DIR_HYPERLINK
+        label: Directory Hyperlink
+        type: bool
+        default: "false"
+        description: embed terminal hyperlinks into directory text
+      - key: POWERLEVEL9K_DIR_SHOW_WRITABLE
+        label: Writable Styling
+        type: enum
+        default: v3
+        description: style non-writable and non-existent directories distinctly
+        options: ["false", "true", "v2", "v3"]
+      - key: POWERLEVEL9K_DIR_ANCHOR_BOLD
+        label: Bold Anchor
+        type: bool
+        default: "true"
+        description: render anchor directory segments in bold
+      - key: POWERLEVEL9K_DIR_PREFIX
+        label: Directory Prefix
+        type: string
+        default: ""
+        description: custom text inserted before the directory segment content
+
+  - name: Git Status
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_VCS_BACKENDS
+        label: VCS Backends
+        type: list
+        widget: patternlist
+        default: "git"
+        description: repository backends checked by the vcs segment
+        hint: "git is fast; svn and hg can add prompt latency"
+        options: ["git", "svn", "hg"]
+      - key: POWERLEVEL9K_VCS_BRANCH_ICON
+        label: Branch Icon
+        type: string
+        default: ""
+        description: icon shown before the current branch name
+      - key: POWERLEVEL9K_VCS_UNTRACKED_ICON
+        label: Untracked Icon
+        type: string
+        default: "?"
+        description: symbol used for untracked file count
+      - key: POWERLEVEL9K_VCS_MAX_INDEX_SIZE_DIRTY
+        label: Dirty Index Limit
+        type: number
+        default: "-1"
+        description: skip dirty file counts for git indexes larger than this; -1 means unlimited
+        min: -1
+        max: 10000000
+      - key: POWERLEVEL9K_VCS_DISABLED_WORKDIR_PATTERN
+        label: Disabled Workdirs
+        type: string
+        default: "~"
+        description: zsh pattern for repositories whose status should be hidden
+      - key: POWERLEVEL9K_VCS_DISABLE_GITSTATUS_FORMATTING
+        label: Custom Git Formatter
+        type: bool
+        default: "true"
+        description: disable built-in formatting so my_git_formatter can provide content
+      - key: POWERLEVEL9K_VCS_CLEAN_FOREGROUND
+        label: Clean Color
+        type: number
+        default: "76"
+        description: 256-color index for clean repository status
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_VCS_MODIFIED_FOREGROUND
+        label: Modified Color
+        type: number
+        default: "178"
+        description: 256-color index for modified repository status
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND
+        label: Untracked Color
+        type: number
+        default: "76"
+        description: 256-color index for untracked repository status
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_VCS_PREFIX
+        label: VCS Prefix
+        type: string
+        default: ""
+        description: custom text inserted before vcs segment content
+
+  - name: Status
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_STATUS_EXTENDED_STATES
+        label: Extended States
+        type: bool
+        default: "true"
+        description: split status into success, error, pipe, and signal states
+      - key: POWERLEVEL9K_STATUS_OK
+        label: Show Success
+        type: bool
+        default: "false"
+        description: show status segment when the last command succeeded
+      - key: POWERLEVEL9K_STATUS_OK_PIPE
+        label: Show Pipe Success
+        type: bool
+        default: "true"
+        description: show status when a pipeline component failed but the pipeline succeeded
+      - key: POWERLEVEL9K_STATUS_ERROR
+        label: Show Error
+        type: bool
+        default: "false"
+        description: show status segment for non-zero exit codes
+      - key: POWERLEVEL9K_STATUS_ERROR_SIGNAL
+        label: Show Signals
+        type: bool
+        default: "true"
+        description: show status when the last command terminated by signal
+      - key: POWERLEVEL9K_STATUS_ERROR_PIPE
+        label: Show Pipe Error
+        type: bool
+        default: "true"
+        description: show status when a pipeline failed
+      - key: POWERLEVEL9K_STATUS_VERBOSE_SIGNAME
+        label: Verbose Signals
+        type: bool
+        default: "false"
+        description: use verbose signal names in status output
+      - key: POWERLEVEL9K_STATUS_OK_VISUAL_IDENTIFIER_EXPANSION
+        label: Success Icon
+        type: string
+        default: "✔"
+        description: icon used by the success status state
+      - key: POWERLEVEL9K_STATUS_ERROR_VISUAL_IDENTIFIER_EXPANSION
+        label: Error Icon
+        type: string
+        default: "✘"
+        description: icon used by the error status state
+
+  - name: Runtime Segments
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_COMMAND_EXECUTION_TIME_THRESHOLD
+        label: Duration Threshold
+        type: number
+        default: "3"
+        description: show command duration after this many seconds
+        min: 0
+        max: 3600
+      - key: POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION
+        label: Duration Precision
+        type: number
+        default: "0"
+        description: fractional digits shown in command duration
+        min: 0
+        max: 6
+      - key: POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT
+        label: Duration Format
+        type: string
+        default: "d h m s"
+        description: duration units shown by the command_execution_time segment
+      - key: POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND
+        label: Duration Color
+        type: number
+        default: "101"
+        description: 256-color index for command duration
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_BACKGROUND_JOBS_VERBOSE
+        label: Jobs Count
+        type: bool
+        default: "false"
+        description: show the number of background jobs instead of only an icon
+      - key: POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND
+        label: Jobs Color
+        type: number
+        default: "70"
+        description: 256-color index for background jobs
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_TIME_FORMAT
+        label: Time Format
+        type: string
+        default: "%D{%H:%M:%S}"
+        description: zsh prompt expansion used by the time segment
+      - key: POWERLEVEL9K_TIME_FOREGROUND
+        label: Time Color
+        type: number
+        default: "66"
+        description: 256-color index for the time segment
+        min: 0
+        max: 255
+      - key: POWERLEVEL9K_CONTEXT_TEMPLATE
+        label: Context Template
+        type: string
+        default: "%n@%m"
+        description: zsh prompt expansion for user and host context
+      - key: POWERLEVEL9K_BATTERY_VERBOSE
+        label: Battery Verbose
+        type: bool
+        default: "false"
+        description: show battery percentage and remaining time
+
+  - name: Show On Command
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_KUBECONTEXT_SHOW_ON_COMMAND
+        label: Kubernetes Commands
+        type: string
+        default: "kubectl|helm|kubens|kubectx|oc"
+        description: command pattern that reveals the kubecontext segment
+      - key: POWERLEVEL9K_AWS_SHOW_ON_COMMAND
+        label: AWS Commands
+        type: string
+        default: "aws|awless|terraform|pulumi|terragrunt"
+        description: command pattern that reveals the aws segment
+      - key: POWERLEVEL9K_AZURE_SHOW_ON_COMMAND
+        label: Azure Commands
+        type: string
+        default: "az|terraform|pulumi|terragrunt"
+        description: command pattern that reveals the azure segment
+      - key: POWERLEVEL9K_GCLOUD_SHOW_ON_COMMAND
+        label: Google Cloud Commands
+        type: string
+        default: "gcloud|gcs|gsutil|terraform|pulumi|terragrunt"
+        description: command pattern that reveals the gcloud segment
+      - key: POWERLEVEL9K_TERRAFORM_SHOW_ON_COMMAND
+        label: Terraform Commands
+        type: string
+        default: "terraform|terraformer|terragrunt"
+        description: command pattern that reveals the terraform segment
+
+  - name: Version Managers
+    key: ""
+    fields:
+      - key: POWERLEVEL9K_ASDF_SOURCES
+        label: asdf Sources
+        type: list
+        widget: patternlist
+        default: "shell, local, global"
+        description: asdf version sources allowed to appear in the prompt
+        options: ["shell", "local", "global"]
+      - key: POWERLEVEL9K_ASDF_PROMPT_ALWAYS_SHOW
+        label: Always Show asdf
+        type: bool
+        default: "false"
+        description: show asdf versions even when equal to the global version
+      - key: POWERLEVEL9K_ASDF_SHOW_SYSTEM
+        label: Show asdf System
+        type: bool
+        default: "true"
+        description: show asdf versions resolved to system
+      - key: POWERLEVEL9K_PYENV_PROMPT_ALWAYS_SHOW
+        label: Always Show pyenv
+        type: bool
+        default: "false"
+        description: show pyenv version even when equal to the global version
+      - key: POWERLEVEL9K_NVM_PROMPT_ALWAYS_SHOW
+        label: Always Show nvm
+        type: bool
+        default: "false"
+        description: show nvm version even when it matches the default alias
+      - key: POWERLEVEL9K_RBENV_PROMPT_ALWAYS_SHOW
+        label: Always Show rbenv
+        type: bool
+        default: "false"
+        description: show rbenv version even when equal to the global version
+      - key: POWERLEVEL9K_VIRTUALENV_SHOW_PYTHON_VERSION
+        label: Virtualenv Python
+        type: bool
+        default: "false"
+        description: include python version in the virtualenv segment
