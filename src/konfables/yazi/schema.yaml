@@ -1,0 +1,78 @@
+app: yazi
+format: toml
+schema_version: 1.0.0
+coverage: partial
+docs_url: "https://yazi-rs.github.io/docs/configuration/yazi/"
+hints:
+  - "TOML config at $XDG_CONFIG_HOME/yazi/yazi.toml"
+  - "manager settings are stored in the [mgr] table"
+  - "run yazi --clear-cache after changing image preview dimensions"
+sections:
+  - name: Manager
+    key: manager
+    fields:
+      - key: manager.show_hidden
+        label: Show Hidden
+        type: bool
+        default: "false"
+        description: show hidden and dot files by default
+        example: "[mgr]\nshow_hidden = true"
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#show_hidden"
+      - key: manager.sort_by
+        label: Sort By
+        type: enum
+        default: alphabetical
+        description: file sorting method
+        example: "[mgr]\nsort_by = \"natural\""
+        options: [none, mtime, btime, extension, alphabetical, natural, size, random]
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#sort_by"
+      - key: manager.sort_sensitive
+        label: Case Sensitive Sort
+        type: bool
+        default: "false"
+        description: sort filenames case-sensitively
+        example: "[mgr]\nsort_sensitive = true"
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#sort_sensitive"
+
+  - name: Preview
+    key: preview
+    fields:
+      - key: preview.wrap
+        label: Wrap
+        type: enum
+        default: "no"
+        description: wrap long lines in code previews
+        example: "[preview]\nwrap = \"yes\""
+        options: ["yes", "no"]
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#wrap"
+      - key: preview.max_width
+        label: Max Width
+        type: number
+        default: "600"
+        description: maximum image preview width in pixels
+        example: "[preview]\nmax_width = 1024"
+        min: 0
+        max: 10000
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#max_width"
+
+  - name: Opener
+    key: opener
+    fields:
+      - key: opener.edit
+        label: Edit Opener
+        type: string
+        default: '[{ run = "${EDITOR:-vi} %s", desc = "$EDITOR", for = "unix", block = true }]'
+        description: raw TOML array for the editor opener commands
+        example: "[opener]\nedit = [\n  { run = \"nvim %s\", block = true, for = \"unix\" },\n]"
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#opener"
+
+  - name: Open
+    key: open
+    fields:
+      - key: open.rules
+        label: Rules
+        type: string
+        default: ""
+        description: raw TOML array mapping URLs or MIME types to openers
+        example: "[open]\nrules = [\n  { mime = \"text/*\", use = \"edit\" },\n  { url = \"*\", use = \"open\" },\n]"
+        doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#open"
