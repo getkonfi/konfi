@@ -54,12 +54,16 @@ func (t *Tmux) Version(ctx context.Context) (string, error) {
 	return line, nil
 }
 
-// DefaultConfigPath returns the tmux config path, preferring XDG.
+// DefaultConfigPath returns the tmux config path.
 func DefaultConfigPath() string {
+	home, _ := os.UserHomeDir()
+	dotfile := filepath.Join(home, ".tmux.conf")
+	if pkg.FileExists(dotfile) {
+		return dotfile
+	}
 	xdg := pkg.XDGConfigPath("tmux", "tmux.conf")
 	if pkg.FileExists(xdg) {
 		return xdg
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".tmux.conf")
+	return dotfile
 }

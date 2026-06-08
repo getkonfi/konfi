@@ -52,13 +52,18 @@ func (b *Brew) Version(ctx context.Context) (string, error) {
 	return line, nil
 }
 
-// DefaultConfigPath resolves the Brewfile used by `brew bundle`: the
-// HOMEBREW_BUNDLE_FILE override if set, otherwise ~/.Brewfile (the location
-// `brew bundle --global` reads and writes).
+// DefaultConfigPath resolves the global Brewfile used by `brew bundle --global`.
 func DefaultConfigPath() string {
-	if env := strings.TrimSpace(os.Getenv("HOMEBREW_BUNDLE_FILE")); env != "" {
+	if env := strings.TrimSpace(os.Getenv("HOMEBREW_BUNDLE_FILE_GLOBAL")); env != "" {
 		return env
 	}
 	home, _ := os.UserHomeDir()
+	if xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); xdg != "" {
+		return filepath.Join(xdg, "homebrew", "Brewfile")
+	}
+	homebrew := filepath.Join(home, ".homebrew", "Brewfile")
+	if pkg.FileExists(homebrew) {
+		return homebrew
+	}
 	return filepath.Join(home, ".Brewfile")
 }

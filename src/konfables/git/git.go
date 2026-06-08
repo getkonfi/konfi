@@ -55,12 +55,14 @@ func (g *Git) Version(ctx context.Context) (string, error) {
 
 // DefaultConfigPath returns the user-level git config path.
 func DefaultConfigPath() string {
-	// XDG first
+	home, _ := os.UserHomeDir()
+	dotfile := filepath.Join(home, ".gitconfig")
+	if pkg.FileExists(dotfile) {
+		return dotfile
+	}
 	xdg := pkg.XDGConfigPath("git", "config")
 	if pkg.FileExists(xdg) {
 		return xdg
 	}
-	// fall back to ~/.gitconfig
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".gitconfig")
+	return dotfile
 }

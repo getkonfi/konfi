@@ -54,6 +54,9 @@ func (s *Starship) Version(ctx context.Context) (string, error) {
 
 // DefaultConfigPath returns the standard starship.toml location.
 func DefaultConfigPath() string {
+	if path := strings.TrimSpace(os.Getenv("STARSHIP_CONFIG")); path != "" {
+		return path
+	}
 	base := os.Getenv("XDG_CONFIG_HOME")
 	if base == "" {
 		home, _ := os.UserHomeDir()
