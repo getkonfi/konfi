@@ -197,6 +197,66 @@ func TestSwitchingAppsKeepsUnsavedConfigInSession(t *testing.T) {
 	}
 }
 
+func TestEditorReloadKeepsInTUIEditsForUnchangedFields(t *testing.T) {
+	c, persister := newEditorReloadTestContent(t)
+	commitTestField(t, &c, "line12", "99")
+
+	persister.data = []byte("line1 = external\nline12 = 12\n")
+	r := &root{content: c, focus: paneContent, dirtyConfigs: make(map[string]dirtyConfigState)}
+
+	runEditorReload(t, r)
+
+	if got := r.content.values["line1"]; got != "external" {
+		t.Fatalf("line1 = %q, want external", got)
+	}
+	if got := r.content.values["line12"]; got != "99" {
+		t.Fatalf("line12 = %q, want 99", got)
+	}
+	if !r.content.config.Dirty() {
+		t.Fatal("config should remain dirty after replaying in-TUI edit")
+	}
+	changes := r.content.pendingChanges()
+	if len(changes) != 1 || changes[0].Key != "line12" || changes[0].OldVal != "12" || changes[0].NewVal != "99" {
+		t.Fatalf("pending changes = %#v, want line12 12 -> 99", changes)
+	}
+	content := string(r.content.config.Content())
+	if !strings.Contains(content, "line1 = external") || !strings.Contains(content, "line12 = 99") {
+		t.Fatalf("merged content mismatch:\n%s", content)
+	}
+}
+
+func TestEditorReloadSkipsInTUIEditWhenEditorChangedSameField(t *testing.T) {
+	c, persister := newEditorReloadTestContent(t)
+	commitTestField(t, &c, "line1", "10")
+	commitTestField(t, &c, "line12", "99")
+
+	persister.data = []byte("line1 = 1\nline12 = 77\n")
+	r := &root{content: c, focus: paneContent, dirtyConfigs: make(map[string]dirtyConfigState)}
+
+	runEditorReload(t, r)
+
+	if got := r.content.values["line1"]; got != "10" {
+		t.Fatalf("line1 = %q, want 10", got)
+	}
+	if got := r.content.values["line12"]; got != "77" {
+		t.Fatalf("line12 = %q, want editor value 77", got)
+	}
+	if !r.content.config.Dirty() {
+		t.Fatal("config should stay dirty because line1 was replayed")
+	}
+	changes := r.content.pendingChanges()
+	if len(changes) != 1 || changes[0].Key != "line1" || changes[0].OldVal != "1" || changes[0].NewVal != "10" {
+		t.Fatalf("pending changes = %#v, want only line1 1 -> 10", changes)
+	}
+	if r.content.undoStack.Len() != 1 {
+		t.Fatalf("undo stack len = %d, want only replayed field history", r.content.undoStack.Len())
+	}
+	op, ok := r.content.undoStack.Undo()
+	if !ok || op.FieldKey != "line1" {
+		t.Fatalf("undo op = %+v, ok=%v; want line1 only", op, ok)
+	}
+}
+
 func TestContentBottomHelpersMatchRequestedKeys(t *testing.T) {
 	c := newContentFocusTestModel(t)
 	r := &root{content: c, focus: paneContent}
@@ -262,4 +322,66 @@ func TestNumberKeysDoNotJumpApps(t *testing.T) {
 		msg := cmd()
 		t.Fatalf("number key emitted %T, want no app jump", msg)
 	}
+}
+
+func newEditorReloadTestContent(t *testing.T) (content, *detailTestPersister) {
+	t.Helper()
+
+	th := testTheme()
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Format: "ghostty"}}
+	persister := &detailTestPersister{data: []byte("line1 = 1\nline12 = 12\n")}
+	cf, err := pkg.NewConfigFile(context.Background(), persister)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := newContent(th)
+	c.focused = true
+	c.width = 120
+	c.height = 8
+	c.konfable = k
+	c.config = cf
+	c.schema = &pkg.Schema{
+		Sections: []pkg.Section{{
+			Name: "general",
+			Fields: []pkg.Field{
+				{Key: "line1", Label: "Line 1", Type: "string", Default: "1"},
+				{Key: "line12", Label: "Line 12", Type: "string", Default: "12"},
+			},
+		}},
+	}
+	c.buildFieldList()
+	c.refreshValues()
+	c.snapshotOrigValues()
+	c.syncDetail()
+	return c, persister
+}
+
+func commitTestField(t *testing.T, c *content, key, value string) {
+	t.Helper()
+
+	for i := range c.fields {
+		if c.fields[i].Key == key {
+			c.detail.editField = i
+			c.detail.editOrigVal = c.values[key]
+			c.commitEdit(value)
+			return
+		}
+	}
+	t.Fatalf("field %q not found", key)
+}
+
+func runEditorReload(t *testing.T, r *root) {
+	t.Helper()
+
+	_, cmd := r.Update(EditorExitMsg{})
+	if cmd == nil {
+		t.Fatal("EditorExitMsg did not return reload command")
+	}
+	msg := cmd()
+	if _, ok := msg.(reloadResultMsg); !ok {
+		t.Fatalf("reload command returned %T, want reloadResultMsg", msg)
+	}
+	_, _ = r.Update(msg)
 }

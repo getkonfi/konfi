@@ -735,15 +735,25 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case reloadResultMsg:
 		if r.content.config != nil {
+			wasEditorDirty := msg.source == "editor-dirty"
 			r.content.refreshValues()
 			r.content.snapshotOrigValues()
-			if r.content.konfable != nil {
+			applied, skipped := 0, 0
+			if wasEditorDirty {
+				applied, skipped = r.content.reapplyUnchangedFieldEdits(msg.fieldEdits)
+			}
+			r.content.syncDiffView()
+			if r.content.konfable != nil && !r.content.config.Dirty() {
 				r.clearDirtyConfig(r.content.konfable.Name())
 			}
 			switch msg.source {
 			case "editor-dirty":
-				r.content.fileState = "reloaded from $EDITOR"
-				r.status.status = "reloaded — in-TUI edits replaced by $EDITOR"
+				if r.content.config.Dirty() {
+					r.content.fileState = "unsaved"
+				} else {
+					r.content.fileState = "reloaded from $EDITOR"
+				}
+				r.status.status = editorReloadStatus(applied, skipped)
 			case "editor":
 				r.content.fileState = ""
 			case "external":
@@ -918,6 +928,7 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// reload config after external editor exits — async to avoid blocking
 		if r.content.config != nil {
 			wasDirty := r.content.config.Dirty()
+			fieldEdits := r.content.pendingFieldEdits()
 			cfg := r.content.config
 			r.updateHints()
 			return r, func() tea.Msg {
@@ -926,7 +937,7 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if wasDirty {
 					source = "editor-dirty"
 				}
-				return reloadResultMsg{source: source}
+				return reloadResultMsg{source: source, fieldEdits: fieldEdits}
 			}
 		}
 		r.updateHints()
@@ -1298,6 +1309,19 @@ func (r *root) openInEditor() tea.Cmd {
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return EditorExitMsg{Err: err}
 	})
+}
+
+func editorReloadStatus(applied, skipped int) string {
+	switch {
+	case applied > 0 && skipped > 0:
+		return fmt.Sprintf("reloaded from $EDITOR — kept %d in-TUI edits, skipped %d changed in $EDITOR", applied, skipped)
+	case applied > 0:
+		return fmt.Sprintf("reloaded from $EDITOR — kept %d in-TUI edits", applied)
+	case skipped > 0:
+		return fmt.Sprintf("reloaded from $EDITOR — skipped %d in-TUI edits changed in $EDITOR", skipped)
+	default:
+		return "reloaded from $EDITOR"
+	}
 }
 
 // statusClearMsg clears the transient status after a delay.

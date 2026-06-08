@@ -62,6 +62,14 @@ func TestBlockEditor_EmptyInit(t *testing.T) {
 	}
 }
 
+func TestBlockEditor_UsesFieldBlockOpeners(t *testing.T) {
+	var e blockEditor
+	_ = e.Init(pkg.Field{Widget: "blocklist", BlockOpeners: []string{"Match"}}, "", testTheme())
+	if len(e.openerOptions) != 1 || e.openerOptions[0] != "Match" {
+		t.Fatalf("openerOptions = %v, want [Match]", e.openerOptions)
+	}
+}
+
 // TestBlockEditor_EscCommits proves esc at the block list finishes the editor
 // committing (done, not canceled) so edits are remembered, and a no-op esc
 // leaves the encoding byte-stable.

@@ -71,6 +71,9 @@ func (e *blockEditor) Init(field pkg.Field, currentValue string, th *theme.Theme
 	e.mode = modeBlockList
 	e.blockCursor = 0
 	e.openerOptions = []string{"Host", "Match"}
+	if len(field.BlockOpeners) > 0 {
+		e.openerOptions = append([]string(nil), field.BlockOpeners...)
+	}
 	e.headerInput = newFieldInput(th)
 	return nil
 }

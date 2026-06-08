@@ -72,6 +72,24 @@ func (s *UndoStack) Clear() {
 	s.redos = s.redos[:0]
 }
 
+func (s *UndoStack) keepKeys(keys map[string]bool) {
+	if s == nil {
+		return
+	}
+	s.undos = filterEditOpsByKey(s.undos, keys)
+	s.redos = filterEditOpsByKey(s.redos, keys)
+}
+
+func filterEditOpsByKey(ops []EditOp, keys map[string]bool) []EditOp {
+	out := ops[:0]
+	for _, op := range ops {
+		if keys[op.FieldKey] {
+			out = append(out, op)
+		}
+	}
+	return out
+}
+
 // Len returns the number of undoable operations.
 func (s *UndoStack) Len() int { return len(s.undos) }
 

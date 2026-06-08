@@ -79,6 +79,7 @@ type Field struct {
 	ItemSchema   []FieldPart `yaml:"item_schema,omitempty"`
 	Separator    string      `yaml:"separator,omitempty"`     // how parts join in flat formats (e.g. "=")
 	BlockPalette []Field     `yaml:"block_palette,omitempty"` // per-directive field defs for a block editor
+	BlockOpeners []string    `yaml:"block_openers,omitempty"` // opener choices for a block editor
 }
 
 // FilterByVersion returns a new schema containing only fields compatible with v.

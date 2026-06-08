@@ -27,6 +27,14 @@ type row struct {
 	fieldIdx   int // index into c.fields (-1 for section rows)
 }
 
+type pendingFieldEdit struct {
+	key      string
+	oldValue string
+	hadOld   bool
+	newValue string
+	hasNew   bool
+}
+
 type content struct {
 	title          string
 	konfable       konfables.Konfable
@@ -662,6 +670,77 @@ func (c *content) applyFieldByKey(key, value string) {
 		c.config.SetContent(newData)
 	}
 	c.refreshValues()
+}
+
+func (c *content) pendingFieldEdits() []pendingFieldEdit {
+	if c.schema == nil || c.origValues == nil || c.config == nil {
+		return nil
+	}
+
+	edits := make([]pendingFieldEdit, 0)
+	seen := make(map[string]bool, len(c.fields))
+	for i := range c.fields {
+		key := c.fields[i].Key
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		oldValue, hadOld := c.origValues[key]
+		newValue, hasNew := c.values[key]
+		if hadOld == hasNew && oldValue == newValue {
+			continue
+		}
+		edits = append(edits, pendingFieldEdit{
+			key:      key,
+			oldValue: oldValue,
+			hadOld:   hadOld,
+			newValue: newValue,
+			hasNew:   hasNew,
+		})
+	}
+	return edits
+}
+
+func (c *content) reapplyUnchangedFieldEdits(edits []pendingFieldEdit) (applied, skipped int) {
+	if len(edits) == 0 {
+		return 0, 0
+	}
+
+	appliedKeys := make(map[string]bool, len(edits))
+	for _, edit := range edits {
+		if !sameFieldValue(c.values, edit.key, edit.oldValue, edit.hadOld) {
+			skipped++
+			continue
+		}
+
+		c.lastErr = ""
+		if edit.hasNew {
+			c.applyFieldByKey(edit.key, edit.newValue)
+		} else {
+			c.applyFieldByKey(edit.key, "")
+		}
+		if c.lastErr != "" {
+			c.lastErr = ""
+			skipped++
+			continue
+		}
+		applied++
+		appliedKeys[edit.key] = true
+	}
+
+	if c.undoStack != nil {
+		c.undoStack.keepKeys(appliedKeys)
+	}
+	return applied, skipped
+}
+
+func sameFieldValue(values map[string]string, key, want string, wantPresent bool) bool {
+	got, gotPresent := values[key]
+	if gotPresent != wantPresent {
+		return false
+	}
+	return !wantPresent || got == want
 }
 
 // drainErr returns a Cmd that surfaces lastErr as a StatusMsg, then clears it.

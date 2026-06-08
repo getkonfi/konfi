@@ -106,7 +106,8 @@ type revertPreviewResultMsg struct{ err error }
 
 // reloadResultMsg is sent when an async config reload completes.
 type reloadResultMsg struct {
-	source string // "external", "editor", "save-reload"
+	source     string // "external", "editor", "save-reload"
+	fieldEdits []pendingFieldEdit
 }
 
 // appLoadedMsg is sent when async config loading completes.
