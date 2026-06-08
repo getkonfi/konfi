@@ -35,7 +35,7 @@ type gitlabSettings struct {
 // keep your tokens in one file).
 //
 // order:
-//  1. ~/.config/konfi/config.yaml   - deployed user config
+//  1. platform config dir           - deployed user config
 //  2. ./config.yaml, ../config.yaml, or ../../config.yaml - repo dev base
 //  3. ./config.local.yaml, ../config.local.yaml, or ../../config.local.yaml - local dev overrides
 func configSearchPaths() []string {

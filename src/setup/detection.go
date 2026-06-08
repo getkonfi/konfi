@@ -48,13 +48,13 @@ type konfableEntry struct {
 
 var allKonfables = []konfableEntry{
 	{"ghostty", func() Konfable {
-		return ghostty.New(pkg.NewFilePersister(pkg.XDGConfigPath("ghostty", "config")))
+		return ghostty.New(pkg.NewFilePersister(ghostty.DefaultConfigPath()))
 	}, false, nil},
 	{"starship", func() Konfable {
 		return starship.New(pkg.NewFilePersister(starship.DefaultConfigPath()))
 	}, false, nil},
 	{"alacritty", func() Konfable {
-		return alacritty.New(pkg.NewFilePersister(pkg.XDGConfigPath("alacritty", "alacritty.toml")))
+		return alacritty.New(pkg.NewFilePersister(alacritty.DefaultConfigPath()))
 	}, false, nil},
 	{"Hyprland", func() Konfable {
 		return hyprland.New(pkg.NewFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf")))
@@ -72,13 +72,13 @@ var allKonfables = []konfableEntry{
 		return dconf.New(dconf.NewPersister())
 	}, false, probeDconf},
 	{"kitty", func() Konfable {
-		return kitty.New(pkg.NewFilePersister(pkg.XDGConfigPath("kitty", "kitty.conf")))
+		return kitty.New(pkg.NewFilePersister(kitty.DefaultConfigPath()))
 	}, false, nil},
 	{"hx", func() Konfable {
 		return helix.New(pkg.NewFilePersister(pkg.XDGConfigPath("helix", "config.toml")))
 	}, false, nil},
 	{"rio", func() Konfable {
-		return rio.New(pkg.NewFilePersister(pkg.XDGConfigPath("rio", "config.toml")))
+		return rio.New(pkg.NewFilePersister(rio.DefaultConfigPath()))
 	}, false, nil},
 	{"git", func() Konfable {
 		return git.New(pkg.NewFilePersister(git.DefaultConfigPath()))

@@ -45,7 +45,7 @@ func defaultConfig() *KonfConfig {
 	}
 }
 
-// InitConfig loads ~/.config/konfi/config.yaml or creates defaults.
+// InitConfig loads konfi's config file or creates defaults.
 func InitConfig(_ context.Context, app *App) error {
 	path := cst.ConfigFilePath()
 	cfg := defaultConfig()

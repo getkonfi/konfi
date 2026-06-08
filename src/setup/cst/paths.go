@@ -13,12 +13,16 @@ const (
 	LogFileName    = "konfi.log"
 )
 
-// ConfigDir returns ~/.config/konfi.
+// ConfigDir returns konfi's platform config directory.
 func ConfigDir() string {
-	base := os.Getenv("XDG_CONFIG_HOME")
-	if base == "" {
+	base, err := os.UserConfigDir()
+	if err != nil || base == "" {
 		home, _ := os.UserHomeDir()
-		base = filepath.Join(home, ".config")
+		if home != "" {
+			base = filepath.Join(home, ".config")
+		} else {
+			base = "."
+		}
 	}
 	return filepath.Join(base, AppName)
 }
