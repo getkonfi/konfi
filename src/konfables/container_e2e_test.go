@@ -26,6 +26,7 @@ import (
 	apppacman "github.com/eminert/konfi/konfables/pacman"
 	apprio "github.com/eminert/konfi/konfables/rio"
 	appssh "github.com/eminert/konfi/konfables/ssh"
+	appsshd "github.com/eminert/konfi/konfables/sshd"
 	appstarship "github.com/eminert/konfi/konfables/starship"
 	apptmux "github.com/eminert/konfi/konfables/tmux"
 	"github.com/eminert/konfi/pkg"
@@ -529,6 +530,24 @@ func containerCases(t *testing.T) []containerCase {
 			fileBacked:   true,
 		},
 		{
+			name: "sshd",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return appsshd.New(filePersister(filepath.Join(root, "sshd_config")))
+			},
+			sample:       sampleSSHD,
+			existingKey:  "PasswordAuthentication",
+			existingWant: "no",
+			replaceWrite: "yes",
+			replaceWant:  "yes",
+			addKey:       "ClientAliveInterval",
+			addWrite:     "60",
+			addWant:      "60",
+			deleteKey:    "PermitRootLogin",
+			survivorKey:  "Port",
+			survivorWant: "22",
+			fileBacked:   true,
+		},
+		{
 			name: "starship",
 			newApp: func(_ *testing.T, root string) konfables.Konfable {
 				return appstarship.New(filePersister(filepath.Join(root, "starship.toml")))
@@ -649,6 +668,16 @@ Host myserver
     HostName example.com
     User admin
     Port 2222
+`)
+
+var sampleSSHD = []byte(`# server defaults
+Port 22
+PermitRootLogin no
+PasswordAuthentication no
+
+Match User deploy
+    PasswordAuthentication yes
+    ForceCommand internal-sftp
 `)
 
 var sampleTmux = []byte(`# tmux config

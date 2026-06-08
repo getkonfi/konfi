@@ -27,6 +27,7 @@ import (
 	"github.com/eminert/konfi/konfables/pacman"
 	"github.com/eminert/konfi/konfables/rio"
 	"github.com/eminert/konfi/konfables/ssh"
+	"github.com/eminert/konfi/konfables/sshd"
 	"github.com/eminert/konfi/konfables/starship"
 	"github.com/eminert/konfi/konfables/tmux"
 	"github.com/eminert/konfi/pkg"
@@ -91,6 +92,9 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"ssh", func() Konfable {
 		return ssh.New(pkg.NewFilePersister(ssh.DefaultConfigPath(), pkg.WithMissingContent([]byte(""))))
+	}, false, nil},
+	{sshd.BinaryPath(), func() Konfable {
+		return sshd.New(pkg.NewFilePersister(sshd.DefaultConfigPath(), pkg.WithMissingContent([]byte(""))))
 	}, false, nil},
 	{"pacman", func() Konfable {
 		return pacman.New(pkg.NewFilePersister("/etc/pacman.conf"))

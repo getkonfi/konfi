@@ -27,6 +27,7 @@ func TestLoadSchema(t *testing.T) {
 		{"../konfables/pacman/schema.yaml", "pacman"},
 		{"../konfables/rio/schema.yaml", "rio"},
 		{"../konfables/ssh/schema.yaml", "ssh"},
+		{"../konfables/sshd/schema.yaml", "sshd"},
 		{"../konfables/starship/schema.yaml", "starship"},
 		{"../konfables/tmux/schema.yaml", "tmux"},
 	}
@@ -66,6 +67,7 @@ func TestLoadSchema(t *testing.T) {
 				"pacman":    15,
 				"rio":       20,
 				"ssh":       30,
+				"sshd":      30,
 				"starship":  60,
 				"tmux":      30,
 			}
@@ -215,7 +217,7 @@ func TestLoadSchema_EnrichedFieldsOmitEmpty(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 	s := string(data)
-	for _, key := range []string{"example:", "hint:", "doc_url:", "since:", "until:", "alt_options:"} {
+	for _, key := range []string{"example:", "hint:", "doc_url:", "since:", "until:", "alt_options:", "block_openers:"} {
 		if contains(s, key) {
 			t.Errorf("empty field should omit %q, got:\n%s", key, s)
 		}

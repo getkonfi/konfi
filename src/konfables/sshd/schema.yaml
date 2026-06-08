@@ -1,0 +1,319 @@
+app: sshd
+format: sshd
+schema_version: 1.0.0
+docs_url: "https://man.openbsd.org/sshd_config.5"
+coverage: partial
+hints:
+  - "`sshd -T` prints the effective server configuration"
+  - "global server directives must appear before the first `Match` block"
+  - "saving `/etc/ssh/sshd_config` usually requires elevated permissions"
+
+sections:
+  - name: Match Blocks
+    fields:
+      - key: Blocks
+        label: Match Blocks
+        type: string
+        widget: blocklist
+        block_openers: ["Match"]
+        default: ""
+        description: conditional server overrides selected by user, group, host, address, local address, local port, rdomain, or all
+        example: "Match User deploy\n  PasswordAuthentication no\n  ForceCommand internal-sftp"
+        hint: "server config has no Host blocks; directives outside Match are global defaults"
+
+  - name: Listener & Access
+    fields:
+      - key: Port
+        label: Port
+        type: number
+        default: "22"
+        min: 1
+        max: 65535
+        description: local port where the SSH server listens
+        example: "Port 22"
+      - key: ListenAddress
+        label: Listen Address
+        type: string
+        default: ""
+        description: local address and optional port where sshd listens
+        example: "ListenAddress 0.0.0.0"
+      - key: AddressFamily
+        label: Address Family
+        type: enum
+        default: "any"
+        options: ["any", "inet", "inet6"]
+        description: address family used by sshd
+        example: "AddressFamily any"
+      - key: HostKey
+        label: Host Key
+        type: string
+        default: "/etc/ssh/ssh_host_ed25519_key"
+        description: private host key file used to identify this server
+        example: "HostKey /etc/ssh/ssh_host_ed25519_key"
+      - key: LoginGraceTime
+        label: Login Grace Time
+        type: string
+        default: "120"
+        description: time allowed for a client to authenticate
+        example: "LoginGraceTime 1m"
+      - key: MaxStartups
+        label: Max Startups
+        type: string
+        default: "10:30:100"
+        description: unauthenticated connection throttle
+        example: "MaxStartups 10:30:100"
+      - key: MaxSessions
+        label: Max Sessions
+        type: number
+        default: "10"
+        min: 0
+        max: 1000
+        description: maximum open sessions per network connection
+        example: "MaxSessions 10"
+      - key: PermitRootLogin
+        label: Permit Root Login
+        type: enum
+        default: "prohibit-password"
+        options: ["yes", "prohibit-password", "forced-commands-only", "no"]
+        description: whether root can log in via sshd
+        example: "PermitRootLogin no"
+      - key: AllowUsers
+        label: Allow Users
+        type: string
+        default: ""
+        description: space-separated user patterns allowed to log in
+        example: "AllowUsers deploy admin"
+      - key: AllowGroups
+        label: Allow Groups
+        type: string
+        default: ""
+        description: space-separated group patterns allowed to log in
+        example: "AllowGroups ssh-users"
+      - key: DenyUsers
+        label: Deny Users
+        type: string
+        default: ""
+        description: space-separated user patterns denied login
+        example: "DenyUsers guest"
+      - key: DenyGroups
+        label: Deny Groups
+        type: string
+        default: ""
+        description: space-separated group patterns denied login
+        example: "DenyGroups blocked"
+
+  - name: Authentication
+    fields:
+      - key: PubkeyAuthentication
+        label: Pubkey Authentication
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: allow public key authentication
+        example: "PubkeyAuthentication yes"
+      - key: PasswordAuthentication
+        label: Password Authentication
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: allow password authentication
+        example: "PasswordAuthentication no"
+      - key: KbdInteractiveAuthentication
+        label: Keyboard Interactive Authentication
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: allow keyboard-interactive authentication
+        example: "KbdInteractiveAuthentication no"
+      - key: AuthenticationMethods
+        label: Authentication Methods
+        type: string
+        default: ""
+        description: required authentication method lists
+        example: "AuthenticationMethods publickey,password"
+      - key: PermitEmptyPasswords
+        label: Permit Empty Passwords
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: allow accounts with empty passwords to log in
+        example: "PermitEmptyPasswords no"
+      - key: AuthorizedKeysFile
+        label: Authorized Keys File
+        type: string
+        default: ".ssh/authorized_keys .ssh/authorized_keys2"
+        description: authorized public key file paths
+        example: "AuthorizedKeysFile .ssh/authorized_keys"
+      - key: AuthorizedKeysCommand
+        label: Authorized Keys Command
+        type: string
+        default: "none"
+        description: command used to fetch authorized keys
+        example: "AuthorizedKeysCommand /usr/local/bin/keys %u"
+      - key: AuthorizedKeysCommandUser
+        label: Authorized Keys Command User
+        type: string
+        default: ""
+        description: user account used to run AuthorizedKeysCommand
+        example: "AuthorizedKeysCommandUser nobody"
+      - key: HostbasedAuthentication
+        label: Hostbased Authentication
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: allow host-based authentication
+        example: "HostbasedAuthentication no"
+      - key: GSSAPIAuthentication
+        label: GSSAPI Authentication
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: allow GSSAPI authentication
+        example: "GSSAPIAuthentication no"
+
+  - name: Forwarding & Sessions
+    fields:
+      - key: AllowTcpForwarding
+        label: Allow TCP Forwarding
+        type: enum
+        default: "yes"
+        options: ["yes", "all", "no", "local", "remote"]
+        description: permit TCP port forwarding
+        example: "AllowTcpForwarding no"
+      - key: AllowStreamLocalForwarding
+        label: Allow Stream Local Forwarding
+        type: enum
+        default: "yes"
+        options: ["yes", "all", "no", "local", "remote"]
+        description: permit Unix-domain socket forwarding
+        example: "AllowStreamLocalForwarding no"
+      - key: X11Forwarding
+        label: X11 Forwarding
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: permit X11 forwarding
+        example: "X11Forwarding no"
+      - key: PermitTTY
+        label: Permit TTY
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: permit pseudo-terminal allocation
+        example: "PermitTTY yes"
+      - key: PermitTunnel
+        label: Permit Tunnel
+        type: enum
+        default: "no"
+        options: ["yes", "point-to-point", "ethernet", "no"]
+        description: permit tun device forwarding
+        example: "PermitTunnel no"
+      - key: AllowAgentForwarding
+        label: Allow Agent Forwarding
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: permit ssh-agent forwarding
+        example: "AllowAgentForwarding no"
+      - key: GatewayPorts
+        label: Gateway Ports
+        type: enum
+        default: "no"
+        options: ["yes", "no", "clientspecified"]
+        description: allow forwarded ports to bind non-loopback addresses
+        example: "GatewayPorts no"
+      - key: ChrootDirectory
+        label: Chroot Directory
+        type: string
+        default: "none"
+        description: directory to chroot into after authentication
+        example: "ChrootDirectory /srv/sftp/%u"
+      - key: ForceCommand
+        label: Force Command
+        type: string
+        default: ""
+        description: command forced for authenticated sessions
+        example: "ForceCommand internal-sftp"
+      - key: Subsystem
+        label: Subsystem
+        type: string
+        default: "sftp internal-sftp"
+        description: external subsystem declaration
+        example: "Subsystem sftp internal-sftp"
+
+  - name: Security & Logging
+    fields:
+      - key: LogLevel
+        label: Log Level
+        type: enum
+        default: "INFO"
+        options: ["QUIET", "FATAL", "ERROR", "INFO", "VERBOSE", "DEBUG", "DEBUG1", "DEBUG2", "DEBUG3"]
+        description: sshd logging verbosity
+        example: "LogLevel INFO"
+      - key: SyslogFacility
+        label: Syslog Facility
+        type: enum
+        default: "AUTH"
+        options: ["DAEMON", "USER", "AUTH", "AUTHPRIV", "LOCAL0", "LOCAL1", "LOCAL2", "LOCAL3", "LOCAL4", "LOCAL5", "LOCAL6", "LOCAL7"]
+        description: syslog facility used by sshd
+        example: "SyslogFacility AUTHPRIV"
+      - key: Ciphers
+        label: Ciphers
+        type: string
+        default: ""
+        description: allowed symmetric ciphers
+        example: "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com"
+      - key: KexAlgorithms
+        label: KEX Algorithms
+        type: string
+        default: ""
+        description: allowed key exchange algorithms
+        example: "KexAlgorithms sntrup761x25519-sha512,sntrup761x25519-sha512@openssh.com"
+      - key: MACs
+        label: MACs
+        type: string
+        default: ""
+        description: allowed message authentication algorithms
+        example: "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
+      - key: UsePAM
+        label: Use PAM
+        type: enum
+        default: "no"
+        options: ["yes", "no"]
+        description: enable PAM account and session processing
+        example: "UsePAM yes"
+      - key: ClientAliveInterval
+        label: Client Alive Interval
+        type: number
+        default: "0"
+        min: 0
+        max: 3600
+        description: seconds between server keepalive messages
+        example: "ClientAliveInterval 60"
+      - key: ClientAliveCountMax
+        label: Client Alive Count Max
+        type: number
+        default: "3"
+        min: 0
+        max: 100
+        description: unanswered keepalive messages before disconnecting
+        example: "ClientAliveCountMax 3"
+      - key: Banner
+        label: Banner
+        type: string
+        default: "none"
+        description: file displayed before authentication
+        example: "Banner /etc/issue.net"
+      - key: PrintMotd
+        label: Print MOTD
+        type: enum
+        default: "yes"
+        options: ["yes", "no"]
+        description: print message of the day after login
+        example: "PrintMotd no"
+      - key: AcceptEnv
+        label: Accept Env
+        type: string
+        default: ""
+        description: client environment variable patterns accepted by sshd
+        example: "AcceptEnv LANG LC_*"

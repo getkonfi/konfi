@@ -96,6 +96,27 @@ func introspectorFor(app string) Introspector {
 				"Compression", "LogLevel", "VisualHostKey",
 			},
 		}
+	case "sshd":
+		return &staticIntrospector{
+			app: "sshd",
+			keys: []string{
+				"Port", "ListenAddress", "AddressFamily", "HostKey",
+				"LoginGraceTime", "MaxStartups", "MaxSessions", "PermitRootLogin",
+				"AllowUsers", "AllowGroups", "DenyUsers", "DenyGroups",
+				"PubkeyAuthentication", "PasswordAuthentication",
+				"KbdInteractiveAuthentication", "AuthenticationMethods",
+				"PermitEmptyPasswords", "AuthorizedKeysFile",
+				"AuthorizedKeysCommand", "AuthorizedKeysCommandUser",
+				"HostbasedAuthentication", "GSSAPIAuthentication",
+				"AllowTcpForwarding", "AllowStreamLocalForwarding",
+				"X11Forwarding", "PermitTTY", "PermitTunnel",
+				"AllowAgentForwarding", "GatewayPorts", "ChrootDirectory",
+				"ForceCommand", "Subsystem", "LogLevel", "SyslogFacility",
+				"Ciphers", "KexAlgorithms", "MACs", "UsePAM",
+				"ClientAliveInterval", "ClientAliveCountMax", "Banner",
+				"PrintMotd", "AcceptEnv",
+			},
+		}
 	default:
 		return nil
 	}

@@ -13,6 +13,7 @@ var Logos = map[string]pixelart.PixelArt{
 	"git":       gitLogo,
 	"tmux":      tmuxLogo,
 	"ssh":       sshLogo,
+	"sshd":      sshLogo,
 	"pacman":    pacmanLogo,
 	"dconf":     dconfLogo,
 	"claude":    claudeLogo,
