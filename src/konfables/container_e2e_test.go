@@ -15,6 +15,7 @@ import (
 	appalacritty "github.com/eminert/konfi/konfables/alacritty"
 	appclaude "github.com/eminert/konfi/konfables/claude"
 	appdconf "github.com/eminert/konfi/konfables/dconf"
+	appfuzzel "github.com/eminert/konfi/konfables/fuzzel"
 	appghostty "github.com/eminert/konfi/konfables/ghostty"
 	appgit "github.com/eminert/konfi/konfables/git"
 	appgnome "github.com/eminert/konfi/konfables/gnome"
@@ -29,6 +30,8 @@ import (
 	appsshd "github.com/eminert/konfi/konfables/sshd"
 	appstarship "github.com/eminert/konfi/konfables/starship"
 	apptmux "github.com/eminert/konfi/konfables/tmux"
+	appwaybar "github.com/eminert/konfi/konfables/waybar"
+	appyazi "github.com/eminert/konfi/konfables/yazi"
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/setup"
 	"gopkg.in/yaml.v3"
@@ -333,6 +336,24 @@ func containerCases(t *testing.T) []containerCase {
 			survivorWant: "appmenu:minimize,maximize,close",
 		},
 		{
+			name: "fuzzel",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return appfuzzel.New(filePersister(filepath.Join(root, "fuzzel.ini")))
+			},
+			sample:       sampleFuzzel,
+			existingKey:  "width",
+			existingWant: "30",
+			replaceWrite: "50",
+			replaceWant:  "50",
+			addKey:       "colors.selection-match",
+			addWrite:     "f38ba8ff",
+			addWant:      "f38ba8ff",
+			deleteKey:    "colors.match",
+			survivorKey:  "font",
+			survivorWant: "monospace",
+			fileBacked:   true,
+		},
+		{
 			name: "ghostty",
 			newApp: func(_ *testing.T, root string) konfables.Konfable {
 				return appghostty.New(filePersister(filepath.Join(root, "config")))
@@ -583,6 +604,42 @@ func containerCases(t *testing.T) []containerCase {
 			survivorWant: "10000",
 			fileBacked:   true,
 		},
+		{
+			name: "waybar",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return appwaybar.New(filePersister(filepath.Join(root, "config")))
+			},
+			sample:       sampleWaybar,
+			existingKey:  "height",
+			existingWant: "30",
+			replaceWrite: "32",
+			replaceWant:  "32",
+			addKey:       "tray.icon-size",
+			addWrite:     "16",
+			addWant:      "16",
+			deleteKey:    "battery.format",
+			survivorKey:  "clock.format",
+			survivorWant: "{:%H:%M}",
+			fileBacked:   true,
+		},
+		{
+			name: "yazi",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return appyazi.New(filePersister(filepath.Join(root, "yazi.toml")))
+			},
+			sample:       sampleYazi,
+			existingKey:  "manager.show_hidden",
+			existingWant: "false",
+			replaceWrite: "true",
+			replaceWant:  "true",
+			addKey:       "manager.sort_reverse",
+			addWrite:     "true",
+			addWant:      "true",
+			deleteKey:    "preview.wrap",
+			survivorKey:  "manager.sort_by",
+			survivorWant: "alphabetical",
+			fileBacked:   true,
+		},
 	}
 }
 
@@ -596,6 +653,24 @@ var sampleClaude = []byte(`{
     ]
   }
 }
+`)
+
+var sampleFuzzel = []byte(`# fuzzel
+font=monospace
+dpi-aware=auto
+terminal=foot -e
+prompt="> "
+icon-theme=Papirus
+width=30
+tabs=8
+
+[colors]
+background=fdf6e3ff
+text=657b83ff
+match=cb4b16ff
+selection=eee8d5ff
+selection-text=586e75ff
+border=002b36ff
 `)
 
 var sampleDconf = []byte(`/org/gnome/desktop/wm/preferences/button-layout = appmenu:minimize,maximize,close
@@ -686,4 +761,52 @@ set -g escape-time 0
 set-option -g mouse on
 set -g history-limit 10000
 set -g prefix C-a
+`)
+
+var sampleWaybar = []byte(`{
+  "position": "top",
+  "layer": "top",
+  "height": 30,
+  "modules-left": ["hyprland/workspaces", "hyprland/window"],
+  "modules-center": ["clock"],
+  "modules-right": ["network", "pulseaudio", "battery", "tray"],
+  "clock": {
+    "format": "{:%H:%M}"
+  },
+  "battery": {
+    "format": "{capacity}% {icon}"
+  },
+  "network": {
+    "format-wifi": "{essid} ({signalStrength}%)"
+  },
+  "pulseaudio": {
+    "format": "{volume}% {icon}"
+  },
+  "tray": {
+    "spacing": 10
+  }
+}
+`)
+
+var sampleYazi = []byte(`# yazi config
+
+[mgr]
+show_hidden = false
+sort_by = "alphabetical"
+sort_sensitive = false
+
+[preview]
+wrap = "no"
+max_width = 600
+
+[opener]
+edit = [
+  { run = "${EDITOR:-vi} %s", desc = "$EDITOR", for = "unix", block = true },
+]
+
+[open]
+rules = [
+  { mime = "text/*", use = "edit" },
+  { url = "*", use = "open" },
+]
 `)

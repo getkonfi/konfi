@@ -16,6 +16,7 @@ import (
 	"github.com/eminert/konfi/konfables/brew"
 	"github.com/eminert/konfi/konfables/claude"
 	"github.com/eminert/konfi/konfables/dconf"
+	"github.com/eminert/konfi/konfables/fuzzel"
 	"github.com/eminert/konfi/konfables/ghostty"
 	"github.com/eminert/konfi/konfables/git"
 	"github.com/eminert/konfi/konfables/gnome"
@@ -25,11 +26,14 @@ import (
 	"github.com/eminert/konfi/konfables/kitty"
 	"github.com/eminert/konfi/konfables/konfi"
 	"github.com/eminert/konfi/konfables/pacman"
+	"github.com/eminert/konfi/konfables/powerlevel10k"
 	"github.com/eminert/konfi/konfables/rio"
 	"github.com/eminert/konfi/konfables/ssh"
 	"github.com/eminert/konfi/konfables/sshd"
 	"github.com/eminert/konfi/konfables/starship"
 	"github.com/eminert/konfi/konfables/tmux"
+	"github.com/eminert/konfi/konfables/waybar"
+	"github.com/eminert/konfi/konfables/yazi"
 	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/setup/cst"
 )
@@ -53,11 +57,20 @@ var allKonfables = []konfableEntry{
 	{"starship", func() Konfable {
 		return starship.New(pkg.NewFilePersister(starship.DefaultConfigPath()))
 	}, false, nil},
+	{"zsh", func() Konfable {
+		return powerlevel10k.New(pkg.NewFilePersister(powerlevel10k.DefaultConfigPath()))
+	}, false, probePowerlevel10k},
 	{"alacritty", func() Konfable {
 		return alacritty.New(pkg.NewFilePersister(alacritty.DefaultConfigPath()))
 	}, false, nil},
 	{"Hyprland", func() Konfable {
 		return hyprland.New(pkg.NewFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf")))
+	}, false, nil},
+	{"fuzzel", func() Konfable {
+		return fuzzel.New(pkg.NewFilePersister(fuzzel.DefaultConfigPath()))
+	}, false, nil},
+	{"waybar", func() Konfable {
+		return waybar.New(pkg.NewFilePersister(waybar.DefaultConfigPath()))
 	}, false, nil},
 	{"", func() Konfable {
 		return konfi.New(pkg.NewFilePersister(
@@ -76,6 +89,9 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"hx", func() Konfable {
 		return helix.New(pkg.NewFilePersister(pkg.XDGConfigPath("helix", "config.toml")))
+	}, false, nil},
+	{"yazi", func() Konfable {
+		return yazi.New(pkg.NewFilePersister(yazi.DefaultConfigPath()))
 	}, false, nil},
 	{"rio", func() Konfable {
 		return rio.New(pkg.NewFilePersister(rio.DefaultConfigPath()))
@@ -129,6 +145,35 @@ func probeGnome() bool {
 func probeDconf() bool {
 	out, err := exec.Command("dconf", "read", "/org/gnome/desktop/wm/preferences/button-layout").Output()
 	return err == nil && len(out) > 0
+}
+
+// probePowerlevel10k checks for either the generated config or common theme install paths.
+func probePowerlevel10k() bool {
+	if pkg.FileExists(powerlevel10k.DefaultConfigPath()) {
+		return true
+	}
+
+	var candidates []string
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		candidates = append(candidates,
+			filepath.Join(home, "powerlevel10k", "powerlevel10k.zsh-theme"),
+			filepath.Join(home, ".oh-my-zsh", "custom", "themes", "powerlevel10k", "powerlevel10k.zsh-theme"),
+			filepath.Join(home, ".local", "share", "zsh", "plugins", "powerlevel10k", "powerlevel10k.zsh-theme"),
+		)
+	}
+	candidates = append(candidates,
+		"/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme",
+		"/usr/local/share/powerlevel10k/powerlevel10k.zsh-theme",
+		"/usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme",
+		"/usr/share/zsh/plugins/powerlevel10k/powerlevel10k.zsh-theme",
+	)
+
+	for _, path := range candidates {
+		if pkg.FileExists(path) {
+			return true
+		}
+	}
+	return false
 }
 
 // KonfableInfo pairs a konfable with its registration metadata.
