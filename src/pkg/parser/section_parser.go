@@ -267,7 +267,9 @@ func (p *SectionParser) DeleteKey(data []byte, key string) ([]byte, error) {
 func (p *SectionParser) deleteAt(data []byte, lineIdx int) []byte {
 	if _, end, ok := scanMultiline(strings.Split(string(data), "\n"), lineIdx); ok && end > lineIdx {
 		lines := strings.Split(string(data), "\n")
-		out := append(lines[:lineIdx], lines[end+1:]...)
+		out := make([]string, 0, len(lines)-(end-lineIdx+1))
+		out = append(out, lines[:lineIdx]...)
+		out = append(out, lines[end+1:]...)
 		return []byte(strings.Join(out, "\n"))
 	}
 	return DeleteKeyOnLine(data, lineIdx)

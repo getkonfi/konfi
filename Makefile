@@ -69,10 +69,10 @@ schema-check: ## quick schema check (offline, no exec)
 upstream-check: ## check supported app versions against upstream releases
 	@cd tools/upstreamcheck && go run .
 
-e2e-arch-container: ## run Arch container parser/editing e2e suite
+e2e: ## run Arch container parser/editing e2e suite
 	@e2e/arch-container/run.sh
 
 clean: ## remove build artifacts
 	rm -f konfi
 
-.PHONY: help tools run build test lint clean schema-verify schema-check upstream-check e2e-arch-container
+.PHONY: help tools run build test lint clean schema-verify schema-check upstream-check e2e

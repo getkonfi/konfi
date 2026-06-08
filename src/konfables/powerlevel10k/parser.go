@@ -215,8 +215,7 @@ func parseAssignment(line string, lineIdx int) (assignment, bool) {
 	}, true
 }
 
-func parseArray(lines []string, startLine, startCol int) ([]string, int, bool) {
-	var vals []string
+func parseArray(lines []string, startLine, startCol int) (values []string, endLine int, ok bool) {
 	var tok strings.Builder
 	started := false
 	inSingle := false
@@ -227,7 +226,7 @@ func parseArray(lines []string, startLine, startCol int) ([]string, int, bool) {
 		if tok.Len() == 0 {
 			return
 		}
-		vals = append(vals, tok.String())
+		values = append(values, tok.String())
 		tok.Reset()
 	}
 
@@ -283,7 +282,7 @@ func parseArray(lines []string, startLine, startCol int) ([]string, int, bool) {
 				i = len(line)
 			case ch == ')':
 				flush()
-				return vals, lineIdx, true
+				return values, lineIdx, true
 			case isSpace(ch):
 				flush()
 			default:
@@ -403,7 +402,7 @@ func cleanValues(values []string) []string {
 	return out
 }
 
-func appendConfigLines(data []byte, lines []string, add []string) []string {
+func appendConfigLines(data []byte, lines, add []string) []string {
 	if len(lines) == 1 && lines[0] == "" && len(data) == 0 {
 		return add
 	}

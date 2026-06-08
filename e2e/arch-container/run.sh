@@ -11,7 +11,7 @@ if [ -z "$runtime" ]; then
 	elif command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then
 		runtime=podman
 	else
-		echo "a running docker or podman runtime is required for e2e-arch-container" >&2
+		echo "a running docker or podman runtime is required for make e2e" >&2
 		exit 127
 	fi
 fi

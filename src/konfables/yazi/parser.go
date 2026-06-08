@@ -133,12 +133,12 @@ func rawTOMLWriteValue(value string) string {
 	return value
 }
 
-func (p *yaziParser) findRawTOMLValue(data []byte, key string) (string, int, bool) {
-	value, start, _, ok := p.findRawTOMLSpan(data, key)
+func (p *yaziParser) findRawTOMLValue(data []byte, key string) (value string, start int, ok bool) {
+	value, start, _, ok = p.findRawTOMLSpan(data, key)
 	return value, start, ok
 }
 
-func (p *yaziParser) findRawTOMLSpan(data []byte, key string) (string, int, int, bool) {
+func (p *yaziParser) findRawTOMLSpan(data []byte, key string) (value string, start, end int, ok bool) {
 	line, ok := p.base.FindLine(data, key)
 	if !ok {
 		return "", -1, -1, false
@@ -151,7 +151,7 @@ func (p *yaziParser) findRawTOMLSpan(data []byte, key string) (string, int, int,
 	if eq < 0 {
 		return "", -1, -1, false
 	}
-	value, end, ok := scanRawTOML(lines, line, eq+1)
+	value, end, ok = scanRawTOML(lines, line, eq+1)
 	if !ok {
 		return "", -1, -1, false
 	}
@@ -189,7 +189,7 @@ type tomlScanState struct {
 	escaped bool
 }
 
-func scanRawTOML(lines []string, start, valueStart int) (string, int, bool) {
+func scanRawTOML(lines []string, start, valueStart int) (value string, end int, ok bool) {
 	var b strings.Builder
 	var state tomlScanState
 	balance := 0
@@ -281,6 +281,8 @@ func deleteRawSpan(data []byte, start, end int) []byte {
 	if start < 0 || end < start || end >= len(lines) {
 		return data
 	}
-	out := append(lines[:start], lines[end+1:]...)
+	out := make([]string, 0, len(lines)-(end-start+1))
+	out = append(out, lines[:start]...)
+	out = append(out, lines[end+1:]...)
 	return []byte(strings.Join(out, "\n"))
 }

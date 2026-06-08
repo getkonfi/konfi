@@ -284,11 +284,7 @@ func insertGlobalKey(lines []string, key, value string) []byte {
 		}
 		out = append(out, body[insertAt:]...)
 	} else {
-		if len(out) > 0 && strings.TrimSpace(out[len(out)-1]) != "" {
-			out = append(out, insert)
-		} else {
-			out = append(out, insert)
-		}
+		out = append(out, insert)
 	}
 	if hadTrailingNewline {
 		out = append(out, "")

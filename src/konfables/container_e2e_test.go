@@ -13,6 +13,7 @@ import (
 
 	"github.com/eminert/konfi/konfables"
 	appalacritty "github.com/eminert/konfi/konfables/alacritty"
+	appbrew "github.com/eminert/konfi/konfables/brew"
 	appclaude "github.com/eminert/konfi/konfables/claude"
 	appdconf "github.com/eminert/konfi/konfables/dconf"
 	appfuzzel "github.com/eminert/konfi/konfables/fuzzel"
@@ -25,6 +26,7 @@ import (
 	appkitty "github.com/eminert/konfi/konfables/kitty"
 	appkonfi "github.com/eminert/konfi/konfables/konfi"
 	apppacman "github.com/eminert/konfi/konfables/pacman"
+	apppowerlevel10k "github.com/eminert/konfi/konfables/powerlevel10k"
 	apprio "github.com/eminert/konfi/konfables/rio"
 	appssh "github.com/eminert/konfi/konfables/ssh"
 	appsshd "github.com/eminert/konfi/konfables/sshd"
@@ -298,6 +300,24 @@ func containerCases(t *testing.T) []containerCase {
 			fileBacked:   true,
 		},
 		{
+			name: "brew",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return appbrew.New(filePersister(filepath.Join(root, "Brewfile")))
+			},
+			sample:       sampleBrew,
+			existingKey:  "mas",
+			existingWant: "Xcode | 497799835\nThings | 904280696",
+			replaceWrite: "Xcode | 497799999\nTailscale | 1475387142",
+			replaceWant:  "Xcode | 497799999\nTailscale | 1475387142",
+			addKey:       "vscode",
+			addWrite:     "golang.go",
+			addWant:      "golang.go",
+			deleteKey:    "tap",
+			survivorKey:  "brew",
+			survivorWant: "git",
+			fileBacked:   true,
+		},
+		{
 			name: "claude",
 			newApp: func(_ *testing.T, root string) konfables.Konfable {
 				return appclaude.New(appclaude.NewTieredPersister(
@@ -515,6 +535,24 @@ func containerCases(t *testing.T) []containerCase {
 			fileBacked:   true,
 		},
 		{
+			name: "powerlevel10k",
+			newApp: func(_ *testing.T, root string) konfables.Konfable {
+				return apppowerlevel10k.New(filePersister(filepath.Join(root, ".p10k.zsh")))
+			},
+			sample:       samplePowerlevel10k,
+			existingKey:  "POWERLEVEL9K_MODE",
+			existingWant: "nerdfont-complete",
+			replaceWrite: "ascii",
+			replaceWant:  "ascii",
+			addKey:       "POWERLEVEL9K_VCS_BACKENDS",
+			addWrite:     "git",
+			addWant:      "git",
+			deleteKey:    "POWERLEVEL9K_PROMPT_ADD_NEWLINE",
+			survivorKey:  "POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT",
+			survivorWant: "d h m s",
+			fileBacked:   true,
+		},
+		{
 			name: "rio",
 			newApp: func(_ *testing.T, root string) konfables.Konfable {
 				return apprio.New(filePersister(filepath.Join(root, "config.toml")))
@@ -655,6 +693,21 @@ var sampleClaude = []byte(`{
 }
 `)
 
+var sampleBrew = []byte(`# brewfile
+tap "homebrew/bundle"
+tap "homebrew/cask-fonts"
+
+brew "git"
+brew "wget", args: ["with-iri"]
+brew "zsh"
+
+cask "firefox"
+cask "1password"
+
+mas "Xcode", id: 497799835
+mas "Things", id: 904280696
+`)
+
 var sampleFuzzel = []byte(`# fuzzel
 font=monospace
 dpi-aware=auto
@@ -728,6 +781,19 @@ Include = /etc/pacman.d/mirrorlist
 
 [extra]
 Include = /etc/pacman.d/mirrorlist
+`)
+
+var samplePowerlevel10k = []byte(`# p10k config
+typeset -g POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(
+  dir
+  vcs
+  prompt_char
+)
+typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status command_execution_time time)
+typeset -g POWERLEVEL9K_MODE=nerdfont-complete
+typeset -g POWERLEVEL9K_PROMPT_ADD_NEWLINE=true
+typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT='d h m s'
+POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
 `)
 
 var sampleSSH = []byte(`# global settings

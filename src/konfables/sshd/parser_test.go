@@ -1,6 +1,7 @@
 package sshd
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -90,7 +91,7 @@ func TestBlocksNoOpSetIsByteIdentical(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(out) != string(sampleConfig) {
+	if !bytes.Equal(out, sampleConfig) {
 		t.Fatalf("no-op SetValue(Blocks) changed bytes:\ngot:\n%s\nwant:\n%s", out, sampleConfig)
 	}
 }

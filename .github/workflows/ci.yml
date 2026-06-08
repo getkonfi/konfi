@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            go.work.sum
+            src/go.sum
+            tools/schemaverify/go.sum
+            tools/upstreamcheck/go.sum
+
+      - name: install tools
+        run: make tools
+
+      - name: lint
+        run: make lint
+
+      - name: test
+        run: make test
+
+      - name: arch container e2e
+        run: make e2e
