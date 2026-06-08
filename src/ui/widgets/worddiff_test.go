@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/eminert/konfi/theme"
 )
@@ -88,20 +89,23 @@ var sgrRE = regexp.MustCompile(`\x1b\[([0-9;]*)m`)
 func bgAtLastRune(s string) bool {
 	bg, last := false, false
 	for i := 0; i < len(s); {
-		if loc := sgrRE.FindStringIndex(s[i:]); loc != nil && loc[0] == 0 {
-			p := sgrRE.FindStringSubmatch(s[i:])[1]
-			switch {
-			case p == "" || p == "0":
-				bg = false
-			case strings.Contains(p, "48;"):
-				bg = true
+		if loc := sgrRE.FindStringIndex(s[i:]); len(loc) == 2 && loc[0] == 0 {
+			match := sgrRE.FindStringSubmatch(s[i:])
+			if len(match) > 1 {
+				p := match[1]
+				switch {
+				case p == "" || p == "0":
+					bg = false
+				case strings.Contains(p, "48;"):
+					bg = true
+				}
 			}
 			i += loc[1]
 			continue
 		}
-		r := []rune(s[i:])[0]
+		_, size := utf8.DecodeRuneInString(s[i:])
 		last = bg
-		i += len(string(r))
+		i += size
 	}
 	return last
 }

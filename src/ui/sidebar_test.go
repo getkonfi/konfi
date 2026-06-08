@@ -52,7 +52,7 @@ func TestSidebarNotInstalledSelectionIndex(t *testing.T) {
 	}
 	s.cursor = target
 
-	_, cmd := s.selectCurrent(true)
+	_, cmd := s.selectCurrent()
 	msg, ok := cmd().(AppSelectedMsg)
 	if !ok {
 		t.Fatalf("selectCurrent emitted %T, want AppSelectedMsg", cmd())

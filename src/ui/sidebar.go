@@ -113,7 +113,7 @@ func (s sidebar) Update(msg tea.Msg) (sidebar, tea.Cmd) {
 		case "k", "up":
 			return s.moveUp()
 		case "enter", "space":
-			return s.selectCurrent(true)
+			return s.selectCurrent()
 		case "home":
 			return s.moveTo(0)
 		case "end":
@@ -154,7 +154,7 @@ func (s sidebar) updateSearching(msg tea.KeyPressMsg) (sidebar, tea.Cmd) {
 				}
 			}
 		}
-		return s.selectCurrent(true)
+		return s.selectCurrent()
 	case "down":
 		return s.moveDown()
 	case "up":
@@ -233,11 +233,11 @@ func (s sidebar) emitSelection(itemIdx int, confirmed bool) tea.Cmd {
 	}
 }
 
-func (s sidebar) selectCurrent(confirmed bool) (sidebar, tea.Cmd) {
+func (s sidebar) selectCurrent() (sidebar, tea.Cmd) {
 	if len(s.filtered) == 0 {
 		return s, nil
 	}
-	return s, s.emitSelection(s.filtered[s.cursor], confirmed)
+	return s, s.emitSelection(s.filtered[s.cursor], true)
 }
 
 // appIndex returns the konfable index for the current cursor position, or -1 for home.

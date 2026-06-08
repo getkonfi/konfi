@@ -418,7 +418,7 @@ func (r *root) updateKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "right":
 		if r.focus == paneSidebar {
 			var cmd tea.Cmd
-			r.sidebar, cmd = r.sidebar.selectCurrent(true)
+			r.sidebar, cmd = r.sidebar.selectCurrent()
 			return r, cmd
 		}
 
