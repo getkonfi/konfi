@@ -93,8 +93,11 @@ func ContrastRatio(fg, bg color.Color) float64 {
 // ReadableColor returns the first preferred color that is readable on bg,
 // falling back to the highest-contrast option.
 func ReadableColor(bg color.Color, preferred ...color.Color) color.Color {
-	candidates := append(preferred, lipgloss.Color("#000000"), lipgloss.Color("#ffffff"))
-	var best color.Color = lipgloss.Color("#ffffff")
+	candidates := make([]color.Color, 0, len(preferred)+2)
+	candidates = append(candidates, preferred...)
+	candidates = append(candidates, lipgloss.Color("#000000"), lipgloss.Color("#ffffff"))
+	var best color.Color
+	best = lipgloss.Color("#ffffff")
 	bestRatio := 0.0
 	for _, candidate := range candidates {
 		if candidate == nil {

@@ -323,7 +323,8 @@ func TestPacmanSchemaBareDirectiveDefaults(t *testing.T) {
 func findField(t *testing.T, schema *pkg.Schema, key string) pkg.Field {
 	t.Helper()
 	for _, section := range schema.Sections {
-		for _, field := range section.Fields {
+		for i := range section.Fields {
+			field := section.Fields[i]
 			if field.Key == key {
 				return field
 			}

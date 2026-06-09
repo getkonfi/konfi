@@ -27,7 +27,8 @@ func loadSchema(t *testing.T) *pkg.Schema {
 func schemaField(t *testing.T, s *pkg.Schema, key string) pkg.Field {
 	t.Helper()
 	for _, section := range s.Sections {
-		for _, field := range section.Fields {
+		for i := range section.Fields {
+			field := section.Fields[i]
 			if field.Key == key {
 				return field
 			}
