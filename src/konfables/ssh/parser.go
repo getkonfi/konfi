@@ -8,6 +8,10 @@ import (
 
 const blocksKey = "Blocks"
 
+var repeatableSSHKeys = map[string]bool{
+	"identityfile": true,
+}
+
 var canonicalSSHKeys = map[string]string{
 	"addkeystoagent":           "AddKeysToAgent",
 	"batchmode":                "BatchMode",
@@ -83,6 +87,33 @@ func (p *parser) FindValue(data []byte, key string) (string, bool) {
 	return "", false
 }
 
+func (p *parser) FindValues(data []byte, key string) ([]string, bool) {
+	if !isRepeatableSSHKey(key) {
+		return nil, false
+	}
+
+	lines := strings.Split(string(data), "\n")
+	scope := scopeGlobal
+	var values []string
+	for _, line := range lines {
+		scope = updateScope(line, scope)
+		if scope == scopeOther {
+			continue
+		}
+		k, v, ok := parseSSHLine(line)
+		if !ok || isBlockDirective(k) {
+			continue
+		}
+		if strings.EqualFold(k, key) {
+			values = append(values, v)
+		}
+	}
+	if len(values) == 0 {
+		return nil, false
+	}
+	return values, true
+}
+
 // FindAll returns key-value pairs from global and Host * scopes in a single pass.
 func (p *parser) FindAll(data []byte) map[string]string {
 	lines := strings.Split(string(data), "\n")
@@ -151,6 +182,42 @@ func (p *parser) SetValue(data []byte, key, value string) ([]byte, error) {
 	}
 
 	return insertSSHKey(lines, key, value), nil
+}
+
+func (p *parser) SetValues(data []byte, key string, values []string) ([]byte, error) {
+	if !isRepeatableSSHKey(key) {
+		return data, nil
+	}
+
+	lines := strings.Split(string(data), "\n")
+	out := make([]string, 0, len(lines)+len(values))
+	scope := scopeGlobal
+	inserted := false
+	for _, line := range lines {
+		scope = updateScope(line, scope)
+		if scope == scopeOther {
+			out = append(out, line)
+			continue
+		}
+		k, _, ok := parseSSHLine(line)
+		if !ok || isBlockDirective(k) || !strings.EqualFold(k, key) {
+			out = append(out, line)
+			continue
+		}
+		if !inserted {
+			for _, value := range values {
+				out = append(out, replaceSSHValue(line, value))
+			}
+			inserted = true
+		}
+	}
+	if inserted {
+		return []byte(strings.Join(out, "\n")), nil
+	}
+	if len(values) == 0 {
+		return data, nil
+	}
+	return insertSSHKeys(lines, canonicalSSHKey(key), values), nil
 }
 
 func (p *parser) DeleteKey(data []byte, key string) ([]byte, error) {
@@ -270,6 +337,19 @@ func replaceSSHValue(line, newValue string) string {
 }
 
 func insertSSHKey(lines []string, key, value string) []byte {
+	return insertSSHKeys(lines, key, []string{value})
+}
+
+func insertSSHKeys(lines []string, key string, values []string) []byte {
+	if len(values) == 0 {
+		return []byte(strings.Join(lines, "\n"))
+	}
+
+	directives := make([]string, 0, len(values))
+	for _, value := range values {
+		directives = append(directives, "    "+key+" "+value)
+	}
+
 	inWild := false
 	insertAt := -1
 	for i, line := range lines {
@@ -281,15 +361,15 @@ func insertSSHKey(lines []string, key, value string) []byte {
 			continue
 		}
 		k, v, ok := parseSSHLine(trimmed)
-		if ok && strings.EqualFold(k, "Host") {
+		if ok && isBlockDirective(k) {
 			if inWild {
 				result := make([]string, 0, len(lines)+1)
 				result = append(result, lines[:i]...)
-				result = append(result, "    "+key+" "+value)
+				result = append(result, directives...)
 				result = append(result, lines[i:]...)
 				return []byte(strings.Join(result, "\n"))
 			}
-			if isDefaultHostPattern(v) {
+			if strings.EqualFold(k, "Host") && isDefaultHostPattern(v) {
 				inWild = true
 				insertAt = i
 			}
@@ -301,7 +381,7 @@ func insertSSHKey(lines []string, key, value string) []byte {
 	if inWild && insertAt >= 0 {
 		result := make([]string, 0, len(lines)+1)
 		result = append(result, lines[:insertAt+1]...)
-		result = append(result, "    "+key+" "+value)
+		result = append(result, directives...)
 		result = append(result, lines[insertAt+1:]...)
 		return []byte(strings.Join(result, "\n"))
 	}
@@ -309,13 +389,17 @@ func insertSSHKey(lines []string, key, value string) []byte {
 	// no Host * block exists: create one at lowest precedence (after all
 	// host-specific blocks). ssh is first-match-wins, so prepending at root
 	// would create a HIGH-precedence global, not a default — never do that.
-	return appendDefaultHostBlock(lines, key, value)
+	return appendDefaultHostBlock(lines, key, values)
 }
 
-// appendDefaultHostBlock appends a new "Host *" block (lowest precedence) with a
-// single directive. it preserves a trailing-newline-or-not input shape.
-func appendDefaultHostBlock(lines []string, key, value string) []byte {
-	block := "Host *\n    " + key + " " + value
+// appendDefaultHostBlock appends a new "Host *" block (lowest precedence).
+// it preserves a trailing-newline-or-not input shape.
+func appendDefaultHostBlock(lines []string, key string, values []string) []byte {
+	blockLines := []string{"Host *"}
+	for _, value := range values {
+		blockLines = append(blockLines, "    "+key+" "+value)
+	}
+	block := strings.Join(blockLines, "\n")
 
 	// empty / blank-only input: emit just the block (no leading newline).
 	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
@@ -334,7 +418,7 @@ func appendDefaultHostBlock(lines []string, key, value string) []byte {
 	if len(out) > 0 && strings.TrimSpace(out[len(out)-1]) != "" {
 		out = append(out, "")
 	}
-	out = append(out, "Host *", "    "+key+" "+value)
+	out = append(out, blockLines...)
 	if hadTrailingNewline {
 		out = append(out, "")
 	}
@@ -343,6 +427,10 @@ func appendDefaultHostBlock(lines []string, key, value string) []byte {
 
 func isBlocksKey(key string) bool {
 	return strings.EqualFold(key, blocksKey)
+}
+
+func isRepeatableSSHKey(key string) bool {
+	return repeatableSSHKeys[strings.ToLower(key)]
 }
 
 // isNamedBlock reports whether a block is "named" for the engine: any Match

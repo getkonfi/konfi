@@ -326,6 +326,97 @@ func TestMatchBlockExcluded(t *testing.T) {
 	}
 }
 
+func TestInsertInHostStarStopsBeforeMatch(t *testing.T) {
+	p := &parser{}
+	data := []byte(`Host *
+    AddKeysToAgent yes
+
+Match host foo
+    User scoped
+`)
+	out, err := p.SetValue(data, "ForwardAgent", "yes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(out)
+	forwardAt := strings.Index(text, "    ForwardAgent yes")
+	matchAt := strings.Index(text, "Match host foo")
+	if forwardAt < 0 {
+		t.Fatalf("inserted directive missing:\n%s", text)
+	}
+	if matchAt < 0 {
+		t.Fatalf("Match block missing:\n%s", text)
+	}
+	if forwardAt > matchAt {
+		t.Fatalf("inserted directive must stay before Match block:\n%s", text)
+	}
+	if strings.Contains(text[matchAt:], "ForwardAgent yes") {
+		t.Fatalf("inserted directive landed in Match scope:\n%s", text)
+	}
+}
+
+func TestFindValuesIdentityFileDefaultScopesOnly(t *testing.T) {
+	p := &parser{}
+	data := []byte(`IdentityFile ~/.ssh/global
+
+Host *
+    IdentityFile ~/.ssh/default_a
+    IdentityFile ~/.ssh/default_b
+
+Host work
+    IdentityFile ~/.ssh/work
+
+Match host foo
+    IdentityFile ~/.ssh/match
+`)
+	got, ok := p.FindValues(data, "IdentityFile")
+	want := []string{"~/.ssh/global", "~/.ssh/default_a", "~/.ssh/default_b"}
+	if !ok {
+		t.Fatal("expected IdentityFile values")
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("FindValues(IdentityFile) = %v, want %v", got, want)
+	}
+}
+
+func TestWriteFieldIdentityFileListRoundTrip(t *testing.T) {
+	p := configuredParser()
+	data := []byte(`Host *
+    AddKeysToAgent yes
+    IdentityFile ~/.ssh/old_ed25519
+    IdentityFile ~/.ssh/old_rsa
+
+Match host foo
+    User scoped
+    IdentityFile ~/.ssh/match
+`)
+	field := pkg.Field{Key: "IdentityFile", Type: "list"}
+	out, err := konfables.WriteField(p, data, field, "~/.ssh/new_ed25519\n~/.ssh/new_rsa", "ssh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(out)
+	if strings.Contains(text, "\n~/.ssh/new_rsa") {
+		t.Fatalf("list write emitted a bare value line:\n%s", text)
+	}
+	if strings.Count(text, "    IdentityFile ~/.ssh/new_") != 2 {
+		t.Fatalf("expected two rewritten IdentityFile directives:\n%s", text)
+	}
+	if strings.Contains(text, "~/.ssh/old_") {
+		t.Fatalf("old default IdentityFile directives should be replaced:\n%s", text)
+	}
+	matchAt := strings.Index(text, "Match host foo")
+	matchIdentityAt := strings.Index(text, "    IdentityFile ~/.ssh/match")
+	if matchAt < 0 || matchIdentityAt < matchAt {
+		t.Fatalf("Match-scoped IdentityFile should be preserved in Match block:\n%s", text)
+	}
+	got, ok := p.FindValues(out, "IdentityFile")
+	want := []string{"~/.ssh/new_ed25519", "~/.ssh/new_rsa"}
+	if !ok || strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("FindValues after WriteField = %v, %v; want %v, true", got, ok, want)
+	}
+}
+
 // --- synthetic "Blocks" key (engine-backed, named blocks only) ---
 
 func TestPaletteExcludesSyntheticFields(t *testing.T) {

@@ -95,3 +95,47 @@ func TestBlocksNoOpSetIsByteIdentical(t *testing.T) {
 		t.Fatalf("no-op SetValue(Blocks) changed bytes:\ngot:\n%s\nwant:\n%s", out, sampleConfig)
 	}
 }
+
+func TestRepeatedGlobalPortDisplayMatchesEditedDirective(t *testing.T) {
+	p := &parser{}
+	data := []byte("Port 22\nPort 2222\n")
+
+	all := p.FindAll(data)
+	if got := all["Port"]; got != "22" {
+		t.Fatalf("FindAll repeated Port = %q, want first value 22", got)
+	}
+
+	out, err := p.SetValue(data, "Port", "2200")
+	if err != nil {
+		t.Fatal(err)
+	}
+	all = p.FindAll(out)
+	if got := all["Port"]; got != "2200" {
+		t.Fatalf("FindAll after editing repeated Port = %q, want 2200:\n%s", got, out)
+	}
+	if !strings.Contains(string(out), "Port 2222") {
+		t.Fatalf("second Port should remain untouched:\n%s", out)
+	}
+}
+
+func TestRepeatedGlobalHostKeyDisplayMatchesEditedDirective(t *testing.T) {
+	p := &parser{}
+	data := []byte("HostKey /etc/ssh/ssh_host_ed25519_key\nHostKey /etc/ssh/ssh_host_rsa_key\n")
+
+	all := p.FindAll(data)
+	if got := all["HostKey"]; got != "/etc/ssh/ssh_host_ed25519_key" {
+		t.Fatalf("FindAll repeated HostKey = %q, want first value", got)
+	}
+
+	out, err := p.SetValue(data, "HostKey", "/etc/ssh/ssh_host_ecdsa_key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	all = p.FindAll(out)
+	if got := all["HostKey"]; got != "/etc/ssh/ssh_host_ecdsa_key" {
+		t.Fatalf("FindAll after editing repeated HostKey = %q, want edited first value:\n%s", got, out)
+	}
+	if !strings.Contains(string(out), "HostKey /etc/ssh/ssh_host_rsa_key") {
+		t.Fatalf("second HostKey should remain untouched:\n%s", out)
+	}
+}

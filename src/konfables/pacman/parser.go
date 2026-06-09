@@ -166,7 +166,7 @@ func findBareDirective(data []byte, section, key string) (int, bool) {
 func setBareDirective(data []byte, section, field, value string) ([]byte, error) {
 	lineIdx, found := findBareDirective(data, section, field)
 
-	if value == "false" {
+	if !bareDirectiveEnabled(value) {
 		if found {
 			return cfgparse.DeleteKeyOnLine(data, lineIdx), nil
 		}
@@ -181,6 +181,15 @@ func setBareDirective(data []byte, section, field, value string) ([]byte, error)
 		data = cfgparse.DeleteKeyOnLine(data, kvIdx)
 	}
 	return insertBareInSection(data, section, field), nil
+}
+
+func bareDirectiveEnabled(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
 }
 
 func insertBareInSection(data []byte, section, field string) []byte {

@@ -156,9 +156,9 @@ func TestListKeys(t *testing.T) {
 	}
 
 	want := map[string]bool{
-		"/org/gnome/desktop/wm/preferences/button-layout":     true,
-		"/org/gnome/desktop/wm/preferences/focus-mode":        true,
-		"/org/gnome/desktop/wm/preferences/num-workspaces":    true,
+		"/org/gnome/desktop/wm/preferences/button-layout":      true,
+		"/org/gnome/desktop/wm/preferences/focus-mode":         true,
+		"/org/gnome/desktop/wm/preferences/num-workspaces":     true,
 		"/org/gnome/desktop/peripherals/touchpad/tap-to-click": true,
 		"/org/gnome/desktop/peripherals/touchpad/speed":        true,
 		"/org/gnome/desktop/peripherals/mouse/accel-profile":   true,
@@ -340,6 +340,57 @@ func TestPersisterHelpers(t *testing.T) {
 		}
 		if isFloat("") {
 			t.Error("empty should not be float")
+		}
+	})
+
+	t.Run("xkb read normalization", func(t *testing.T) {
+		tests := []struct {
+			input string
+			want  string
+		}{
+			{"@as []", ""},
+			{"[]", ""},
+			{"['caps:ctrl_modifier']", "caps:ctrl_modifier"},
+			{"['caps:ctrl_modifier', 'compose:ralt']", "caps:ctrl_modifier,compose:ralt"},
+			{"'caps:ctrl_modifier,compose:ralt'", "caps:ctrl_modifier,compose:ralt"},
+		}
+		for _, tt := range tests {
+			got := normalizeDconfValue(xkbOptionsPath, tt.input)
+			if got != tt.want {
+				t.Errorf("normalizeDconfValue(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		}
+	})
+
+	t.Run("xkb write serialization", func(t *testing.T) {
+		tests := []struct {
+			input string
+			want  string
+		}{
+			{"", "@as []"},
+			{"caps:ctrl_modifier", "['caps:ctrl_modifier']"},
+			{"caps:ctrl_modifier,compose:ralt", "['caps:ctrl_modifier', 'compose:ralt']"},
+			{" caps:ctrl_modifier, compose:ralt ", "['caps:ctrl_modifier', 'compose:ralt']"},
+			{"['caps:ctrl_modifier']", "['caps:ctrl_modifier']"},
+		}
+		for _, tt := range tests {
+			got := toDconfGVariant(xkbOptionsPath, tt.input)
+			if got != tt.want {
+				t.Errorf("toDconfGVariant(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		}
+	})
+
+	t.Run("xkb string escaping", func(t *testing.T) {
+		got := quoteGVariantString(`grp:foo\bar's`)
+		want := `'grp:foo\\bar\'s'`
+		if got != want {
+			t.Errorf("quoteGVariantString = %q, want %q", got, want)
+		}
+
+		opts, ok := parseGVariantStringArray("['grp:foo\\\\bar\\'s']")
+		if !ok || len(opts) != 1 || opts[0] != `grp:foo\bar's` {
+			t.Errorf("parseGVariantStringArray = %v ok=%v", opts, ok)
 		}
 	})
 }

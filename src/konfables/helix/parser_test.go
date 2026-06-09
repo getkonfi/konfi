@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"os"
 	"testing"
+
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
 )
 
 func loadTestdata(t *testing.T, name string) []byte {
@@ -104,6 +107,20 @@ func TestSetValue(t *testing.T) {
 				t.Errorf("SetValue(%q) mismatch\ngot:\n%s\nwant:\n%s", tt.key, got, want)
 			}
 		})
+	}
+}
+
+func TestWriteFieldSerializesNumericListAsTOMLArray(t *testing.T) {
+	p := newParser()
+	data := []byte("[editor]\nrulers = [80]\n")
+	field := pkg.Field{Key: "editor.rulers", Type: "list"}
+
+	out, err := konfables.WriteField(p, data, field, "80\n120", "toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out, []byte(`rulers = [80, 120]`)) {
+		t.Fatalf("list was not written as TOML numeric array:\n%s", out)
 	}
 }
 

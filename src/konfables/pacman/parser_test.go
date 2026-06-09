@@ -2,6 +2,8 @@ package pacman
 
 import (
 	"testing"
+
+	"github.com/eminert/konfi/pkg"
 )
 
 const testConfig = `#
@@ -252,4 +254,81 @@ func TestDeleteMissingKey(t *testing.T) {
 	if string(out) != string(testConfig) {
 		t.Error("deleting missing key should be no-op")
 	}
+}
+
+func TestBareDirectiveFalseLikeValuesDoNotInsert(t *testing.T) {
+	p := newParser()
+	base := []byte("[options]\n")
+
+	for _, value := range []string{"", "false", "0", "no", "off"} {
+		out, err := p.SetValue(base, "options.CheckSpace", value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := p.FindValue(out, "options.CheckSpace"); ok {
+			t.Fatalf("SetValue(CheckSpace, %q) inserted bare directive with value %q:\n%s", value, got, out)
+		}
+	}
+}
+
+func TestBareDirectiveFalseLikeValuesDeleteExisting(t *testing.T) {
+	p := newParser()
+	base := []byte("[options]\nCheckSpace\n")
+
+	out, err := p.SetValue(base, "options.CheckSpace", "off")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := p.FindValue(out, "options.CheckSpace"); ok {
+		t.Fatalf("CheckSpace should be removed after setting off:\n%s", out)
+	}
+}
+
+func TestCleanMethodAllowsMultiTokenValue(t *testing.T) {
+	p := newParser()
+	data := []byte("[options]\nCleanMethod = KeepInstalled KeepCurrent\n")
+
+	got, ok := p.FindValue(data, "options.CleanMethod")
+	if !ok || got != "KeepInstalled KeepCurrent" {
+		t.Fatalf("FindValue(CleanMethod) = %q, %v", got, ok)
+	}
+
+	out, err := p.SetValue(data, "options.CleanMethod", "KeepCurrent KeepInstalled")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok = p.FindValue(out, "options.CleanMethod")
+	if !ok || got != "KeepCurrent KeepInstalled" {
+		t.Fatalf("after SetValue(CleanMethod) = %q, %v", got, ok)
+	}
+}
+
+func TestPacmanSchemaBareDirectiveDefaults(t *testing.T) {
+	schema, err := pkg.LoadSchema(schemaData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	checkSpace := findField(t, schema, "options.CheckSpace")
+	if checkSpace.Default != "false" {
+		t.Fatalf("CheckSpace default = %q, want false", checkSpace.Default)
+	}
+
+	cleanMethod := findField(t, schema, "options.CleanMethod")
+	if cleanMethod.Type != "string" {
+		t.Fatalf("CleanMethod type = %q, want string", cleanMethod.Type)
+	}
+}
+
+func findField(t *testing.T, schema *pkg.Schema, key string) pkg.Field {
+	t.Helper()
+	for _, section := range schema.Sections {
+		for _, field := range section.Fields {
+			if field.Key == key {
+				return field
+			}
+		}
+	}
+	t.Fatalf("schema field %q not found", key)
+	return pkg.Field{}
 }

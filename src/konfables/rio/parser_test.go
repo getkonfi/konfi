@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"os"
 	"testing"
+
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
 )
 
 func loadTestdata(t *testing.T, name string) []byte {
@@ -106,6 +109,35 @@ func TestSetValue(t *testing.T) {
 				t.Errorf("SetValue(%q) mismatch\ngot:\n%s\nwant:\n%s", tt.key, got, want)
 			}
 		})
+	}
+}
+
+func TestWriteFieldFontsExtrasWritesRawArrayFromSchema(t *testing.T) {
+	schema, err := pkg.LoadSchema(schemaData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var field pkg.Field
+	for _, section := range schema.Sections {
+		for _, candidate := range section.Fields {
+			if candidate.Key == "fonts.extras" {
+				field = candidate
+			}
+		}
+	}
+	if field.Key == "" {
+		t.Fatal("fonts.extras missing from schema")
+	}
+	if field.Widget != "rawtoml" || field.Default != "[]" {
+		t.Fatalf("fonts.extras widget/default = %q/%q, want rawtoml/[]", field.Widget, field.Default)
+	}
+
+	out, err := konfables.WriteField(newParser(), []byte("[fonts]\n"), field, field.Default, "toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out, []byte("extras = []")) || bytes.Contains(out, []byte(`extras = "[]"`)) {
+		t.Fatalf("fonts.extras default was not written as raw TOML array:\n%s", out)
 	}
 }
 

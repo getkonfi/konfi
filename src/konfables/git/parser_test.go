@@ -1,6 +1,7 @@
 package git
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -198,5 +199,62 @@ func TestSemicolonComment(t *testing.T) {
 	keys := p.ListKeys(data)
 	if len(keys) != 1 || keys[0] != "user.name" {
 		t.Errorf("ListKeys with ; comment = %v", keys)
+	}
+}
+
+func TestColorDiffCanonicalSubsection(t *testing.T) {
+	p := newParser()
+	data := []byte("[color \"diff\"]\n\tmeta = yellow bold\n\tfrag = magenta bold\n")
+
+	got, ok := p.FindValue(data, "color.diff.meta")
+	if !ok || got != "yellow bold" {
+		t.Fatalf("FindValue(color.diff.meta) = %q, %v; want yellow bold, true", got, ok)
+	}
+	got, ok = p.FindValue(data, "color.diff.frag")
+	if !ok || got != "magenta bold" {
+		t.Fatalf("FindValue(color.diff.frag) = %q, %v; want magenta bold, true", got, ok)
+	}
+
+	all := p.FindAll(data)
+	if all["color.diff.meta"] != "yellow bold" {
+		t.Fatalf("FindAll[color.diff.meta] = %q", all["color.diff.meta"])
+	}
+}
+
+func TestSetColorDiffWritesCanonicalSubsection(t *testing.T) {
+	p := newParser()
+
+	out, err := p.SetValue([]byte(testConfig), "color.diff.meta", "yellow bold")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(out)
+	if !strings.Contains(text, "[color \"diff\"]") || !strings.Contains(text, "meta = yellow bold") {
+		t.Fatalf("canonical color diff setting missing:\n%s", text)
+	}
+	if strings.Contains(text, "diff.meta =") {
+		t.Fatalf("wrote invalid [color] diff.meta setting:\n%s", text)
+	}
+}
+
+func TestSetColorDiffConvertsLegacyInvalidKey(t *testing.T) {
+	p := newParser()
+	data := []byte("[color]\n\tdiff.meta = blue\n")
+
+	got, ok := p.FindValue(data, "color.diff.meta")
+	if !ok || got != "blue" {
+		t.Fatalf("legacy FindValue(color.diff.meta) = %q, %v; want blue, true", got, ok)
+	}
+
+	out, err := p.SetValue(data, "color.diff.meta", "yellow")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(out)
+	if strings.Contains(text, "diff.meta =") {
+		t.Fatalf("legacy invalid key should be removed:\n%s", text)
+	}
+	if !strings.Contains(text, "[color \"diff\"]") || !strings.Contains(text, "meta = yellow") {
+		t.Fatalf("canonical replacement missing:\n%s", text)
 	}
 }

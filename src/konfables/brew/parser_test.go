@@ -4,6 +4,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
 )
 
 const sample = `# my brewfile
@@ -125,6 +128,21 @@ func TestMasRoundTripAndIDEdit(t *testing.T) {
 	want := "Xcode | 497799999\nTailscale | 1475387142"
 	if got != want {
 		t.Errorf("round-trip mas = %q, want %q", got, want)
+	}
+}
+
+func TestWriteFieldMasStructListUsesSetValue(t *testing.T) {
+	p := &parser{}
+	field := pkg.Field{Key: "mas", Type: "list", Widget: "structlist"}
+	value := "Xcode | 497799999\nTailscale | 1475387142"
+
+	out, err := konfables.WriteField(p, []byte(sample), field, value, "brew")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	if !strings.Contains(s, `mas "Xcode", id: 497799999`) || !strings.Contains(s, `mas "Tailscale", id: 1475387142`) {
+		t.Fatalf("mas structlist did not write through raw SetValue:\n%s", out)
 	}
 }
 

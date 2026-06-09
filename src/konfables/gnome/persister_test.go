@@ -1,7 +1,10 @@
 package gnome
 
 import (
+	"sort"
 	"testing"
+
+	"github.com/eminert/konfi/pkg"
 )
 
 func TestSplitFlatKey(t *testing.T) {
@@ -52,5 +55,84 @@ func TestStripQuotes(t *testing.T) {
 				t.Errorf("stripQuotes(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestManagedKeysMatchSchema(t *testing.T) {
+	s, err := pkg.LoadSchema(schemaData)
+	if err != nil {
+		t.Fatalf("LoadSchema: %v", err)
+	}
+
+	schemaKeys := s.SchemaKeys()
+	managed := make(map[string]struct{}, len(managedKeys))
+	for _, mk := range managedKeys {
+		managed[mk.Schema+"/"+mk.Key] = struct{}{}
+	}
+
+	var missing []string
+	for key := range schemaKeys {
+		if _, ok := managed[key]; !ok {
+			missing = append(missing, key)
+		}
+	}
+	var extra []string
+	for key := range managed {
+		if _, ok := schemaKeys[key]; !ok {
+			extra = append(extra, key)
+		}
+	}
+
+	sort.Strings(missing)
+	sort.Strings(extra)
+	if len(missing) > 0 || len(extra) > 0 {
+		t.Fatalf("managed keys drifted from schema: missing=%v extra=%v", missing, extra)
+	}
+}
+
+func TestScalingFactorGVariantNormalization(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"uint32 0", "0"},
+		{"uint32 2", "2"},
+		{"uint64 3", "3"},
+		{"0", "0"},
+	}
+
+	for _, tt := range tests {
+		got := normalizeGSettingsValue("org.gnome.desktop.interface", "scaling-factor", tt.input)
+		if got != tt.want {
+			t.Errorf("normalizeGSettingsValue(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+
+	got := normalizeGSettingsValue("org.gnome.desktop.interface", "cursor-size", "uint32 24")
+	if got != "uint32 24" {
+		t.Errorf("non-scaling key normalized to %q", got)
+	}
+}
+
+func TestScalingFactorGVariantSerialization(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"0", "uint32 0"},
+		{"2", "uint32 2"},
+		{"uint32 3", "uint32 3"},
+	}
+
+	for _, tt := range tests {
+		got := serializeGSettingsValue("org.gnome.desktop.interface", "scaling-factor", tt.input)
+		if got != tt.want {
+			t.Errorf("serializeGSettingsValue(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+
+	got := serializeGSettingsValue("org.gnome.desktop.interface", "cursor-size", "24")
+	if got != "24" {
+		t.Errorf("non-scaling key serialized to %q", got)
 	}
 }

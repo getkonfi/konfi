@@ -125,6 +125,20 @@ func TestSetValueAddsMissingKeyToMainSection(t *testing.T) {
 	}
 }
 
+func TestSetValueQuotesPromptWithTrailingSpace(t *testing.T) {
+	p := newParser()
+	out, err := p.SetValue(sampleConfig, "prompt", "> ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out, []byte("prompt=\"> \"\n")) {
+		t.Fatalf("SetValue(prompt) should quote trailing-space prompt:\n%s", out)
+	}
+	if got, ok := p.FindValue(out, "prompt"); !ok || got != "> " {
+		t.Fatalf("prompt = %q, %v", got, ok)
+	}
+}
+
 func TestDeleteKey(t *testing.T) {
 	p := newParser()
 

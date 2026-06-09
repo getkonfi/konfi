@@ -35,6 +35,7 @@ func (p *parser) FindLine(data []byte, key string) (int, bool) {
 }
 
 func (p *parser) SetValue(data []byte, key, value string) ([]byte, error) {
+	value = formatPromptValue(key, value)
 	if isMainKey(key) {
 		if _, _, found := cfgparse.FindTopLevelKey(data, key); found {
 			return p.base.SetValue(data, key, value)
@@ -81,6 +82,20 @@ func isMainKey(key string) bool {
 
 func normalizeMainKey(key string) string {
 	return strings.TrimPrefix(key, "main.")
+}
+
+func formatPromptValue(key, value string) string {
+	if normalizeMainKey(key) != "prompt" || value == "" {
+		return value
+	}
+	if strings.Trim(value, " \t") == value || isDoubleQuoted(value) {
+		return value
+	}
+	return `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
+}
+
+func isDoubleQuoted(value string) bool {
+	return len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"'
 }
 
 func hasSection(data []byte, section string) bool {

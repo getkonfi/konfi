@@ -46,6 +46,19 @@ func TestFindValue(t *testing.T) {
 	}
 }
 
+func TestFindValueSingleQuotedLiteralString(t *testing.T) {
+	p := newParser()
+	data := []byte("[character]\nsuccess_symbol = '[➜](bold green)'\n")
+
+	got, ok := p.FindValue(data, "character.success_symbol")
+	if !ok {
+		t.Fatal("character.success_symbol not found")
+	}
+	if got != "[➜](bold green)" {
+		t.Fatalf("character.success_symbol = %q", got)
+	}
+}
+
 func TestFindLine(t *testing.T) {
 	p := newParser()
 	data := loadTestdata(t, "config.txt")

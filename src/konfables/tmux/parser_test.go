@@ -180,3 +180,35 @@ func TestFindAll(t *testing.T) {
 		t.Errorf("FindAll[mouse] = %q", m["mouse"])
 	}
 }
+
+func TestInlineCommentOutsideValue(t *testing.T) {
+	p := newParser()
+	data := []byte("set -g mouse on # enable mouse\n")
+
+	got, ok := p.FindValue(data, "mouse")
+	if !ok || got != "on" {
+		t.Fatalf("FindValue(mouse) = %q, %v; want on, true", got, ok)
+	}
+	if all := p.FindAll(data); all["mouse"] != "on" {
+		t.Fatalf("FindAll[mouse] = %q, want on", all["mouse"])
+	}
+
+	out, err := p.SetValue(data, "mouse", "off")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "set -g mouse off # enable mouse\n"
+	if string(out) != want {
+		t.Fatalf("SetValue should preserve inline comment:\ngot:  %q\nwant: %q", out, want)
+	}
+}
+
+func TestHashInsideQuotedValueIsNotComment(t *testing.T) {
+	p := newParser()
+	data := []byte(`set -g status-left "#S #I" # status format` + "\n")
+
+	got, ok := p.FindValue(data, "status-left")
+	if !ok || got != `"#S #I"` {
+		t.Fatalf("FindValue(status-left) = %q, %v; want quoted format", got, ok)
+	}
+}

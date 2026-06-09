@@ -122,7 +122,10 @@ func (p *parser) FindAll(data []byte) map[string]string {
 		if !ok {
 			continue
 		}
-		m[canonicalSSHDKey(k)] = v
+		key := canonicalSSHDKey(k)
+		if _, exists := m[key]; !exists {
+			m[key] = v
+		}
 	}
 	if v, ok := p.findBlocksValue(data); ok {
 		m[blocksKey] = v
