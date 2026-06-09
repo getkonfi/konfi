@@ -75,6 +75,7 @@ sections:
         hint: "ghostty +show-face — see resolved face names"
         options:
           - ""
+          - default
           - Regular
           - Medium
           - Light
@@ -96,6 +97,7 @@ sections:
         hint: "ghostty +show-face — see resolved face names"
         options:
           - ""
+          - default
           - Bold
           - SemiBold
           - ExtraBold
@@ -112,6 +114,7 @@ sections:
         example: font-style-italic = italic
         options:
           - ""
+          - default
           - Italic
           - Oblique
           - Light Italic
@@ -127,6 +130,7 @@ sections:
         example: font-style-bold-italic = bold italic
         options:
           - ""
+          - default
           - Bold Italic
           - Bold Oblique
           - SemiBold Italic
@@ -162,10 +166,10 @@ sections:
         since: 1.0.0
       - key: font-synthetic-style
         label: Synthetic Style
-        type: enum
+        type: multi
         default: "true"
         description: controls synthetic bold/italic when font lacks them
-        example: font-synthetic-style = no-bold
+        example: font-synthetic-style = no-bold,no-italic
         options:
           - "true"
           - "false"
@@ -201,6 +205,8 @@ sections:
         description: FreeType load flags for glyph rendering (Linux only)
         example: freetype-load-flags = hinting,no-force-autohint
         options:
+          - "true"
+          - "false"
           - hinting
           - no-hinting
           - force-autohint
@@ -1008,32 +1014,17 @@ sections:
             placeholder: "e.g. ctrl+shift+t"
           - name: action
             label: "Action"
-            type: enum
+            type: string
             required: true
-            options:
-              - new_tab
-              - close_surface
-              - new_window
-              - close_window
-              - copy_to_clipboard
-              - paste_from_clipboard
-              - increase_font_size
-              - decrease_font_size
-              - reset_font_size
-              - scroll_page_up
-              - scroll_page_down
-              - toggle_fullscreen
-              - inspector:toggle
-              - reload_config
+            placeholder: "e.g. copy_to_clipboard"
         separator: "="
       - key: mouse-scroll-multiplier
         label: Scroll Multiplier
-        type: number
+        type: string
         default: "1"
         description: mouse scroll speed multiplier
         example: mouse-scroll-multiplier = 3
-        min: 0
-        max: 50
+        hint: "accepts scalar or prefixed comma form"
         doc_url: https://ghostty.org/docs/config/reference#mouse-scroll-multiplier
       - key: focus-follows-mouse
         label: Focus Follows Mouse

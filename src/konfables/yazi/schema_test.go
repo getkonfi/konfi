@@ -28,4 +28,15 @@ func TestSchema(t *testing.T) {
 			t.Fatalf("schema missing %q", want)
 		}
 	}
+	for _, section := range s.Sections {
+		for _, field := range section.Fields {
+			if field.Key == "open.rules" {
+				if field.Widget != "rawtoml" || field.Default != "[]" {
+					t.Fatalf("open.rules widget/default = %q/%q, want rawtoml/[]", field.Widget, field.Default)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("schema missing open.rules field metadata")
 }

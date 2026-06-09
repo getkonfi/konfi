@@ -103,7 +103,7 @@ sections:
         default: "2000"
         description: max lines kept in scrollback buffer
         example: "scrollback_lines 10000"
-        min: 0
+        min: -1
         max: 1000000
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.scrollback_lines"
       - key: wheel_scroll_multiplier
@@ -122,12 +122,10 @@ sections:
     fields:
       - key: window_padding_width
         label: Padding
-        type: number
+        type: string
         default: "0"
         description: inner padding in points (single value or top right bottom left)
         example: "window_padding_width 8"
-        min: 0
-        max: 200
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.window_padding_width"
       - key: hide_window_decorations
         label: Hide Decorations
@@ -252,7 +250,7 @@ sections:
         description: allow other processes to control kitty via IPC
         example: "allow_remote_control socket-only"
         hint: "required for kitty @ commands and kitten broadcast"
-        options: ["no", "yes", socket-only, password]
+        options: ["no", "yes", socket, socket-only, password]
         doc_url: "https://sw.kovidgoyal.net/kitty/conf/#opt-kitty.allow_remote_control"
       - key: enable_audio_bell
         label: Audio Bell

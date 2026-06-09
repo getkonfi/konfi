@@ -61,9 +61,8 @@ sections:
         doc_url: "https://man.archlinux.org/man/pacman.conf.5#GENERAL_OPTIONS"
       - key: options.CleanMethod
         label: Clean Method
-        type: enum
+        type: string
         default: KeepInstalled
-        options: [KeepInstalled, KeepCurrent]
         description: cache retention policy for pacman -Sc
         example: "[options]\nCleanMethod = KeepInstalled"
         hint: "paccache -r — more granular cache cleanup"
@@ -102,7 +101,7 @@ sections:
       - key: options.CheckSpace
         label: Check Disk Space
         type: bool
-        default: "true"
+        default: "false"
         description: verify disk space before installing
         example: "[options]\nCheckSpace"
       - key: options.UseSyslog

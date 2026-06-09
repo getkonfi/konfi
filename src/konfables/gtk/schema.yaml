@@ -47,7 +47,6 @@ sections:
       - key: Settings.gtk-font-name
         label: Font
         type: string
-        widget: font
         description: default UI font as a pango description (family followed by size)
         example: "[Settings]\ngtk-font-name=JetBrainsMono Nerd Font 11"
         doc_url: "https://docs.gtk.org/gtk4/property.Settings.gtk-font-name.html"

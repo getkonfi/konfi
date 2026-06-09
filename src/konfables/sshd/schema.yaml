@@ -74,7 +74,7 @@ sections:
         label: Permit Root Login
         type: enum
         default: "prohibit-password"
-        options: ["yes", "prohibit-password", "forced-commands-only", "no"]
+        options: ["yes", "prohibit-password", "without-password", "forced-commands-only", "no"]
         description: whether root can log in via sshd
         example: "PermitRootLogin no"
       - key: AllowUsers

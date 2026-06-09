@@ -72,7 +72,8 @@ sections:
       - key: open.rules
         label: Rules
         type: string
-        default: ""
+        widget: rawtoml
+        default: "[]"
         description: raw TOML array mapping URLs or MIME types to openers
         example: "[open]\nrules = [\n  { mime = \"text/*\", use = \"edit\" },\n  { url = \"*\", use = \"open\" },\n]"
         doc_url: "https://yazi-rs.github.io/docs/configuration/yazi/#open"

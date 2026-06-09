@@ -141,7 +141,8 @@ sections:
       - key: fonts.extras
         label: Extra Fonts
         type: string
-        default: ""
+        widget: rawtoml
+        default: "[]"
         description: fallback font families
         example: "[fonts]\nextras = [{family = \"Noto Color Emoji\"}]"
         doc_url: "https://rioterm.com/docs/config#fonts"

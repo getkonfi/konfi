@@ -28,6 +28,7 @@ var validWidgets = map[string]bool{
 	"blocklist":   true,
 	"patternlist": true,
 	"togglemap":   true,
+	"rawtoml":     true,
 }
 
 // checkStructural runs offline structural validation on a single schema file.
