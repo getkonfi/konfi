@@ -1,6 +1,7 @@
 package konfables
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -8,12 +9,15 @@ import (
 )
 
 // FormatValue serializes a value for writing back to a config file. TOML
-// string/color/enum/multi values need quoting; other formats write raw.
+// string/color/enum/multi values need quoting and lists need array syntax;
+// other formats write raw.
 func FormatValue(value, fieldType, format string) string {
 	if format == "toml" {
 		switch fieldType {
 		case "string", "color", "enum", "multi":
 			return strconv.Quote(value)
+		case "list":
+			return formatTOMLList(value)
 		}
 	}
 	if format == "zsh" {
@@ -23,6 +27,51 @@ func FormatValue(value, fieldType, format string) string {
 		}
 	}
 	return value
+}
+
+var tomlNumberRE = regexp.MustCompile(`^[+-]?(?:0|[1-9](?:_?[0-9])*)(?:\.(?:[0-9](?:_?[0-9])*))?(?:[eE][+-]?(?:[0-9](?:_?[0-9])*))?$`)
+
+func formatTOMLList(value string) string {
+	items := SplitListValue(value)
+	if len(items) == 0 {
+		return "[]"
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, formatTOMLListItem(item))
+	}
+	return "[" + strings.Join(out, ", ") + "]"
+}
+
+func formatTOMLListItem(item string) string {
+	item = strings.TrimSpace(item)
+	if isRawTOMLValue(item) {
+		return item
+	}
+	return strconv.Quote(item)
+}
+
+func isRawTOMLValue(value string) bool {
+	if value == "" {
+		return false
+	}
+	if len(value) >= 2 {
+		switch {
+		case value[0] == '"' && value[len(value)-1] == '"':
+			return true
+		case value[0] == '\'' && value[len(value)-1] == '\'':
+			return true
+		case value[0] == '[' && value[len(value)-1] == ']':
+			return true
+		case value[0] == '{' && value[len(value)-1] == '}':
+			return true
+		}
+	}
+	switch value {
+	case "true", "false", "inf", "+inf", "-inf", "nan", "+nan", "-nan":
+		return true
+	}
+	return tomlNumberRE.MatchString(value)
 }
 
 func quoteZsh(value string) string {
@@ -55,11 +104,11 @@ func SplitListValue(s string) []string {
 	return out
 }
 
-// isRawJSONWidget reports whether a widget stores a raw value that must be
+// isRawValueWidget reports whether a widget stores a raw value that must be
 // written verbatim (no quoting, no list-splitting).
-func isRawJSONWidget(widget string) bool {
+func isRawValueWidget(widget string) bool {
 	switch widget {
-	case "hook", "togglemap", "structlist", "blocklist":
+	case "hook", "togglemap", "structlist", "blocklist", "rawtoml":
 		return true
 	}
 	return false
@@ -71,13 +120,13 @@ func isRawJSONWidget(widget string) bool {
 // and everything else via SetValue after format-specific quoting. it is the one
 // place that maps a field's shape to a write strategy.
 func WriteField(p Parser, data []byte, f pkg.Field, value, format string) ([]byte, error) {
+	if isRawValueWidget(f.Widget) {
+		return p.SetValue(data, f.Key, value)
+	}
 	if f.Type == "list" {
 		if mvp, ok := p.(MultiValueParser); ok {
 			return mvp.SetValues(data, f.Key, SplitListValue(value))
 		}
-	}
-	if isRawJSONWidget(f.Widget) {
-		return p.SetValue(data, f.Key, value)
 	}
 	return p.SetValue(data, f.Key, FormatValue(value, f.Type, format))
 }

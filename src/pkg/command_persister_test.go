@@ -63,6 +63,39 @@ func TestCommandPersisterSaveOnlyChanged(t *testing.T) {
 	}
 }
 
+func TestCommandPersisterSaveDeletesRemovedKeys(t *testing.T) {
+	var calls []string
+	cp := &CommandPersister[string]{
+		LineKey: func(k string) string { return k },
+		Write: func(_ context.Context, lineKey, value string) error {
+			calls = append(calls, "write:"+lineKey+"="+value)
+			return nil
+		},
+		Delete: func(_ context.Context, lineKey string) error {
+			calls = append(calls, "delete:"+lineKey)
+			return nil
+		},
+		ErrPrefix: "test write",
+	}
+
+	original := []byte("a = 1\nb = 2\nc = 3\n")
+	data := []byte("a = 1\nc = 30\nd = 4\n")
+	if err := cp.Save(context.Background(), original, data); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	sort.Strings(calls)
+	want := []string{"delete:b", "write:c=30", "write:d=4"}
+	if len(calls) != len(want) {
+		t.Fatalf("calls %v, want %v", calls, want)
+	}
+	for i := range want {
+		if calls[i] != want[i] {
+			t.Errorf("calls[%d] = %q, want %q", i, calls[i], want[i])
+		}
+	}
+}
+
 func TestCommandPersisterSaveAggregatesErrors(t *testing.T) {
 	cp := &CommandPersister[string]{
 		LineKey:   func(k string) string { return k },

@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/eminert/konfi/konfables"
+	"github.com/eminert/konfi/pkg"
 )
 
 var testConfig = []byte(`# yazi config
@@ -145,6 +148,19 @@ func TestSetRawTOMLValue(t *testing.T) {
 	}
 	if bytes.Contains(out, []byte(`\"nvim`)) {
 		t.Fatalf("raw toml value was escaped:\n%s", out)
+	}
+}
+
+func TestWriteFieldOpenRulesDefaultWritesRawArray(t *testing.T) {
+	p := newParser()
+	field := pkg.Field{Key: "open.rules", Type: "string", Widget: "rawtoml", Default: "[]"}
+
+	out, err := konfables.WriteField(p, []byte("[open]\n"), field, field.Default, "toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(out, []byte("rules = []")) || bytes.Contains(out, []byte(`rules = "[]"`)) {
+		t.Fatalf("open.rules default was not written as raw TOML array:\n%s", out)
 	}
 }
 

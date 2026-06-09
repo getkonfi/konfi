@@ -1022,10 +1022,18 @@ func (c *content) refreshValues() {
 		}
 	case konfables.BatchParser:
 		all := p.FindAll(data)
+		mvp, hasMVP := p.(konfables.MultiValueParser)
 		for _, sec := range c.schema.Sections {
 			for i := range sec.Fields {
-				if v, found := all[sec.Fields[i].Key]; found {
-					c.values[sec.Fields[i].Key] = v
+				f := &sec.Fields[i]
+				if f.Type == "list" && hasMVP {
+					if v, found := multiValueDisplayValue(data, mvp, f.Key); found {
+						c.values[f.Key] = v
+						continue
+					}
+				}
+				if v, found := all[f.Key]; found {
+					c.values[f.Key] = v
 				}
 			}
 		}
@@ -1040,14 +1048,8 @@ func (c *content) refreshValues() {
 						c.values[f.Key] = v
 					}
 				} else if f.Type == "list" && hasMVP {
-					if vals, ok := mvp.FindValues(data, f.Key); ok {
-						switch len(vals) {
-						case 0:
-						case 1:
-							c.values[f.Key] = vals[0]
-						default:
-							c.values[f.Key] = strings.Join(vals, ", ")
-						}
+					if v, ok := multiValueDisplayValue(data, mvp, f.Key); ok {
+						c.values[f.Key] = v
 					}
 				} else if v, ok := p.FindValue(data, f.Key); ok {
 					c.values[f.Key] = v
@@ -1060,6 +1062,14 @@ func (c *content) refreshValues() {
 	c.syncDetail()
 	c.buildInsights()
 	c.syncDiffView()
+}
+
+func multiValueDisplayValue(data []byte, p konfables.MultiValueParser, key string) (string, bool) {
+	vals, ok := p.FindValues(data, key)
+	if !ok {
+		return "", false
+	}
+	return strings.Join(vals, ", "), true
 }
 
 // pendingChanges returns cached per-field diffs, recomputing only when dirty.

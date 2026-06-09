@@ -207,8 +207,8 @@ func ParseKVLine(line string) (key, value string, ok bool) {
 	key = strings.TrimSpace(line[:eqIdx])
 	value = strings.TrimSpace(line[eqIdx+1:])
 
-	// strip quotes from value
-	if len(value) >= 2 && (value[0] == '"' && value[len(value)-1] == '"') {
+	// strip single-line TOML string delimiters
+	if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') || (value[0] == '\'' && value[len(value)-1] == '\'')) {
 		value = value[1 : len(value)-1]
 	}
 

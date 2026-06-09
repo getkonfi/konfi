@@ -66,6 +66,16 @@ func TestFindKeyInSection(t *testing.T) {
 	}
 }
 
+func TestParseKVLineDecodesSingleQuotedLiteralString(t *testing.T) {
+	key, value, ok := ParseKVLine(`success_symbol = '[➜](bold green)'`)
+	if !ok {
+		t.Fatal("ParseKVLine did not parse assignment")
+	}
+	if key != "success_symbol" || value != "[➜](bold green)" {
+		t.Fatalf("ParseKVLine = key %q value %q", key, value)
+	}
+}
+
 func TestReplaceValueOnLine(t *testing.T) {
 	data := loadTestTOML(t)
 
@@ -87,9 +97,9 @@ func TestReplaceValueOnLine(t *testing.T) {
 
 func TestReplaceValueOnLine_PreservesInlineComment(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		newVal  string
+		name     string
+		input    string
+		newVal   string
 		wantLine string
 	}{
 		{

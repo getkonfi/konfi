@@ -3,6 +3,8 @@ package konfables
 import (
 	"reflect"
 	"testing"
+
+	"github.com/eminert/konfi/pkg"
 )
 
 // regression: list-field undo used to corrupt repeated keys because the
@@ -54,6 +56,17 @@ func TestFormatValueQuotesTOMLStrings(t *testing.T) {
 	}
 }
 
+func TestFormatValueWritesTOMLListArray(t *testing.T) {
+	got := FormatValue("--login\n-c\n80\ntrue\n\"already quoted\"", "list", "toml")
+	want := `["--login", "-c", 80, true, "already quoted"]`
+	if got != want {
+		t.Errorf("FormatValue toml list = %q, want %q", got, want)
+	}
+	if got := FormatValue("", "list", "toml"); got != "[]" {
+		t.Errorf("FormatValue empty toml list = %q, want []", got)
+	}
+}
+
 func TestFormatValueQuotesZshStrings(t *testing.T) {
 	if got := FormatValue("${P9K_CONTENT}", "string", "zsh"); got != "'${P9K_CONTENT}'" {
 		t.Errorf("FormatValue zsh string = %q", got)
@@ -67,4 +80,79 @@ func TestFormatValueQuotesZshStrings(t *testing.T) {
 	if got := FormatValue("42", "number", "zsh"); got != "42" {
 		t.Errorf("FormatValue zsh number = %q, want raw", got)
 	}
+}
+
+func TestWriteFieldRawWidgetUsesSetValueBeforeSetValues(t *testing.T) {
+	p := &recordingParser{}
+	field := pkg.Field{Key: "mas", Type: "list", Widget: "structlist"}
+	value := "Xcode | 497799835\nThings | 904280696"
+
+	if _, err := WriteField(p, nil, field, value, "brew"); err != nil {
+		t.Fatal(err)
+	}
+	if p.used != "set" {
+		t.Fatalf("WriteField used %q, want SetValue", p.used)
+	}
+	if p.setKey != "mas" || p.setValue != value {
+		t.Fatalf("SetValue got key=%q value=%q", p.setKey, p.setValue)
+	}
+}
+
+func TestWriteFieldPlainListUsesSetValues(t *testing.T) {
+	p := &recordingParser{}
+	field := pkg.Field{Key: "brew", Type: "list"}
+
+	if _, err := WriteField(p, nil, field, "git\nripgrep", "brew"); err != nil {
+		t.Fatal(err)
+	}
+	if p.used != "setValues" {
+		t.Fatalf("WriteField used %q, want SetValues", p.used)
+	}
+	if p.setValuesKey != "brew" || !reflect.DeepEqual(p.setValues, []string{"git", "ripgrep"}) {
+		t.Fatalf("SetValues got key=%q values=%v", p.setValuesKey, p.setValues)
+	}
+}
+
+func TestWriteFieldRawTOMLWidgetBypassesQuoting(t *testing.T) {
+	p := &recordingParser{}
+	field := pkg.Field{Key: "fonts.extras", Type: "string", Widget: "rawtoml"}
+	value := `[{ family = "Noto Color Emoji" }]`
+
+	if _, err := WriteField(p, nil, field, value, "toml"); err != nil {
+		t.Fatal(err)
+	}
+	if p.used != "set" {
+		t.Fatalf("WriteField used %q, want SetValue", p.used)
+	}
+	if p.setValue != value {
+		t.Fatalf("SetValue value = %q, want raw %q", p.setValue, value)
+	}
+}
+
+type recordingParser struct {
+	used         string
+	setKey       string
+	setValue     string
+	setValuesKey string
+	setValues    []string
+}
+
+func (p *recordingParser) FindValue([]byte, string) (string, bool) { return "", false }
+func (p *recordingParser) FindLine([]byte, string) (int, bool)     { return -1, false }
+func (p *recordingParser) DeleteKey(data []byte, _ string) ([]byte, error) {
+	return data, nil
+}
+func (p *recordingParser) ListKeys([]byte) []string { return nil }
+func (p *recordingParser) SetValue(data []byte, key, value string) ([]byte, error) {
+	p.used = "set"
+	p.setKey = key
+	p.setValue = value
+	return data, nil
+}
+func (p *recordingParser) FindValues([]byte, string) ([]string, bool) { return nil, false }
+func (p *recordingParser) SetValues(data []byte, key string, values []string) ([]byte, error) {
+	p.used = "setValues"
+	p.setValuesKey = key
+	p.setValues = values
+	return data, nil
 }

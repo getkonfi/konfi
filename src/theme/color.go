@@ -250,6 +250,21 @@ func FormatPaletteColor(template, selected string) string {
 			}
 		}
 	}
+	if strings.HasPrefix(lower, "#") {
+		digits := lower[1:]
+		switch {
+		case len(digits) == 8 && isHex(digits):
+			return "#" + rgb + digits[6:]
+		case len(digits) == 6 && isHex(digits):
+			return "#" + rgb
+		}
+	}
+	switch {
+	case len(lower) == 8 && isHex(lower):
+		return rgb + lower[6:]
+	case len(lower) == 6 && isHex(lower):
+		return rgb
+	}
 	return selected
 }
 

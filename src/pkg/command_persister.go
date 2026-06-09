@@ -26,6 +26,8 @@ type CommandPersister[K any] struct {
 	Read func(ctx context.Context, k K) (string, error)
 	// Write applies a changed value, addressed by its LineKey.
 	Write func(ctx context.Context, lineKey, value string) error
+	// Delete removes or resets a key addressed by its LineKey.
+	Delete func(ctx context.Context, lineKey string) error
 	// ErrPrefix labels aggregated save errors (e.g. "dconf write").
 	ErrPrefix string
 }
@@ -62,6 +64,18 @@ func (c *CommandPersister[K]) Save(ctx context.Context, original, data []byte) e
 	newMap := flat.FindAll(data)
 
 	var errs []string
+	for key := range origMap {
+		if _, ok := newMap[key]; ok {
+			continue
+		}
+		if c.Delete == nil {
+			errs = append(errs, fmt.Sprintf("%s: delete unsupported", key))
+			continue
+		}
+		if err := c.Delete(ctx, key); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: delete: %v", key, err))
+		}
+	}
 	for key, newVal := range newMap {
 		if origVal, ok := origMap[key]; ok && origVal == newVal {
 			continue
