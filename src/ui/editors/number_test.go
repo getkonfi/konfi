@@ -35,3 +35,22 @@ func TestNumberEditorCombinesRangeAndArrowHint(t *testing.T) {
 		t.Fatalf("number editor view missing arrow adjust hint:\n%s", got)
 	}
 }
+
+func TestNumberEditorStepsEmptyValueFromZero(t *testing.T) {
+	e := &numberEditor{}
+	e.Init(pkg.Field{Type: "number"}, "", testTheme())
+
+	_, done, canceled := e.Update(keyMsg("up"))
+	if done || canceled {
+		t.Fatalf("up should keep editor open: done=%v canceled=%v", done, canceled)
+	}
+	if got := e.input.Value(); got != "1" {
+		t.Fatalf("up from empty value = %q, want 1", got)
+	}
+
+	e.input.SetValue("")
+	e.Update(keyMsg("down"))
+	if got := e.input.Value(); got != "-1" {
+		t.Fatalf("down from empty value = %q, want -1", got)
+	}
+}

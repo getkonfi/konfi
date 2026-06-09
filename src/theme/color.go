@@ -1,6 +1,8 @@
 package theme
 
 import (
+	"image/color"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -74,6 +76,53 @@ func LowContrast(fg, bg string) bool {
 		hi, lo = lo, hi
 	}
 	return (hi+0.05)/(lo+0.05) < 2.5
+}
+
+// ContrastRatio returns the WCAG contrast ratio between fg and bg.
+func ContrastRatio(fg, bg color.Color) float64 {
+	if fg == nil || bg == nil {
+		return 1
+	}
+	hi, lo := colorLuminance(fg), colorLuminance(bg)
+	if lo > hi {
+		hi, lo = lo, hi
+	}
+	return (hi + 0.05) / (lo + 0.05)
+}
+
+// ReadableColor returns the first preferred color that is readable on bg,
+// falling back to the highest-contrast option.
+func ReadableColor(bg color.Color, preferred ...color.Color) color.Color {
+	candidates := append(preferred, lipgloss.Color("#000000"), lipgloss.Color("#ffffff"))
+	var best color.Color = lipgloss.Color("#ffffff")
+	bestRatio := 0.0
+	for _, candidate := range candidates {
+		if candidate == nil {
+			continue
+		}
+		ratio := ContrastRatio(candidate, bg)
+		if ratio >= 4.5 {
+			return candidate
+		}
+		if ratio > bestRatio {
+			best = candidate
+			bestRatio = ratio
+		}
+	}
+	return best
+}
+
+func colorLuminance(c color.Color) float64 {
+	r, g, b, _ := c.RGBA()
+	return 0.2126*linearRGB(r) + 0.7152*linearRGB(g) + 0.0722*linearRGB(b)
+}
+
+func linearRGB(v uint32) float64 {
+	f := float64(v) / 65535
+	if f <= 0.03928 {
+		return f / 12.92
+	}
+	return math.Pow((f+0.055)/1.055, 2.4)
 }
 
 // contrastBackdrop picks a backdrop that maximizes contrast with fg: a light

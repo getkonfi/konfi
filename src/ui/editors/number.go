@@ -104,9 +104,14 @@ func (e *numberEditor) Value() string { return e.val }
 func (e *numberEditor) Height() int   { return 0 }
 
 func (e *numberEditor) step(dir int) {
-	cur, err := strconv.ParseFloat(e.input.Value(), 64)
-	if err != nil {
-		return
+	raw := strings.TrimSpace(e.input.Value())
+	cur := 0.0
+	if raw != "" {
+		var err error
+		cur, err = strconv.ParseFloat(raw, 64)
+		if err != nil {
+			return
+		}
 	}
 	step := 1.0
 	if e.isFloat {

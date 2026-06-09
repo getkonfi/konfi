@@ -52,7 +52,7 @@ func (d *detail) viewBrowse(width, height int) string {
 		b.WriteString(d.theme.Subtext.Render(pathDisplay))
 		b.WriteByte('\n')
 		if d.docsURL != "" {
-			link := d.theme.Subtext.Hyperlink(d.docsURL).Render("open docs")
+			link := d.theme.FieldDocLink.Hyperlink(d.docsURL).Render("open docs")
 			key := d.theme.Badge.Render(" o ")
 			b.WriteString(key + " " + link)
 		}
@@ -81,6 +81,12 @@ func (d *detail) viewBrowse(width, height int) string {
 		}
 	}
 	badgeStyle := d.typeBadgeStyle(f.Type, colorHex)
+	if f.Until != "" {
+		badgeStyle = d.badgeBase.
+			Background(d.theme.Palette.Error).
+			Foreground(d.theme.Palette.Base).
+			Strikethrough(true)
+	}
 	b.WriteString(badgeStyle.Render(icon + " " + fieldBadgeName(*f)))
 
 	// tier provenance badge
@@ -95,15 +101,21 @@ func (d *detail) viewBrowse(width, height int) string {
 
 	// version badges (inline with type badge)
 	if f.Since != "" {
-		b.WriteString(" " + d.theme.Success.Render("since "+f.Since))
+		b.WriteString(" " + d.theme.FieldNew.Render("since "+f.Since))
 	}
 	if f.Until != "" {
-		b.WriteString(" " + d.theme.Warning.Render("until "+f.Until))
+		b.WriteString(" " + d.theme.FieldWarn.Render("until "+f.Until))
 	}
 	b.WriteByte('\n')
 
 	// field label
-	b.WriteString(d.theme.Text.Bold(true).Render(f.Label))
+	labelStyle := d.theme.Text.Bold(true)
+	if f.Until != "" {
+		labelStyle = labelStyle.Foreground(d.theme.Palette.Error).Faint(true).Strikethrough(true)
+	} else if f.Since != "" {
+		labelStyle = labelStyle.Foreground(d.theme.Palette.Success).Underline(true)
+	}
+	b.WriteString(labelStyle.Render(f.Label))
 	b.WriteByte('\n')
 	b.WriteByte('\n')
 
@@ -130,7 +142,11 @@ func (d *detail) viewBrowse(width, height int) string {
 
 	// hint
 	if f.Hint != "" {
-		val := d.theme.Muted.Italic(true).Render(f.Hint)
+		style := d.theme.Muted.Italic(true)
+		if f.Until != "" {
+			style = d.theme.FieldWarn.Italic(true)
+		}
+		val := style.Render(f.Hint)
 		b.WriteString(val)
 		b.WriteByte('\n')
 	}
@@ -141,16 +157,13 @@ func (d *detail) viewBrowse(width, height int) string {
 		docURL = d.docsURL
 	}
 	if docURL != "" {
-		linkStyle := d.theme.Secondary.Underline(true).Hyperlink(docURL)
+		linkStyle := d.theme.FieldDocLink.Hyperlink(docURL)
 		b.WriteString(linkStyle.Render("docs ↗"))
 		b.WriteByte('\n')
 	}
 
-	// file snippet (generous — 12 lines context), fenced off from the
-	// explanation above with a labeled rule
+	// file snippet (generous — 12 lines context)
 	if snippet := d.renderFileSnippet(width, 12); snippet != "" {
-		b.WriteByte('\n')
-		b.WriteString(d.sectionRule("config", width))
 		b.WriteByte('\n')
 		b.WriteString(snippet)
 	}
@@ -183,22 +196,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// sectionRule renders a faint "── label ─────" horizontal divider spanning
-// width, used to separate the explanation block from the live config snippet.
-func (d *detail) sectionRule(label string, width int) string {
-	if width < 8 {
-		return d.theme.FaintSeparator.Render(strings.Repeat("─", max(0, width)))
-	}
-	lead := "── "
-	tail := width - lipgloss.Width(lead) - lipgloss.Width(label) - 1
-	if tail < 0 {
-		tail = 0
-	}
-	return d.theme.FaintSeparator.Render(lead) +
-		d.theme.Muted.Render(label) + " " +
-		d.theme.FaintSeparator.Render(strings.Repeat("─", tail))
 }
 
 // renderTypeVisual returns type-aware visuals for the current field value.

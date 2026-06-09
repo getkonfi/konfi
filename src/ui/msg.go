@@ -36,9 +36,6 @@ type ExternalChangeMsg struct {
 	Path string
 }
 
-// insightTickMsg fires every ~5s to cycle the insight line in the header.
-type insightTickMsg struct{ gen int }
-
 // splitFlapTickMsg fires every ~60ms to advance the split-flap animation.
 type splitFlapTickMsg struct{ gen int }
 

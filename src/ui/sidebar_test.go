@@ -2,6 +2,7 @@ package ui
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -59,5 +60,28 @@ func TestSidebarNotInstalledSelectionIndex(t *testing.T) {
 	}
 	if msg.Index != 1 || msg.Name != "gnome" {
 		t.Fatalf("selection = {Index:%d Name:%q}, want {Index:1 Name:\"gnome\"}", msg.Index, msg.Name)
+	}
+}
+
+func TestSidebarNotInstalledHeaderIsLowercase(t *testing.T) {
+	s := newSidebar([]sidebarItem{
+		{name: "home", installed: true, home: true},
+		{name: "ghostty", installed: true},
+		{name: "alacritty", installed: false},
+		{name: "powerlevel10k", installed: false},
+	}, testTheme())
+	s.width = 32
+	s.height = 12
+	s.focused = true
+
+	got := stripANSI(s.View())
+	if strings.Contains(got, "NOT INSTALLED") {
+		t.Fatalf("sidebar still renders uppercase not-installed header:\n%s", got)
+	}
+	if !strings.Contains(got, "not installed") {
+		t.Fatalf("sidebar missing lowercase not-installed header:\n%s", got)
+	}
+	if !strings.Contains(got, "alacritty") || !strings.Contains(got, "powerlevel10k") {
+		t.Fatalf("sidebar missing expected uninstalled apps:\n%s", got)
 	}
 }

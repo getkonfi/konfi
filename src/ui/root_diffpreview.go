@@ -43,6 +43,7 @@ func (r *root) renderDiffPreview() string {
 
 	card := helpCardStyle.
 		BorderForeground(th.Palette.Primary).
+		Background(th.Palette.Base).
 		Width(cardW).
 		Height(cardH).
 		Render(b.String())

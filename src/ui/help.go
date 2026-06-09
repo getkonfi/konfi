@@ -67,7 +67,7 @@ var helpContent = helpGroup{
 		{"tab", "changed (diff)"},
 		{"m", "bookmark field"},
 		{"b", "show bookmarks"},
-		{"c / p", "copy / paste value"},
+		{"c", "copy value"},
 		{"d / ⌫", "delete field"},
 		{"J / K", "scroll detail"},
 		{"pgup / pgdn", "page up / down"},
@@ -184,6 +184,7 @@ func renderHelpCard(width, height int, focus pane, editing bool, th *theme.Theme
 
 	card := helpCardStyle.
 		BorderForeground(th.Palette.Primary).
+		Background(th.Palette.Base).
 		Width(cardW).
 		Height(cardH).
 		Render(b.String())

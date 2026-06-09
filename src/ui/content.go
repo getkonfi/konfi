@@ -77,7 +77,7 @@ type content struct {
 	// keyboard hints (set by root.updateHints)
 	hints []keyHint
 
-	// insight cycling + split-flap animation
+	// insight state + split-flap transition
 	insightIdx          int
 	insightLines        []string
 	insightWarningCount int
@@ -446,15 +446,6 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			cmd := c.drainErr()
 			return c, cmd
 		}
-
-	case insightTickMsg:
-		if msg.gen != c.insightGen {
-			return c, nil
-		}
-		if len(c.insightLines) > 1 {
-			c.insightIdx = (c.insightIdx + 1) % len(c.insightLines)
-		}
-		return c, c.insightTickCmd()
 
 	case splitFlapTickMsg:
 		if c.splitFlap == nil || msg.gen != c.splitFlap.gen {
@@ -882,7 +873,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 		c.splitFlap = newSplitFlap(snapshot, c.headerLeftLines(), c.insightGen)
 		cmds = append(cmds, splitFlapCmd(c.insightGen))
 	}
-	cmds = append(cmds, c.insightTickCmd())
 
 	// start logo animation if one is registered for this app
 	c.logoAnimGen++
@@ -1182,7 +1172,7 @@ func (c content) Editing() bool {
 	return c.detail.editor != nil
 }
 
-// buildInsights computes the cycling insight lines from current state.
+// buildInsights computes the header insight lines from current state.
 // linter warnings come first, then stats.
 func (c *content) buildInsights() {
 	c.insightLines = nil

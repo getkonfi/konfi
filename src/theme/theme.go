@@ -45,9 +45,17 @@ type Theme struct {
 	FieldLabel   lipgloss.Style
 	FieldValue   lipgloss.Style
 	FieldDefault lipgloss.Style
+	FieldChanged lipgloss.Style
+	FieldNew     lipgloss.Style
+	FieldWarn    lipgloss.Style
+	FieldStale   lipgloss.Style
+	FieldDocLink lipgloss.Style
+	FieldMatch   lipgloss.Style
 	PreviewHL    lipgloss.Style
 	KeyCap       lipgloss.Style
 }
+
+var fieldChangedOrange = cac(cc("#c2410c", "166", "3"), cc("#fb923c", "215", "3"))
 
 // NewTheme creates a fully initialized Theme from a Palette.
 func NewTheme(p *Palette) *Theme {
@@ -89,7 +97,8 @@ func (t *Theme) recompute() {
 		BorderForeground(p.BorderFocus)
 
 	t.Statusbar = lipgloss.NewStyle().
-		Foreground(p.Subtext).
+		Background(p.Base).
+		Foreground(ReadableColor(p.Base, p.Subtext, p.Text)).
 		Padding(0, 1)
 
 	t.Content = lipgloss.NewStyle().
@@ -121,13 +130,38 @@ func (t *Theme) recompute() {
 	t.FieldDefault = lipgloss.NewStyle().
 		Foreground(p.Muted)
 
+	t.FieldChanged = lipgloss.NewStyle().
+		Foreground(fieldChangedOrange).
+		Bold(true)
+
+	t.FieldNew = lipgloss.NewStyle().
+		Foreground(p.Success).
+		Underline(true)
+
+	t.FieldWarn = lipgloss.NewStyle().
+		Foreground(p.Warning).
+		Underline(true)
+
+	t.FieldStale = lipgloss.NewStyle().
+		Foreground(p.Error).
+		Faint(true).
+		Strikethrough(true)
+
+	t.FieldDocLink = lipgloss.NewStyle().
+		Foreground(p.Secondary).
+		Underline(true)
+
+	t.FieldMatch = lipgloss.NewStyle().
+		Foreground(p.Primary).
+		Underline(true)
+
 	t.PreviewHL = lipgloss.NewStyle().
 		Foreground(p.Accent).
 		Bold(true)
 
 	t.KeyCap = lipgloss.NewStyle().
 		Background(p.Surface).
-		Foreground(p.Text).
+		Foreground(ReadableColor(p.Surface, p.Text, p.Subtext)).
 		Bold(true).
 		Padding(0, 1)
 }
@@ -161,4 +195,3 @@ func FormatCount(cur, total int) string {
 	}
 	return strings.Join([]string{"(", strings.TrimSpace(FormatNum(float64(cur))), " of ", strings.TrimSpace(FormatNum(float64(total))), ")"}, "")
 }
-

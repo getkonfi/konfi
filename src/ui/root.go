@@ -47,6 +47,12 @@ type root struct {
 	showHelp    bool
 	confirmQuit bool
 
+	terminalBackgroundKnown bool
+	terminalDark            bool
+	terminalColorProfile    string
+	terminalCapabilities    map[string]bool
+	trueColorRequested      bool
+
 	// all konfables (indexed by sidebar item order)
 	allKonfables []konfables.Konfable
 	installed    map[string]bool
@@ -54,9 +60,6 @@ type root struct {
 	// navigation history for back/forward
 	navHistory    []navEntry
 	navHistoryPos int
-
-	// clipboard paste pending — set when ReadClipboard is issued
-	clipboardPending bool
 
 	// per-app count of "new" fields (since == detected version)
 	newCounts map[string]int
@@ -149,18 +152,19 @@ func NewRoot(app *setup.App) tea.Model {
 	pal := newPalette(th)
 
 	r := &root{
-		app:          app,
-		sidebar:      sb,
-		content:      ct,
-		status:       st,
-		palette:      pal,
-		focus:        paneSidebar,
-		mode:         ModeNormal,
-		allKonfables: allK,
-		installed:    installed,
-		newCounts:    newCounts,
-		dirtyConfigs: make(map[string]dirtyConfigState),
-		schemaCache:  schemaCache,
+		app:                  app,
+		sidebar:              sb,
+		content:              ct,
+		status:               st,
+		palette:              pal,
+		focus:                paneSidebar,
+		mode:                 ModeNormal,
+		allKonfables:         allK,
+		installed:            installed,
+		newCounts:            newCounts,
+		dirtyConfigs:         make(map[string]dirtyConfigState),
+		schemaCache:          schemaCache,
+		terminalCapabilities: make(map[string]bool),
 	}
 	r.sidebar.focused = true
 	r.updateHints()
@@ -168,7 +172,7 @@ func NewRoot(app *setup.App) tea.Model {
 }
 
 func (r *root) Init() tea.Cmd {
-	return nil
+	return tea.RequestBackgroundColor
 }
 
 func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -510,14 +514,6 @@ func (r *root) updateKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case "p":
-		if r.focus == paneContent && !r.content.detailFocused {
-			cmd := r.pasteField()
-			if cmd != nil {
-				return r, cmd
-			}
-		}
-
 	case "w":
 		// only toggle "what's new" filter when content focused with no active search matches
 		if r.focus == paneContent && !r.content.detailFocused && len(r.content.searchMatches) == 0 {
@@ -567,6 +563,40 @@ func (r *root) updateKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		sameBackground := r.terminalBackgroundKnown && r.terminalDark == msg.IsDark()
+		r.terminalBackgroundKnown = true
+		r.terminalDark = msg.IsDark()
+		theme.SetTerminalBackgroundDark(r.terminalDark)
+		if sameBackground {
+			return r, nil
+		}
+		return r, tea.Batch(r.applyThemeChange()...)
+
+	case tea.ColorProfileMsg:
+		profile := msg.Profile.String()
+		sameProfile := r.terminalColorProfile == profile
+		r.terminalColorProfile = profile
+		theme.SetTerminalColorProfile(msg.Profile)
+		if !sameProfile {
+			cmds = append(cmds, r.applyThemeChange()...)
+		}
+		if !r.trueColorRequested && theme.ShouldRequestTrueColorCapability(msg.Profile) && os.Getenv("TERM_PROGRAM") != "Apple_Terminal" {
+			r.trueColorRequested = true
+			cmds = append(cmds, tea.RequestCapability("RGB"), tea.RequestCapability("Tc"))
+		}
+		return r, tea.Batch(cmds...)
+
+	case tea.CapabilityMsg:
+		if r.terminalCapabilities == nil {
+			r.terminalCapabilities = make(map[string]bool)
+		}
+		if r.terminalCapabilities[msg.Content] {
+			return r, nil
+		}
+		r.terminalCapabilities[msg.Content] = true
+		return r, nil
+
 	case ToggleFilterMsg:
 		r.toggleConfiguredFilter()
 		return r, nil
@@ -772,12 +802,22 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if r.content.konfable != nil {
 				r.clearDirtyConfig(r.content.konfable.Name())
 			}
+			if r.content.changedOnly {
+				r.content.refilter()
+				r.content.syncDetail()
+			}
 			info := r.currentAppInfo()
 			if info.AutoReload {
 				r.status.status = "saved (live reload)"
-				return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-					return fileStateClearMsg{}
-				})
+				status := r.status.status
+				return r, tea.Batch(
+					tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+						return fileStateClearMsg{}
+					}),
+					tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+						return statusClearMsg{status: status}
+					}),
+				)
 			}
 			if len(info.ReloadCmd) > 0 {
 				r.status.status = "saved, reloading..."
@@ -790,9 +830,15 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			r.status.status = "saved"
-			return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-				return fileStateClearMsg{}
-			})
+			status := r.status.status
+			return r, tea.Batch(
+				tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+					return fileStateClearMsg{}
+				}),
+				tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+					return statusClearMsg{status: status}
+				}),
+			)
 		}
 		return r, nil
 
@@ -824,9 +870,15 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			r.status.status = "saved + reloaded"
 		}
-		return r, tea.Tick(3*time.Second, func(time.Time) tea.Msg {
-			return fileStateClearMsg{}
-		})
+		status := r.status.status
+		return r, tea.Batch(
+			tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+				return fileStateClearMsg{}
+			}),
+			tea.Tick(3*time.Second, func(time.Time) tea.Msg {
+				return statusClearMsg{status: status}
+			}),
+		)
 
 	case fileStateClearMsg:
 		switch {
@@ -847,24 +899,8 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case statusClearMsg:
-		r.status.status = ""
-		return r, nil
-
-	case tea.ClipboardMsg:
-		if r.clipboardPending {
-			r.clipboardPending = false
-			r.applyPaste(msg.Content)
-			if r.content.config != nil && r.content.config.Dirty() {
-				r.content.fileState = "unsaved"
-			}
-			// only show "pasted" if applyPaste didn't set an error
-			if !strings.HasPrefix(r.status.status, "paste failed") {
-				r.status.status = "pasted"
-			}
-			r.updateHints()
-			return r, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
-				return statusClearMsg{}
-			})
+		if msg.status == "" || r.status.status == msg.status {
+			r.status.status = ""
 		}
 		return r, nil
 
@@ -943,7 +979,7 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.updateHints()
 		return r, nil
 
-	case insightTickMsg, splitFlapTickMsg, logoAnimTickMsg:
+	case splitFlapTickMsg, logoAnimTickMsg:
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
 		return r, cmd
@@ -983,9 +1019,7 @@ func (r *root) fanOut(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (r *root) View() tea.View {
-	v := tea.View{
-		AltScreen: true,
-	}
+	v := r.baseView()
 
 	if !r.ready {
 		v.Content = "loading..."
@@ -1020,24 +1054,71 @@ func (r *root) View() tea.View {
 	content := lipgloss.JoinVertical(lipgloss.Left, body, statusView)
 
 	if r.showHelp {
-		v.Content = renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme)
+		v.Content = overlayContent(content, renderHelpCard(r.width, r.height, r.focus, r.content.Editing(), r.app.Theme), r.width, r.height)
 		return v
 	}
 
 	if r.showDiffPreview {
-		v.Content = r.renderDiffPreview()
+		v.Content = overlayContent(content, r.renderDiffPreview(), r.width, r.height)
 		return v
 	}
 
 	if r.palette.Visible() {
 		r.palette.width = r.width
 		r.palette.height = r.height
-		v.Content = r.palette.View()
+		v.Content = overlayContent(content, r.palette.View(), r.width, r.height)
 		return v
 	}
 
 	v.Content = content
 	return v
+}
+
+func (r *root) baseView() tea.View {
+	v := tea.View{
+		AltScreen:   true,
+		WindowTitle: r.windowTitle(),
+	}
+	if r.app != nil && r.app.Theme != nil && theme.TerminalColorSupported() {
+		v.BackgroundColor = r.app.Theme.Palette.Base
+		v.ForegroundColor = r.app.Theme.Palette.Text
+	}
+	return v
+}
+
+func (r *root) windowTitle() string {
+	title := "konfi"
+	if r.app != nil && r.app.AppName != "" {
+		title = r.app.AppName
+	}
+	if r.content.konfable != nil && r.content.konfable.Name() != "" {
+		return title + " - " + r.content.konfable.Name()
+	}
+	return title
+}
+
+func overlayContent(base, overlay string, width, height int) string {
+	if overlay == "" || width <= 0 || height <= 0 {
+		return base
+	}
+
+	baseCanvas := lipgloss.NewCanvas(width, height)
+	baseCanvas.Compose(lipgloss.NewLayer(base))
+
+	overlayCanvas := lipgloss.NewCanvas(width, height)
+	overlayCanvas.Compose(lipgloss.NewLayer(overlay))
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			cell := overlayCanvas.CellAt(x, y)
+			if cell == nil || cell.IsZero() || (cell.Content == " " && cell.Style.Bg == nil && cell.Link.IsZero()) {
+				continue
+			}
+			baseCanvas.SetCell(x, y, cell)
+		}
+	}
+
+	return baseCanvas.Render()
 }
 
 // sidebarW returns the sidebar width based on terminal width.
@@ -1093,6 +1174,9 @@ func (r *root) focusPane(p pane) {
 // applyThemeChange propagates the active theme to the child models and refreshes
 // the statusbar. returns the child update cmds for the caller to batch.
 func (r *root) applyThemeChange() []tea.Cmd {
+	if r.app == nil || r.app.Theme == nil {
+		return nil
+	}
 	themeMsg := ThemeChangedMsg{Theme: r.app.Theme}
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
@@ -1179,58 +1263,6 @@ func (r *root) yankField() tea.Cmd {
 	)
 }
 
-// pasteField initiates a clipboard read for pasting into the focused field.
-func (r *root) pasteField() tea.Cmd {
-	if r.content.currentField() == nil {
-		return nil
-	}
-	r.clipboardPending = true
-	return tea.ReadClipboard
-}
-
-// stripKeyPrefix removes a leading "<key> =" / "<key>=" assignment prefix from
-// a pasted snippet, so a value copied as "key = value" pastes as just the value.
-// returns value unchanged when the prefix does not match this field's key.
-func stripKeyPrefix(value, key string) string {
-	trimmed := strings.TrimLeft(value, " \t")
-	if key == "" || !strings.HasPrefix(trimmed, key) {
-		return value
-	}
-	rest := strings.TrimLeft(trimmed[len(key):], " \t")
-	if !strings.HasPrefix(rest, "=") {
-		return value
-	}
-	return strings.TrimLeft(rest[1:], " \t")
-}
-
-// applyPaste writes clipboard content to the focused field with undo support.
-func (r *root) applyPaste(value string) {
-	f := r.content.currentField()
-	if f == nil || r.content.konfable == nil || r.content.config == nil {
-		return
-	}
-	p := r.content.konfable.Parser()
-	if p == nil {
-		return
-	}
-	// tolerate "key = value" snippets (the form yankField copies) so an in-app
-	// copy → paste round-trips to just the value.
-	value = stripKeyPrefix(value, f.Key)
-	oldVal := r.content.values[f.Key]
-	if value == oldVal {
-		return
-	}
-	data := r.content.config.Content()
-	newData, err := konfables.WriteField(p, data, *f, value, r.content.konfable.Info().Format)
-	if err != nil {
-		r.status.status = "paste failed: " + err.Error()
-		return
-	}
-	r.content.config.SetContent(newData)
-	r.content.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldVal, NewValue: value})
-	r.content.refreshValues()
-}
-
 // toggleNewFilter toggles the "what's new" field filter on content.
 func (r *root) toggleNewFilter() {
 	r.content.showNewOnly = !r.content.showNewOnly
@@ -1266,7 +1298,12 @@ func (r *root) toggleChangedFilter() {
 	r.content.refilter()
 	r.content.syncDetail()
 	if r.content.changedOnly {
-		r.status.status = fmt.Sprintf("showing %d changed fields", len(r.content.pendingChanges()))
+		count := len(r.content.pendingChanges())
+		if count == 0 {
+			r.status.status = "no unsaved changes"
+		} else {
+			r.status.status = fmt.Sprintf("showing %d changed fields", count)
+		}
 	} else {
 		r.status.status = ""
 	}
@@ -1325,7 +1362,9 @@ func editorReloadStatus(applied, skipped int) string {
 }
 
 // statusClearMsg clears the transient status after a delay.
-type statusClearMsg struct{}
+type statusClearMsg struct {
+	status string
+}
 
 // currentAppInfo returns the AppInfo for the currently loaded konfable.
 func (r *root) currentAppInfo() konfables.AppInfo {

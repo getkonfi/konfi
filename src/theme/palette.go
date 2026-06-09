@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/compat"
+	"github.com/charmbracelet/colorprofile"
 )
 
 // Palette defines a complete set of colors for theming.
@@ -95,6 +96,32 @@ func PaletteNames() []string {
 		names[i] = Palettes[i].Name
 	}
 	return names
+}
+
+func SetTerminalBackgroundDark(isDark bool) {
+	compat.HasDarkBackground = isDark
+}
+
+func SetTerminalColorProfile(profile colorprofile.Profile) {
+	compat.Profile = profile
+}
+
+func TerminalColorSupported() bool {
+	switch compat.Profile {
+	case colorprofile.ANSI, colorprofile.ANSI256, colorprofile.TrueColor:
+		return true
+	default:
+		return false
+	}
+}
+
+func ShouldRequestTrueColorCapability(profile colorprofile.Profile) bool {
+	switch profile {
+	case colorprofile.ANSI, colorprofile.ANSI256:
+		return true
+	default:
+		return false
+	}
 }
 
 // cc is shorthand for constructing a compat.CompleteColor from hex strings.

@@ -12,11 +12,3 @@ func logoAnimCmd(gen int) tea.Cmd {
 		return logoAnimTickMsg{gen: gen}
 	})
 }
-
-// insightTickCmd starts the next insight cycle timer.
-func (c content) insightTickCmd() tea.Cmd {
-	gen := c.insightGen
-	return tea.Tick(5*time.Second, func(time.Time) tea.Msg {
-		return insightTickMsg{gen: gen}
-	})
-}

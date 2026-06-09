@@ -154,6 +154,56 @@ func TestRootTabTogglesChangedOnly(t *testing.T) {
 	}
 }
 
+func TestRootTabWithNoChangesShowsFeedback(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	r := &root{content: c, focus: paneContent}
+
+	_, _ = r.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+
+	if !r.content.changedOnly {
+		t.Fatal("tab did not toggle changed-only filter")
+	}
+	if r.status.status != "no unsaved changes" {
+		t.Fatalf("status = %q, want no unsaved changes", r.status.status)
+	}
+	if got := stripANSI(r.content.renderBody(60)); !strings.Contains(got, "no unsaved changes") {
+		t.Fatalf("changed-only empty state missing feedback:\n%s", got)
+	}
+}
+
+func TestSaveResultKeepsSavedStatusThenClears(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	c.applyFieldByKey("line12", "99")
+	if err := c.config.Save(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	c.changedOnly = true
+	c.refilter()
+	r := &root{content: c, focus: paneContent, dirtyConfigs: make(map[string]dirtyConfigState)}
+
+	_, _ = r.Update(saveResultMsg{})
+
+	if r.status.status != "saved" {
+		t.Fatalf("status = %q, want saved", r.status.status)
+	}
+	if changes := r.content.pendingChanges(); len(changes) != 0 {
+		t.Fatalf("pending changes after save = %#v, want none", changes)
+	}
+	if len(r.content.visible) != 0 {
+		t.Fatalf("changed-only visible rows after save = %#v, want none", r.content.visible)
+	}
+
+	r.status.status = "opened docs"
+	_, _ = r.Update(statusClearMsg{status: "saved"})
+	if r.status.status != "opened docs" {
+		t.Fatalf("guarded clear removed newer status: %q", r.status.status)
+	}
+	_, _ = r.Update(statusClearMsg{status: "opened docs"})
+	if r.status.status != "" {
+		t.Fatalf("status after matching clear = %q, want empty", r.status.status)
+	}
+}
+
 func TestSwitchingAppsKeepsUnsavedConfigInSession(t *testing.T) {
 	c := newContentFocusTestModel(t)
 	c.schemaCache = map[string]*pkg.Schema{"test": c.schema}
@@ -269,7 +319,6 @@ func TestContentBottomHelpersMatchRequestedKeys(t *testing.T) {
 		{"⌫", "del"},
 		{"/", "search"},
 		{"c", "copy"},
-		{"p", "paste"},
 		{".", "configured"},
 		{"⇥", "changed"},
 		{"q", "quit"},
@@ -321,6 +370,26 @@ func TestNumberKeysDoNotJumpApps(t *testing.T) {
 	if cmd != nil {
 		msg := cmd()
 		t.Fatalf("number key emitted %T, want no app jump", msg)
+	}
+}
+
+func TestReviewShortcutRemovedForDirtyConfig(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	c.applyFieldByKey("line12", "99")
+	r := &root{
+		content:      c,
+		focus:        paneContent,
+		allKonfables: []konfables.Konfable{c.konfable},
+		dirtyConfigs: make(map[string]dirtyConfigState),
+	}
+
+	_, _ = r.Update(tea.KeyPressMsg{Text: "r"})
+
+	if r.content.changedOnly {
+		t.Fatal("r toggled changed-only filter; tab should own that flow")
+	}
+	if r.status.status != "" {
+		t.Fatalf("status = %q, want empty", r.status.status)
 	}
 }
 

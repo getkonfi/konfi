@@ -7,29 +7,6 @@ import (
 	"github.com/eminert/konfi/theme"
 )
 
-func TestStripKeyPrefix(t *testing.T) {
-	for _, tc := range []struct {
-		name  string
-		value string
-		key   string
-		want  string
-	}{
-		{"copied form", "format = $all", "format", "$all"},
-		{"no spaces", "format=$all", "format", "$all"},
-		{"plain value untouched", "$all", "format", "$all"},
-		{"non-matching key untouched", "other = x", "format", "other = x"},
-		{"key as substring not stripped", "formatted", "format", "formatted"},
-		{"value with equals preserved", "ctrl+a = goto_tab:1", "keybind", "ctrl+a = goto_tab:1"},
-		{"empty key untouched", "a = b", "", "a = b"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := stripKeyPrefix(tc.value, tc.key); got != tc.want {
-				t.Fatalf("stripKeyPrefix(%q, %q) = %q, want %q", tc.value, tc.key, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestSingleLine(t *testing.T) {
 	for _, tc := range []struct{ in, want string }{
 		{"$os$username", "$os$username"}, // clean value untouched

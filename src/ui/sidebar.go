@@ -407,7 +407,7 @@ func (s *sidebar) viewExpanded() string {
 					top.WriteByte('\n')
 					top.WriteString(divider)
 					top.WriteByte('\n')
-					top.WriteString(s.theme.Muted.Bold(true).Render("NOT INSTALLED"))
+					top.WriteString(s.theme.Muted.Bold(true).Render("not installed"))
 					uninstalledHeaderShown = true
 					afterHome = false
 				} else if afterHome {

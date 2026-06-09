@@ -127,6 +127,12 @@ func (c *content) renderBody(width int) string {
 		b.WriteByte('\n')
 	}
 
+	if c.changedOnly && len(c.visible) == 0 && len(c.pendingChanges()) == 0 {
+		b.WriteString(c.theme.Muted.Render("no unsaved changes"))
+		b.WriteByte('\n')
+		return b.String()
+	}
+
 	// detect inline editing state once before the loop
 	editingInline := c.detail.editor != nil
 
@@ -186,23 +192,21 @@ func (c *content) renderBody(width int) string {
 
 		// single map lookup for current value
 		val, hasVal := c.values[f.Key]
+		isChanged := c.fieldChanged(f)
+		isNewField := c.fieldIsNew(f)
+		isDeprecated := f.Until != ""
 
 		// configured indicator: green when the key is present in the config file,
 		// even if its value matches the default (consistent with the configured-only filter)
 		isConfigured := hasVal
-		var dot string
-		if isConfigured {
-			dot = c.theme.Success.Render("●")
-		} else {
-			dot = c.theme.Muted.Render("○")
-		}
+		dot := c.fieldStateDot(isConfigured, isChanged, isDeprecated)
 
 		// value rendering
 		var renderedVal string
 		if !hasVal {
 			val = f.Default
 			if c.showEffective && val != "" {
-				renderedVal = c.theme.Muted.Italic(true).Render(val + " (default)")
+				renderedVal = c.theme.FieldDefault.Italic(true).Render(val + " (default)")
 			} else {
 				renderedVal = c.renderFieldValue(*f, val, true)
 			}
@@ -234,14 +238,23 @@ func (c *content) renderBody(width int) string {
 		// build prefix and label (cursor/icon)
 		paddedLabel := c.paddedLabels[r.fieldIdx]
 		iconStyle := c.typeIconStyle(f.Type, val)
+		if isDeprecated {
+			iconStyle = c.theme.FieldStale
+		} else if isNewField {
+			iconStyle = c.theme.FieldNew
+		}
 		isBookmarked := c.konfable != nil && c.bookmarks[c.konfable.Name()+"/"+f.Key]
 		var prefix, label string
 		if isCursor {
 			prefix = c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
-			label = c.theme.Text.Bold(true).Render(paddedLabel)
 		} else {
 			prefix = "  " + iconStyle.Faint(true).Render(icon) + " "
-			label = c.theme.FieldLabel.Render(paddedLabel)
+		}
+		label = c.fieldLabelStyle(isCursor, isChanged, isNewField, isDeprecated).Render(paddedLabel)
+		if isCursor {
+			if docURL := c.fieldDocURL(f); docURL != "" {
+				label += " " + c.theme.FieldDocLink.Hyperlink(docURL).Render("↗")
+			}
 		}
 		if isBookmarked {
 			label = c.theme.Warning.Render("★") + label
@@ -303,7 +316,7 @@ func (c *content) renderBody(width int) string {
 		// search match explanation
 		if info, ok := c.searchMatchInfo[i]; ok {
 			usedW := lipgloss.Width(line)
-			infoStr := c.theme.Muted.Italic(true).Render("  " + info)
+			infoStr := c.theme.FieldMatch.Italic(true).Render("  " + info)
 			if usedW+lipgloss.Width(infoStr) <= width {
 				line += infoStr
 			}
@@ -445,6 +458,71 @@ func (c *content) renderFieldValue(f pkg.Field, val string, isDefault bool) stri
 	default:
 		return c.theme.FieldValue.Render(val)
 	}
+}
+
+func (c *content) fieldChanged(f *pkg.Field) bool {
+	if f == nil || c.origValues == nil {
+		return false
+	}
+	oldVal, hadOld := c.origValues[f.Key]
+	newVal, hasNew := c.values[f.Key]
+	return hadOld != hasNew || oldVal != newVal
+}
+
+func (c *content) fieldIsNew(f *pkg.Field) bool {
+	if f == nil || f.Since == "" {
+		return false
+	}
+	if c.showNewOnly {
+		return true
+	}
+	if c.konfable == nil {
+		return false
+	}
+	ver := c.versions[c.konfable.Name()]
+	if pkg.NormalizeSemver(ver) == "" || pkg.NormalizeSemver(f.Since) == "" {
+		return false
+	}
+	return pkg.FieldIsNewIn(*f, ver)
+}
+
+func (c *content) fieldDocURL(f *pkg.Field) string {
+	if f == nil {
+		return ""
+	}
+	if f.DocURL != "" {
+		return f.DocURL
+	}
+	return c.detail.docsURL
+}
+
+func (c *content) fieldStateDot(configured, changed, deprecated bool) string {
+	switch {
+	case changed:
+		return c.theme.FieldChanged.Render("●")
+	case configured:
+		return c.theme.Success.Render("●")
+	case deprecated:
+		return c.theme.FieldStale.Render("○")
+	default:
+		return c.theme.FieldDefault.Render("○")
+	}
+}
+
+func (c *content) fieldLabelStyle(cursor, changed, isNew, deprecated bool) lipgloss.Style {
+	style := c.theme.FieldLabel
+	if cursor {
+		style = c.theme.Text.Bold(true)
+	}
+	switch {
+	case deprecated:
+		style = style.Foreground(c.theme.Palette.Error).Faint(true).Strikethrough(true)
+	case isNew:
+		style = style.Foreground(c.theme.Palette.Success).Underline(true)
+	case changed:
+		style = style.Foreground(c.theme.Palette.Warning).Bold(true)
+	}
+	return style
 }
 
 // typeIconStyle returns a per-type color for field type icons.

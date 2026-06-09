@@ -75,6 +75,25 @@ func TestDetailMissingFieldShowsTailContextAndAddLine(t *testing.T) {
 	}
 }
 
+func TestDetailBrowseOmitsConfigRuleLabel(t *testing.T) {
+	th := theme.NewTheme(&theme.Catppuccin)
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Format: "ghostty"}}
+	cf := newDetailTestConfig(t, "font = 12\n")
+	f := &pkg.Field{Key: "font", Label: "Font", Type: "string", Description: "font size"}
+
+	d := newDetail(th)
+	d.sync(f, cf, k, map[string]string{"font": "12"}, true)
+
+	got := stripANSI(d.viewBrowse(80, 20))
+	if strings.Contains(got, "── config") {
+		t.Fatalf("browse detail should not render config rule label:\n%s", got)
+	}
+	if !strings.Contains(got, "font = 12") {
+		t.Fatalf("browse detail lost config snippet:\n%s", got)
+	}
+}
+
 func TestDetailPreviewLineRescansWhenConfigChanges(t *testing.T) {
 	th := theme.NewTheme(&theme.Catppuccin)
 	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}

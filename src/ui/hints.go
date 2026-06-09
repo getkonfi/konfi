@@ -12,7 +12,11 @@ func (r *root) updateHints() {
 	default:
 		r.status.SetMode("")
 	}
-	r.status.SetUndoCount(r.content.undoStack.Len())
+	if r.content.undoStack != nil {
+		r.status.SetUndoCount(r.content.undoStack.Len())
+	} else {
+		r.status.SetUndoCount(0)
+	}
 
 	if r.content.Editing() {
 		kind := editors.InteractionSingle
@@ -96,7 +100,6 @@ func (r *root) updateHints() {
 			{"⌫", "del"},
 			{"/", "search"},
 			{"c", "copy"},
-			{"p", "paste"},
 			{".", "configured"},
 			{"⇥", "changed"},
 			{"q", "quit"},
