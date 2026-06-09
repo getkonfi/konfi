@@ -15,7 +15,6 @@ func TestLoadSchema(t *testing.T) {
 		app  string
 	}{
 		{"../konfables/alacritty/schema.yaml", "alacritty"},
-		{"../konfables/claude/schema.yaml", "claude"},
 		{"../konfables/dconf/schema.yaml", "dconf"},
 		{"../konfables/ghostty/schema.yaml", "ghostty"},
 		{"../konfables/git/schema.yaml", "git"},
@@ -55,7 +54,6 @@ func TestLoadSchema(t *testing.T) {
 			// minimum field counts per app (conservative lower bounds)
 			minFields := map[string]int{
 				"alacritty": 40,
-				"claude":    10,
 				"dconf":     10,
 				"ghostty":   50,
 				"git":       30,

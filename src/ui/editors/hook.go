@@ -27,7 +27,7 @@ type hookItem struct {
 	Timeout int    `json:"timeout,omitempty"`
 }
 
-// hookEditor provides a structured editor for claude hook arrays.
+// hookEditor provides a structured editor for hook arrays.
 // implements FieldEditor with the same a/d/Enter/j/k UX as listEditor.
 type hookEditor struct {
 	groups []hookGroup

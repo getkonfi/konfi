@@ -16,7 +16,6 @@ var Logos = map[string]pixelart.PixelArt{
 	"sshd":      sshLogo,
 	"pacman":    pacmanLogo,
 	"dconf":     dconfLogo,
-	"claude":    claudeLogo,
 	"gnome":     dconfLogo,
 	"kitty":     kittyLogo,
 	"helix":     helixLogo,
@@ -37,8 +36,6 @@ const (
 	lb uint8 = 75  // light blue
 	mb uint8 = 111 // medium blue
 	gn uint8 = 34  // green (tmux)
-	co uint8 = 173 // coral (claude)
-	sa uint8 = 180 // salmon (claude)
 	br uint8 = 130 // brown (kitty)
 	pu uint8 = 99  // purple (helix)
 	pk uint8 = 199 // pink (rio)
@@ -314,25 +311,6 @@ var dconfLogo = pixelart.PixelArt{
 		{__, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
-	},
-}
-
-// claude — sparkle/diamond in coral and salmon (anthropic brand)
-var claudeLogo = pixelart.PixelArt{
-	Width: 16, Height: 12,
-	Pixels: [][]uint8{
-		{__, __, __, __, __, __, __, co, co, __, __, __, __, __, __, __},
-		{__, __, __, __, __, __, co, sa, sa, co, __, __, __, __, __, __},
-		{__, __, __, __, __, co, sa, sa, sa, sa, co, __, __, __, __, __},
-		{__, __, __, __, co, sa, sa, sa, sa, sa, sa, co, __, __, __, __},
-		{__, __, __, co, sa, sa, sa, wh, wh, sa, sa, sa, co, __, __, __},
-		{__, __, co, sa, sa, sa, wh, wh, wh, wh, sa, sa, sa, co, __, __},
-		{__, __, co, sa, sa, sa, wh, wh, wh, wh, sa, sa, sa, co, __, __},
-		{__, __, __, co, sa, sa, sa, wh, wh, sa, sa, sa, co, __, __, __},
-		{__, __, __, __, co, sa, sa, sa, sa, sa, sa, co, __, __, __, __},
-		{__, __, __, __, __, co, sa, sa, sa, sa, co, __, __, __, __, __},
-		{__, __, __, __, __, __, co, sa, sa, co, __, __, __, __, __, __},
-		{__, __, __, __, __, __, __, co, co, __, __, __, __, __, __, __},
 	},
 }
 

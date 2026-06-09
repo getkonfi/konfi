@@ -14,7 +14,6 @@ import (
 
 	"github.com/eminert/konfi/konfables/alacritty"
 	"github.com/eminert/konfi/konfables/brew"
-	"github.com/eminert/konfi/konfables/claude"
 	"github.com/eminert/konfi/konfables/dconf"
 	"github.com/eminert/konfi/konfables/fuzzel"
 	"github.com/eminert/konfi/konfables/ghostty"
@@ -117,15 +116,6 @@ var allKonfables = []konfableEntry{
 	}, false, nil},
 	{"brew", func() Konfable {
 		return brew.New(pkg.NewFilePersister(brew.DefaultConfigPath()))
-	}, false, nil},
-	{"claude", func() Konfable {
-		home, _ := os.UserHomeDir()
-		cwd, _ := os.Getwd()
-		return claude.New(claude.NewTieredPersister(
-			filepath.Join(home, ".claude", "settings.json"),
-			filepath.Join(home, ".claude", "settings.local.json"),
-			filepath.Join(cwd, ".claude", "settings.json"),
-		))
 	}, false, nil},
 }
 

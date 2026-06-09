@@ -14,7 +14,6 @@ import (
 	"github.com/eminert/konfi/konfables"
 	appalacritty "github.com/eminert/konfi/konfables/alacritty"
 	appbrew "github.com/eminert/konfi/konfables/brew"
-	appclaude "github.com/eminert/konfi/konfables/claude"
 	appdconf "github.com/eminert/konfi/konfables/dconf"
 	appfuzzel "github.com/eminert/konfi/konfables/fuzzel"
 	appghostty "github.com/eminert/konfi/konfables/ghostty"
@@ -316,27 +315,6 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "brew",
 			survivorWant: "git",
 			fileBacked:   true,
-		},
-		{
-			name: "claude",
-			newApp: func(_ *testing.T, root string) konfables.Konfable {
-				return appclaude.New(appclaude.NewTieredPersister(
-					filepath.Join(root, "settings.json"),
-					filepath.Join(root, "settings.local.json"),
-					filepath.Join(root, "project", ".claude", "settings.json"),
-				))
-			},
-			sample:       sampleClaude,
-			existingKey:  "model",
-			existingWant: "sonnet",
-			replaceWrite: "opus",
-			replaceWant:  "opus",
-			addKey:       "permissions.askMode",
-			addWrite:     "ask",
-			addWant:      "ask",
-			deleteKey:    "includeCoAuthoredBy",
-			survivorKey:  "permissions.defaultMode",
-			survivorWant: "default",
 		},
 		{
 			name: "dconf",
@@ -680,18 +658,6 @@ func containerCases(t *testing.T) []containerCase {
 		},
 	}
 }
-
-var sampleClaude = []byte(`{
-  "model": "sonnet",
-  "includeCoAuthoredBy": true,
-  "permissions": {
-    "defaultMode": "default",
-    "allow": [
-      "Bash(ls:*)"
-    ]
-  }
-}
-`)
 
 var sampleBrew = []byte(`# brewfile
 tap "homebrew/bundle"
