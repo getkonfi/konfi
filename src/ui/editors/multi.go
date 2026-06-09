@@ -43,11 +43,11 @@ func (e *multiEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		return nil, false, false
 	}
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.cursor < len(e.options)-1 {
 			e.cursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.cursor > 0 {
 			e.cursor--
 		}

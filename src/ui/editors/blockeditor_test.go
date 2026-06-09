@@ -270,7 +270,7 @@ func TestBlockEditor_NestedHeightChanges(t *testing.T) {
 	e.Update(keyMsg("esc")) // back to list
 
 	// expand the Match block (has ForwardAgent enum)
-	e.Update(keyMsg("j"))     // cursor -> second block
+	e.Update(keyMsg("down"))  // cursor -> second block
 	e.Update(keyMsg("enter")) // expand
 	beforeEdit := e.Height()
 	e.Update(keyMsg("enter")) // open nested enum editor
@@ -295,8 +295,8 @@ func TestBlockEditor_AddDirective(t *testing.T) {
 		t.Fatalf("a did not open directive palette")
 	}
 	// select Port (index 2)
-	e.Update(keyMsg("j"))
-	e.Update(keyMsg("j"))
+	e.Update(keyMsg("down"))
+	e.Update(keyMsg("down"))
 	e.Update(keyMsg("enter")) // add Port; opens nested editor
 	for _, r := range "2222" {
 		e.Update(keyMsg(string(r)))
@@ -379,8 +379,8 @@ func TestBlockEditor_HostHeaderMultiPattern(t *testing.T) {
 func TestBlockEditor_MatchHeaderRawPreservesExec(t *testing.T) {
 	e := newBlockEditor(t, encodedFixture(t))
 	// second block is the Match block.
-	e.Update(keyMsg("j")) // cursor -> Match block
-	e.Update(keyMsg("h")) // edit header
+	e.Update(keyMsg("down")) // cursor -> Match block
+	e.Update(keyMsg("h"))    // edit header
 	if !e.editingHeader || e.headerForHost {
 		t.Fatalf("Match header edit not in raw (non-host) mode")
 	}

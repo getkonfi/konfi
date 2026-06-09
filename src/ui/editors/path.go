@@ -59,11 +59,11 @@ func (e *pathEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 
 func (e *pathEditor) updateCompletion(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.compCursor < len(e.completions)-1 {
 			e.compCursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.compCursor > 0 {
 			e.compCursor--
 		}

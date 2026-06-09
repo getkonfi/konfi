@@ -110,11 +110,11 @@ func (e *blockEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 
 func (e *blockEditor) updateBlockList(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.blockCursor < len(e.model.Blocks)-1 {
 			e.blockCursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.blockCursor > 0 {
 			e.blockCursor--
 		}
@@ -166,11 +166,11 @@ func (e *blockEditor) updateBlockList(km tea.KeyPressMsg) (tea.Cmd, bool, bool) 
 func (e *blockEditor) updateBody(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	body := e.model.Blocks[e.curBlock].Body
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if n := e.nextNavEntry(e.bodyCursor); n >= 0 {
 			e.bodyCursor = n
 		}
-	case "k", "up":
+	case "up":
 		if p := e.prevNavEntry(e.bodyCursor); p >= 0 {
 			e.bodyCursor = p
 		}
@@ -337,11 +337,11 @@ func (e *blockEditor) updateAddDirective(msg tea.Msg) (tea.Cmd, bool, bool) {
 		return nil, false, false
 	}
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.dirCursor < len(e.palette)-1 {
 			e.dirCursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.dirCursor > 0 {
 			e.dirCursor--
 		}
@@ -473,11 +473,11 @@ func (e *blockEditor) updateAddBlock(msg tea.Msg) (tea.Cmd, bool, bool) {
 			return nil, false, false
 		}
 		switch km.String() {
-		case "j", "down":
+		case "down":
 			if e.addOpenerIdx < len(e.openerOptions)-1 {
 				e.addOpenerIdx++
 			}
-		case "k", "up":
+		case "up":
 			if e.addOpenerIdx > 0 {
 				e.addOpenerIdx--
 			}

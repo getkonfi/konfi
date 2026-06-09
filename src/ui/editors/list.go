@@ -152,11 +152,11 @@ func (e *listEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	}
 
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.cursor < len(e.items)-1 {
 			e.cursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.cursor > 0 {
 			e.cursor--
 		}

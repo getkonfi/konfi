@@ -78,7 +78,7 @@ func (e *stylestringEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	}
 	half := e.styHalf()
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		switch e.pane {
 		case 0:
 			if e.symCursor < len(e.symbols)-1 {
@@ -93,7 +93,7 @@ func (e *stylestringEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 				e.styCursor++
 			}
 		}
-	case "k", "up":
+	case "up":
 		switch e.pane {
 		case 0:
 			if e.symCursor > 0 {

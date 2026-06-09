@@ -407,6 +407,20 @@ func TestListEditor_LargeList(t *testing.T) {
 	_ = e.View(80)
 }
 
+func TestFontEditor_FilterAcceptsJAndK(t *testing.T) {
+	e := &fontEditor{}
+	e.Init(pkg.Field{Widget: "font"}, "", testTheme())
+	e.Update(FontsLoadedMsg{Fonts: []string{"JetBrains Mono", "Iosevka", "Noto Sans"}})
+	e.cursor = 1
+
+	e.Update(keyMsg("j"))
+	e.Update(keyMsg("k"))
+
+	if got := e.filter.Value(); got != "jk" {
+		t.Fatalf("filter value = %q, want jk", got)
+	}
+}
+
 // ── hookEditor ──────────────────────────────────────────────────────────────
 
 func TestHookEditor_EmptyInit(t *testing.T) {

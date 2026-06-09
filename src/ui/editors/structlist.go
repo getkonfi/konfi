@@ -88,11 +88,11 @@ func (e *structListEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	}
 
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.cursor < len(e.items)-1 {
 			e.cursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.cursor > 0 {
 			e.cursor--
 		}
@@ -147,11 +147,11 @@ func (e *structListEditor) updateEnum(msg tea.Msg) (tea.Cmd, bool, bool) {
 		return nil, false, false
 	}
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.enumCursor < len(e.enumOpts)-1 {
 			e.enumCursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.enumCursor > 0 {
 			e.enumCursor--
 		}

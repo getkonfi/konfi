@@ -83,7 +83,7 @@ var helpEditor = helpGroup{
 	Bindings: []helpBinding{
 		{"⏎ / ctrl+s", "confirm edit"},
 		{"esc", "cancel edit"},
-		{"↑↓ / j/k", "navigate options"},
+		{"↑↓", "navigate options"},
 		{"tab", "switch mode"},
 		{"h/l / ←→", "adjust (slider, style)"},
 		{"␣", "toggle (bool, togglemap)"},

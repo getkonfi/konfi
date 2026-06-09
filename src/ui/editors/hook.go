@@ -28,7 +28,7 @@ type hookItem struct {
 }
 
 // hookEditor provides a structured editor for hook arrays.
-// implements FieldEditor with the same a/d/Enter/j/k UX as listEditor.
+// implements FieldEditor with the same add/delete/edit ux as listEditor.
 type hookEditor struct {
 	groups []hookGroup
 	cursor int
@@ -123,11 +123,11 @@ func (e *hookEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 	}
 
 	switch km.String() {
-	case "j", "down":
+	case "down":
 		if e.cursor < len(e.groups)-1 {
 			e.cursor++
 		}
-	case "k", "up":
+	case "up":
 		if e.cursor > 0 {
 			e.cursor--
 		}

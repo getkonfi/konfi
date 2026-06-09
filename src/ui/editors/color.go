@@ -136,11 +136,11 @@ func (e *colorEditor) updatePalette(km tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 		if e.palCursor < len(e.palette)-1 {
 			e.palCursor++
 		}
-	case "up", "k":
+	case "up":
 		if e.palCursor >= cols {
 			e.palCursor -= cols
 		}
-	case "down", "j":
+	case "down":
 		if e.palCursor+cols < len(e.palette) {
 			e.palCursor += cols
 		}

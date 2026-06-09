@@ -126,12 +126,12 @@ func (e *fontEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 
 func (e *fontEditor) updatePicker(msg tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 	switch msg.String() {
-	case "j", "down":
+	case "down":
 		if e.cursor < len(e.filtered)-1 {
 			e.cursor++
 			e.scrollToCursor()
 		}
-	case "k", "up":
+	case "up":
 		if e.cursor > 0 {
 			e.cursor--
 			e.scrollToCursor()
@@ -240,7 +240,7 @@ func (e *fontEditor) View(width int) string {
 
 	// count + help
 	count := e.th.Muted.Render(
-		theme.FormatCount(e.cursor+1, len(e.filtered)) + "  " + "j/k:nav  ⏎:select  tab:freetext  esc:cancel",
+		theme.FormatCount(e.cursor+1, len(e.filtered)) + "  " + "↑↓:nav  ⏎:select  tab:freetext  esc:cancel",
 	)
 	b.WriteString("    " + count)
 
