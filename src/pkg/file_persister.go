@@ -17,12 +17,15 @@ type FilePersister struct {
 	Path           string
 	defaultContent []byte
 	missingContent []byte
+	backupLimit    int
 
 	watcher   *fsnotify.Watcher
 	done      chan struct{}
 	selfWrite int64 // unix nano timestamp of last self-write
 	mu        sync.Mutex
 }
+
+const DefaultBackupLimit = 5
 
 // FilePersisterOption configures a FilePersister.
 type FilePersisterOption func(*FilePersister)
@@ -41,13 +44,37 @@ func WithMissingContent(data []byte) FilePersisterOption {
 	}
 }
 
+// WithBackupLimit sets how many konfi backup files to retain. zero disables backups.
+func WithBackupLimit(limit int) FilePersisterOption {
+	return func(fp *FilePersister) {
+		fp.backupLimit = normalizeBackupLimit(limit)
+	}
+}
+
 // NewFilePersister creates a file-backed persister for the given path.
 func NewFilePersister(path string, opts ...FilePersisterOption) *FilePersister {
-	fp := &FilePersister{Path: path}
+	fp := &FilePersister{
+		Path:        path,
+		backupLimit: DefaultBackupLimit,
+	}
 	for _, o := range opts {
 		o(fp)
 	}
 	return fp
+}
+
+// BackupLimit returns the current backup retention limit.
+func (fp *FilePersister) BackupLimit() int {
+	fp.mu.Lock()
+	defer fp.mu.Unlock()
+	return fp.backupLimit
+}
+
+// SetBackupLimit updates the backup retention limit. zero disables backups.
+func (fp *FilePersister) SetBackupLimit(limit int) {
+	fp.mu.Lock()
+	defer fp.mu.Unlock()
+	fp.backupLimit = normalizeBackupLimit(limit)
 }
 
 // Load reads the file from disk.
@@ -77,7 +104,7 @@ func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {
 	return data, nil
 }
 
-// Save writes a non-clobbering .bak backup of original, then atomically writes data.
+// Save writes a konfi .bak backup of original, then atomically writes data.
 // when the target file does not yet exist (first save of a new config), the backup
 // step is skipped — there is nothing to back up and the parent dir may not exist yet.
 func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
@@ -92,8 +119,8 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 	if err := EnsureDir(filepath.Dir(fp.Path)); err != nil {
 		return fmt.Errorf("ensure dir for %s: %w", fp.Path, err)
 	}
-	if exists {
-		if err := writeBackup(fp.Path, original, perm); err != nil {
+	if backupLimit := fp.BackupLimit(); exists && backupLimit > 0 {
+		if err := WriteBackup(fp.Path, original, perm, backupLimit); err != nil {
 			return err
 		}
 	}
@@ -106,37 +133,90 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 	return nil
 }
 
-func writeBackup(path string, data []byte, perm os.FileMode) error {
-	const maxBackupAttempts = 5
+func normalizeBackupLimit(limit int) int {
+	if limit < 0 {
+		return 0
+	}
+	return limit
+}
 
-	base := path + ".bak"
-	for i := 0; i < maxBackupAttempts; i++ {
-		bakPath := base
-		if i > 0 {
-			bakPath = fmt.Sprintf("%s.%d", base, i)
+// BackupPath returns the first konfi-owned backup path for a config file.
+func BackupPath(path string) string {
+	return path + "-konfi.bak"
+}
+
+func backupPaths(path string, limit int) []string {
+	base := BackupPath(path)
+	paths := make([]string, 0, limit)
+	for i := 0; i < limit; i++ {
+		if i == 0 {
+			paths = append(paths, base)
+			continue
+		}
+		paths = append(paths, fmt.Sprintf("%s.%d", base, i))
+	}
+	return paths
+}
+
+// WriteBackup writes data into a konfi-owned backup slot.
+// if every slot exists, the oldest slot by modified time is replaced.
+func WriteBackup(path string, data []byte, perm os.FileMode, limit int) error {
+	limit = normalizeBackupLimit(limit)
+	if limit == 0 {
+		return nil
+	}
+
+	var oldestPath string
+	var oldestModTime time.Time
+	for _, bakPath := range backupPaths(path, limit) {
+		if err := writeNewBackup(bakPath, data, perm); err == nil {
+			return nil
+		} else if !os.IsExist(err) {
+			return err
 		}
 
-		f, err := os.OpenFile(bakPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+		info, err := os.Stat(bakPath)
 		if err != nil {
-			if os.IsExist(err) {
+			if os.IsNotExist(err) {
 				continue
 			}
 			return fmt.Errorf("backup %s: %w", bakPath, err)
 		}
-
-		if _, err := f.Write(data); err != nil {
-			_ = f.Close()
-			_ = os.Remove(bakPath)
-			return fmt.Errorf("backup %s: %w", bakPath, err)
+		if oldestPath == "" || info.ModTime().Before(oldestModTime) {
+			oldestPath = bakPath
+			oldestModTime = info.ModTime()
 		}
-		if err := f.Close(); err != nil {
-			_ = os.Remove(bakPath)
-			return fmt.Errorf("backup %s: %w", bakPath, err)
-		}
-		return nil
 	}
 
-	return fmt.Errorf("backup %s: no available backup path after %d attempts", base, maxBackupAttempts)
+	if oldestPath == "" {
+		return fmt.Errorf("backup %s: no available backup path after %d attempts", BackupPath(path), limit)
+	}
+
+	if err := AtomicWrite(oldestPath, data, perm); err != nil {
+		return fmt.Errorf("backup %s: %w", oldestPath, err)
+	}
+	return nil
+}
+
+func writeNewBackup(bakPath string, data []byte, perm os.FileMode) error {
+	f, err := os.OpenFile(bakPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+	if err != nil {
+		if os.IsExist(err) {
+			return err
+		}
+		return fmt.Errorf("backup %s: %w", bakPath, err)
+	}
+
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(bakPath)
+		return fmt.Errorf("backup %s: %w", bakPath, err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(bakPath)
+		return fmt.Errorf("backup %s: %w", bakPath, err)
+	}
+	return nil
 }
 
 // Watch monitors the file for external changes via fsnotify.

@@ -245,7 +245,7 @@ func exerciseFileBackedEdit(t *testing.T, app konfables.Konfable, tc containerCa
 		t.Fatalf("saved FindValue(%q) = %q, %v; want %q, true", tc.existingKey, got, ok, tc.replaceWant)
 	}
 
-	backup, err := os.ReadFile(path + ".bak")
+	backup, err := os.ReadFile(pkg.BackupPath(path))
 	if err != nil {
 		t.Fatalf("read backup: %v", err)
 	}

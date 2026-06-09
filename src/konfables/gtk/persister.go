@@ -32,13 +32,13 @@ func NewMirrorPersister(primary string, mirrors ...string) *MirrorPersister {
 }
 
 // Save writes the primary via the embedded persister, then mirrors the same
-// bytes to every sibling. each mirror gets its own .bak of its prior content.
+// bytes to every sibling. each mirror gets its own konfi backup of its prior content.
 func (mp *MirrorPersister) Save(ctx context.Context, original, data []byte) error {
 	if err := mp.FilePersister.Save(ctx, original, data); err != nil {
 		return err
 	}
 	for _, path := range mp.mirrors {
-		if err := writeMirror(path, data); err != nil {
+		if err := mp.writeMirror(path, data); err != nil {
 			return fmt.Errorf("mirror %s: %w", path, err)
 		}
 	}
@@ -47,12 +47,12 @@ func (mp *MirrorPersister) Save(ctx context.Context, original, data []byte) erro
 
 // writeMirror backs up the mirror's current content and atomically writes data,
 // preserving the file's existing permissions.
-func writeMirror(path string, data []byte) error {
+func (mp *MirrorPersister) writeMirror(path string, data []byte) error {
 	perm := os.FileMode(0o644)
 	if info, err := os.Stat(path); err == nil {
 		perm = info.Mode().Perm()
 		if prior, rerr := os.ReadFile(path); rerr == nil {
-			if werr := os.WriteFile(path+".bak", prior, perm); werr != nil {
+			if werr := pkg.WriteBackup(path, prior, perm, mp.BackupLimit()); werr != nil {
 				return fmt.Errorf("backup: %w", werr)
 			}
 		}

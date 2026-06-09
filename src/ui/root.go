@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,6 +81,10 @@ type root struct {
 	program *tea.Program
 }
 
+type backupLimitSetter interface {
+	SetBackupLimit(int)
+}
+
 // ProgramSetter allows main to inject the tea.Program after creation.
 type ProgramSetter interface {
 	SetProgram(p *tea.Program)
@@ -88,6 +93,22 @@ type ProgramSetter interface {
 func (r *root) SetProgram(p *tea.Program) {
 	r.program = p
 	r.content.program = p
+}
+
+func (r *root) applyBackupLimit(limit int) {
+	for _, k := range r.allKonfables {
+		if s, ok := k.(backupLimitSetter); ok {
+			s.SetBackupLimit(limit)
+		}
+	}
+	if r.app == nil {
+		return
+	}
+	for _, k := range r.app.Detected {
+		if s, ok := k.(backupLimitSetter); ok {
+			s.SetBackupLimit(limit)
+		}
+	}
 }
 
 // NewRoot creates the top-level Bubble Tea model.
@@ -111,7 +132,7 @@ func NewRoot(app *setup.App) tea.Model {
 		home:      true,
 	}}
 	var allK []konfables.Konfable
-	for _, ki := range setup.AllKonfablesWithInfo() {
+	for _, ki := range setup.AllKonfablesWithInfoConfig(app.Config) {
 		if k, ok := ki.Konfable.(konfables.Konfable); ok {
 			info := k.Info()
 			items = append(items, sidebarItem{
@@ -574,7 +595,7 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, tea.Batch(r.applyThemeChange()...)
 
 	case tea.ColorProfileMsg:
-		profile := msg.Profile.String()
+		profile := msg.String()
 		sameProfile := r.terminalColorProfile == profile
 		r.terminalColorProfile = profile
 		theme.SetTerminalColorProfile(msg.Profile)
@@ -942,6 +963,17 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.app.Config.LogLevel = msg.Value
 		case "browse_loads_app":
 			r.app.Config.BrowseLoadsApp = msg.Value == "true"
+		case "backup_limit":
+			limit, err := strconv.Atoi(strings.TrimSpace(msg.Value))
+			if err != nil {
+				r.status.status = "invalid backup limit"
+				return r, nil
+			}
+			if limit < 0 {
+				limit = 0
+			}
+			r.app.Config.BackupLimit = limit
+			r.applyBackupLimit(limit)
 		case "nerd_font":
 			// flip the cached flag everywhere it gates icon rendering. sidebar
 			// and detail re-read on each frame, so the change is visible

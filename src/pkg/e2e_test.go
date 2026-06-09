@@ -73,7 +73,7 @@ func TestE2EFlatConfigWorkflow(t *testing.T) {
 	}
 
 	// backup should contain original
-	bakData, err := os.ReadFile(path + ".bak")
+	bakData, err := os.ReadFile(BackupPath(path))
 	if err != nil {
 		t.Fatal(err)
 	}

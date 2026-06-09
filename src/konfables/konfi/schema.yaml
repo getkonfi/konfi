@@ -46,3 +46,13 @@ sections:
           - info
           - warn
           - error
+  - name: Backups
+    key: ""
+    fields:
+      - key: backup_limit
+        label: Backup Limit
+        type: number
+        default: "5"
+        description: number of konfi backup files to retain per config (0 disables backups)
+        min: 0
+        max: 100

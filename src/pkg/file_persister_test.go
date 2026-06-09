@@ -110,8 +110,8 @@ func TestFilePersisterSaveCreatesNewFile(t *testing.T) {
 	if !bytes.Equal(got, content) {
 		t.Errorf("got %q, want %q", got, content)
 	}
-	if FileExists(path + ".bak") {
-		t.Error("first save should not create a .bak (nothing to back up)")
+	if FileExists(BackupPath(path)) {
+		t.Error("first save should not create a backup (nothing to back up)")
 	}
 }
 
@@ -140,7 +140,7 @@ func TestFilePersisterSave(t *testing.T) {
 	}
 
 	// backup should have original content
-	bakData, err := os.ReadFile(path + ".bak")
+	bakData, err := os.ReadFile(BackupPath(path))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,16 +149,16 @@ func TestFilePersisterSave(t *testing.T) {
 	}
 }
 
-func TestFilePersisterSaveDoesNotOverwriteExistingBackup(t *testing.T) {
+func TestFilePersisterSaveDoesNotTouchPlainBak(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.conf")
 	original := []byte("original content\n")
 	updated := []byte("updated content\n")
-	existingBackup := []byte("older backup\n")
+	otherBackup := []byte("other backup\n")
 	if err := os.WriteFile(path, original, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path+".bak", existingBackup, 0o644); err != nil {
+	if err := os.WriteFile(path+".bak", otherBackup, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -179,11 +179,46 @@ func TestFilePersisterSaveDoesNotOverwriteExistingBackup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !bytes.Equal(bakData, otherBackup) {
+		t.Errorf("plain backup: got %q, want %q", bakData, otherBackup)
+	}
+
+	konfiBakData, err := os.ReadFile(BackupPath(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(konfiBakData, original) {
+		t.Errorf("konfi backup: got %q, want %q", konfiBakData, original)
+	}
+}
+
+func TestFilePersisterSaveUsesNextKonfiBackupSlot(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.conf")
+	original := []byte("original content\n")
+	updated := []byte("updated content\n")
+	existingBackup := []byte("older backup\n")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(BackupPath(path), existingBackup, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fp := NewFilePersister(path)
+	if err := fp.Save(context.Background(), original, updated); err != nil {
+		t.Fatal(err)
+	}
+
+	bakData, err := os.ReadFile(BackupPath(path))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Equal(bakData, existingBackup) {
 		t.Errorf("existing backup: got %q, want %q", bakData, existingBackup)
 	}
 
-	nextBakData, err := os.ReadFile(path + ".bak.1")
+	nextBakData, err := os.ReadFile(BackupPath(path) + ".1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +227,7 @@ func TestFilePersisterSaveDoesNotOverwriteExistingBackup(t *testing.T) {
 	}
 }
 
-func TestFilePersisterSaveFailsWhenBackupSlotsExhausted(t *testing.T) {
+func TestFilePersisterSaveReplacesOldestBackupWhenSlotsFull(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.conf")
 	original := []byte("original content\n")
@@ -200,30 +235,86 @@ func TestFilePersisterSaveFailsWhenBackupSlotsExhausted(t *testing.T) {
 	if err := os.WriteFile(path, original, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 5; i++ {
-		bakPath := path + ".bak"
-		if i > 0 {
-			bakPath = fmt.Sprintf("%s.%d", path+".bak", i)
+	for i, bakPath := range backupPaths(path, DefaultBackupLimit) {
+		if err := os.WriteFile(bakPath, []byte(fmt.Sprintf("occupied %d\n", i)), 0o644); err != nil {
+			t.Fatal(err)
 		}
-		if err := os.WriteFile(bakPath, []byte("occupied\n"), 0o644); err != nil {
+		ts := time.Unix(int64(i+1), 0)
+		if err := os.Chtimes(bakPath, ts, ts); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	fp := NewFilePersister(path)
-	if err := fp.Save(context.Background(), original, updated); err == nil {
-		t.Fatal("expected save to fail when backup slots are exhausted")
+	if err := fp.Save(context.Background(), original, updated); err != nil {
+		t.Fatal(err)
 	}
 
 	got, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(got, original) {
-		t.Errorf("main file: got %q, want %q", got, original)
+	if !bytes.Equal(got, updated) {
+		t.Errorf("main file: got %q, want %q", got, updated)
 	}
-	if FileExists(path + ".bak.5") {
+
+	oldestData, err := os.ReadFile(BackupPath(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(oldestData, original) {
+		t.Errorf("oldest backup: got %q, want %q", oldestData, original)
+	}
+	if FileExists(fmt.Sprintf("%s.%d", BackupPath(path), DefaultBackupLimit)) {
 		t.Error("save should not create a sixth backup slot")
+	}
+}
+
+func TestFilePersisterSaveHonorsConfiguredBackupLimit(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.conf")
+	original := []byte("original content\n")
+	updated := []byte("updated content\n")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fp := NewFilePersister(path, WithBackupLimit(1))
+	if err := fp.Save(context.Background(), original, updated); err != nil {
+		t.Fatal(err)
+	}
+	if err := fp.Save(context.Background(), updated, []byte("third content\n")); err != nil {
+		t.Fatal(err)
+	}
+
+	if FileExists(BackupPath(path) + ".1") {
+		t.Error("save should not create a second backup slot when limit is 1")
+	}
+	bakData, err := os.ReadFile(BackupPath(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(bakData, updated) {
+		t.Errorf("backup: got %q, want %q", bakData, updated)
+	}
+}
+
+func TestFilePersisterSaveSkipsBackupWhenLimitZero(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.conf")
+	original := []byte("original content\n")
+	updated := []byte("updated content\n")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fp := NewFilePersister(path, WithBackupLimit(0))
+	if err := fp.Save(context.Background(), original, updated); err != nil {
+		t.Fatal(err)
+	}
+
+	if FileExists(BackupPath(path)) {
+		t.Error("backup should not be created when limit is 0")
 	}
 }
 
@@ -249,8 +340,8 @@ func TestFilePersisterSaveCreatesMissingDir(t *testing.T) {
 	if !bytes.Equal(got, updated) {
 		t.Errorf("main file: got %q, want %q", got, updated)
 	}
-	if FileExists(path + ".bak") {
-		t.Error("first save should not create a .bak (nothing to back up)")
+	if FileExists(BackupPath(path)) {
+		t.Error("first save should not create a backup (nothing to back up)")
 	}
 }
 

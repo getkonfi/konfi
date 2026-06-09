@@ -44,79 +44,89 @@ type versioned interface {
 
 type konfableEntry struct {
 	binary string
-	create func() Konfable
+	create func(*KonfConfig) Konfable
 	system bool        // virtual konfable, skip PATH detection
 	probe  func() bool // optional detection beyond PATH check
 }
 
 var allKonfables = []konfableEntry{
-	{"ghostty", func() Konfable {
-		return ghostty.New(pkg.NewFilePersister(ghostty.DefaultConfigPath()))
+	{"ghostty", func(cfg *KonfConfig) Konfable {
+		return ghostty.New(newFilePersister(ghostty.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"starship", func() Konfable {
-		return starship.New(pkg.NewFilePersister(starship.DefaultConfigPath()))
+	{"starship", func(cfg *KonfConfig) Konfable {
+		return starship.New(newFilePersister(starship.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"zsh", func() Konfable {
-		return powerlevel10k.New(pkg.NewFilePersister(powerlevel10k.DefaultConfigPath()))
+	{"zsh", func(cfg *KonfConfig) Konfable {
+		return powerlevel10k.New(newFilePersister(powerlevel10k.DefaultConfigPath(), cfg))
 	}, false, probePowerlevel10k},
-	{"alacritty", func() Konfable {
-		return alacritty.New(pkg.NewFilePersister(alacritty.DefaultConfigPath()))
+	{"alacritty", func(cfg *KonfConfig) Konfable {
+		return alacritty.New(newFilePersister(alacritty.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"Hyprland", func() Konfable {
-		return hyprland.New(pkg.NewFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf")))
+	{"Hyprland", func(cfg *KonfConfig) Konfable {
+		return hyprland.New(newFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf"), cfg))
 	}, false, nil},
-	{"fuzzel", func() Konfable {
-		return fuzzel.New(pkg.NewFilePersister(fuzzel.DefaultConfigPath()))
+	{"fuzzel", func(cfg *KonfConfig) Konfable {
+		return fuzzel.New(newFilePersister(fuzzel.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"waybar", func() Konfable {
-		return waybar.New(pkg.NewFilePersister(waybar.DefaultConfigPath()))
+	{"waybar", func(cfg *KonfConfig) Konfable {
+		return waybar.New(newFilePersister(waybar.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"", func() Konfable {
-		return konfi.New(pkg.NewFilePersister(
+	{"", func(cfg *KonfConfig) Konfable {
+		return konfi.New(newFilePersister(
 			cst.ConfigFilePath(),
-			pkg.WithDefaultContent([]byte("theme: catppuccin\nlog_level: info\n")),
+			cfg,
+			pkg.WithDefaultContent([]byte("theme: catppuccin\nlog_level: info\nbackup_limit: 5\n")),
 		))
 	}, true, nil},
-	{"gsettings", func() Konfable {
+	{"gsettings", func(_ *KonfConfig) Konfable {
 		return gnome.New(gnome.NewPersister())
 	}, false, probeGnome},
-	{"dconf", func() Konfable {
+	{"dconf", func(_ *KonfConfig) Konfable {
 		return dconf.New(dconf.NewPersister())
 	}, false, probeDconf},
-	{"kitty", func() Konfable {
-		return kitty.New(pkg.NewFilePersister(kitty.DefaultConfigPath()))
+	{"kitty", func(cfg *KonfConfig) Konfable {
+		return kitty.New(newFilePersister(kitty.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"hx", func() Konfable {
-		return helix.New(pkg.NewFilePersister(pkg.XDGConfigPath("helix", "config.toml")))
+	{"hx", func(cfg *KonfConfig) Konfable {
+		return helix.New(newFilePersister(pkg.XDGConfigPath("helix", "config.toml"), cfg))
 	}, false, nil},
-	{"yazi", func() Konfable {
-		return yazi.New(pkg.NewFilePersister(yazi.DefaultConfigPath()))
+	{"yazi", func(cfg *KonfConfig) Konfable {
+		return yazi.New(newFilePersister(yazi.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"rio", func() Konfable {
-		return rio.New(pkg.NewFilePersister(rio.DefaultConfigPath()))
+	{"rio", func(cfg *KonfConfig) Konfable {
+		return rio.New(newFilePersister(rio.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"git", func() Konfable {
-		return git.New(pkg.NewFilePersister(git.DefaultConfigPath()))
+	{"git", func(cfg *KonfConfig) Konfable {
+		return git.New(newFilePersister(git.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"gtk-launch", func() Konfable {
+	{"gtk-launch", func(cfg *KonfConfig) Konfable {
 		primary, mirrors := gtk.ResolvePaths()
-		return gtk.New(gtk.NewMirrorPersister(primary, mirrors...))
+		p := gtk.NewMirrorPersister(primary, mirrors...)
+		p.SetBackupLimit(cfg.EffectiveBackupLimit())
+		return gtk.New(p)
 	}, false, nil},
-	{"tmux", func() Konfable {
-		return tmux.New(pkg.NewFilePersister(tmux.DefaultConfigPath()))
+	{"tmux", func(cfg *KonfConfig) Konfable {
+		return tmux.New(newFilePersister(tmux.DefaultConfigPath(), cfg))
 	}, false, nil},
-	{"ssh", func() Konfable {
-		return ssh.New(pkg.NewFilePersister(ssh.DefaultConfigPath(), pkg.WithMissingContent([]byte(""))))
+	{"ssh", func(cfg *KonfConfig) Konfable {
+		return ssh.New(newFilePersister(ssh.DefaultConfigPath(), cfg, pkg.WithMissingContent([]byte(""))))
 	}, false, nil},
-	{sshd.BinaryPath(), func() Konfable {
-		return sshd.New(pkg.NewFilePersister(sshd.DefaultConfigPath(), pkg.WithMissingContent([]byte(""))))
+	{sshd.BinaryPath(), func(cfg *KonfConfig) Konfable {
+		return sshd.New(newFilePersister(sshd.DefaultConfigPath(), cfg, pkg.WithMissingContent([]byte(""))))
 	}, false, nil},
-	{"pacman", func() Konfable {
-		return pacman.New(pkg.NewFilePersister("/etc/pacman.conf"))
+	{"pacman", func(cfg *KonfConfig) Konfable {
+		return pacman.New(newFilePersister("/etc/pacman.conf", cfg))
 	}, false, nil},
-	{"brew", func() Konfable {
-		return brew.New(pkg.NewFilePersister(brew.DefaultConfigPath()))
+	{"brew", func(cfg *KonfConfig) Konfable {
+		return brew.New(newFilePersister(brew.DefaultConfigPath(), cfg))
 	}, false, nil},
+}
+
+func newFilePersister(path string, cfg *KonfConfig, opts ...pkg.FilePersisterOption) *pkg.FilePersister {
+	allOpts := make([]pkg.FilePersisterOption, 0, len(opts)+1)
+	allOpts = append(allOpts, pkg.WithBackupLimit(cfg.EffectiveBackupLimit()))
+	allOpts = append(allOpts, opts...)
+	return pkg.NewFilePersister(path, allOpts...)
 }
 
 // probeGnome reports whether a GNOME desktop is actually installed. The
@@ -176,18 +186,28 @@ type KonfableInfo struct {
 // all entries are included regardless of probe result — probes only gate
 // detection (installed status), not sidebar visibility.
 func AllKonfablesWithInfo() []KonfableInfo {
+	return AllKonfablesWithInfoConfig(nil)
+}
+
+// AllKonfablesWithInfoConfig returns every registered konfable with metadata.
+func AllKonfablesWithInfoConfig(cfg *KonfConfig) []KonfableInfo {
 	out := make([]KonfableInfo, 0, len(allKonfables))
 	for _, k := range allKonfables {
-		out = append(out, KonfableInfo{Konfable: k.create(), System: k.system})
+		out = append(out, KonfableInfo{Konfable: k.create(cfg), System: k.system})
 	}
 	return out
 }
 
 // AllKonfables returns every registered konfable without probing PATH.
 func AllKonfables() []Konfable {
+	return AllKonfablesConfig(nil)
+}
+
+// AllKonfablesConfig returns every registered konfable without probing PATH.
+func AllKonfablesConfig(cfg *KonfConfig) []Konfable {
 	all := make([]Konfable, 0, len(allKonfables))
 	for _, k := range allKonfables {
-		all = append(all, k.create())
+		all = append(all, k.create(cfg))
 	}
 	return all
 }
@@ -221,13 +241,13 @@ func InitDetection(ctx context.Context, app *App) error {
 
 			if k.system {
 				mu.Lock()
-				results = append(results, detectedEntry{index: i, inst: k.create()})
+				results = append(results, detectedEntry{index: i, inst: k.create(app.Config)})
 				mu.Unlock()
 				return nil
 			}
 
 			if _, err := exec.LookPath(k.binary); err == nil {
-				inst := k.create()
+				inst := k.create(app.Config)
 
 				if v, ok := inst.(versioned); ok {
 					vCtx, cancel := context.WithTimeout(ctx, 2*time.Second)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/eminert/konfi/pkg"
 	"github.com/eminert/konfi/setup/cst"
 
 	"gopkg.in/yaml.v3"
@@ -15,6 +16,7 @@ type KonfConfig struct {
 	LogLevel       string            `yaml:"log_level"`
 	BrowseLoadsApp bool              `yaml:"browse_loads_app"`
 	NerdFont       bool              `yaml:"nerd_font"`
+	BackupLimit    int               `yaml:"backup_limit"`
 	Bookmarks      []string          `yaml:"bookmarks,omitempty"`
 	Upstream       *UpstreamSettings `yaml:"upstream,omitempty"`
 }
@@ -39,10 +41,21 @@ type GitLabSettings struct {
 
 func defaultConfig() *KonfConfig {
 	return &KonfConfig{
-		Theme:    "catppuccin",
-		LogLevel: "info",
-		NerdFont: true,
+		Theme:       "catppuccin",
+		LogLevel:    "info",
+		NerdFont:    true,
+		BackupLimit: pkg.DefaultBackupLimit,
 	}
+}
+
+func (cfg *KonfConfig) EffectiveBackupLimit() int {
+	if cfg == nil {
+		return pkg.DefaultBackupLimit
+	}
+	if cfg.BackupLimit < 0 {
+		return 0
+	}
+	return cfg.BackupLimit
 }
 
 // InitConfig loads konfi's config file or creates defaults.
