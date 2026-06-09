@@ -3,6 +3,7 @@ package pkg
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -145,6 +146,84 @@ func TestFilePersisterSave(t *testing.T) {
 	}
 	if !bytes.Equal(bakData, original) {
 		t.Errorf("backup: got %q, want %q", bakData, original)
+	}
+}
+
+func TestFilePersisterSaveDoesNotOverwriteExistingBackup(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.conf")
+	original := []byte("original content\n")
+	updated := []byte("updated content\n")
+	existingBackup := []byte("older backup\n")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path+".bak", existingBackup, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	fp := NewFilePersister(path)
+	if err := fp.Save(context.Background(), original, updated); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, updated) {
+		t.Errorf("main file: got %q, want %q", got, updated)
+	}
+
+	bakData, err := os.ReadFile(path + ".bak")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(bakData, existingBackup) {
+		t.Errorf("existing backup: got %q, want %q", bakData, existingBackup)
+	}
+
+	nextBakData, err := os.ReadFile(path + ".bak.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(nextBakData, original) {
+		t.Errorf("next backup: got %q, want %q", nextBakData, original)
+	}
+}
+
+func TestFilePersisterSaveFailsWhenBackupSlotsExhausted(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.conf")
+	original := []byte("original content\n")
+	updated := []byte("updated content\n")
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		bakPath := path + ".bak"
+		if i > 0 {
+			bakPath = fmt.Sprintf("%s.%d", path+".bak", i)
+		}
+		if err := os.WriteFile(bakPath, []byte("occupied\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	fp := NewFilePersister(path)
+	if err := fp.Save(context.Background(), original, updated); err == nil {
+		t.Fatal("expected save to fail when backup slots are exhausted")
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Errorf("main file: got %q, want %q", got, original)
+	}
+	if FileExists(path + ".bak.5") {
+		t.Error("save should not create a sixth backup slot")
 	}
 }
 

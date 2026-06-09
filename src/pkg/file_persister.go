@@ -77,7 +77,7 @@ func (fp *FilePersister) Load(_ context.Context) ([]byte, error) {
 	return data, nil
 }
 
-// Save writes a .bak backup of original, then atomically writes data.
+// Save writes a non-clobbering .bak backup of original, then atomically writes data.
 // when the target file does not yet exist (first save of a new config), the backup
 // step is skipped — there is nothing to back up and the parent dir may not exist yet.
 func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
@@ -93,9 +93,8 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 		return fmt.Errorf("ensure dir for %s: %w", fp.Path, err)
 	}
 	if exists {
-		bakPath := fp.Path + ".bak"
-		if err := os.WriteFile(bakPath, original, perm); err != nil {
-			return fmt.Errorf("backup %s: %w", bakPath, err)
+		if err := writeBackup(fp.Path, original, perm); err != nil {
+			return err
 		}
 	}
 	fp.mu.Lock()
@@ -105,6 +104,39 @@ func (fp *FilePersister) Save(_ context.Context, original, data []byte) error {
 		return fmt.Errorf("save %s: %w", fp.Path, err)
 	}
 	return nil
+}
+
+func writeBackup(path string, data []byte, perm os.FileMode) error {
+	const maxBackupAttempts = 5
+
+	base := path + ".bak"
+	for i := 0; i < maxBackupAttempts; i++ {
+		bakPath := base
+		if i > 0 {
+			bakPath = fmt.Sprintf("%s.%d", base, i)
+		}
+
+		f, err := os.OpenFile(bakPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
+		if err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return fmt.Errorf("backup %s: %w", bakPath, err)
+		}
+
+		if _, err := f.Write(data); err != nil {
+			_ = f.Close()
+			_ = os.Remove(bakPath)
+			return fmt.Errorf("backup %s: %w", bakPath, err)
+		}
+		if err := f.Close(); err != nil {
+			_ = os.Remove(bakPath)
+			return fmt.Errorf("backup %s: %w", bakPath, err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("backup %s: no available backup path after %d attempts", base, maxBackupAttempts)
 }
 
 // Watch monitors the file for external changes via fsnotify.
