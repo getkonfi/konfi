@@ -24,7 +24,7 @@ func (g *GNOME) Info() konfables.AppInfo {
 		Binary:   "gsettings",
 		Format:   "gnome",
 		Icon:     "🐾",
-		NerdIcon: "\uf30e", // nf-linux-gnome_old
+		NerdIcon: "\uf361", // nf-linux-gnome
 	}
 }
 

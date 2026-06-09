@@ -465,7 +465,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			c.logoAnim = nil
 			return c, nil
 		}
-		return c, logoAnimCmd(c.logoAnimGen)
+		return c, logoAnimCmd(c.logoAnimGen, c.logoAnim.Config.TickMs)
 	}
 
 	return c, nil
@@ -544,7 +544,7 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 }
 
 // commitEdit writes the edited value back to the config and returns
-// a cmd to propagate konfi setting changes (theme, log_level).
+// a cmd to propagate konfi setting changes.
 func (c *content) commitEdit(value string) tea.Cmd {
 	c.detail.editor = nil
 
@@ -879,7 +879,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	if cfg, ok := konfables.LogoAnims[k.Name()]; ok {
 		if logo, lok := konfables.Logos[k.Name()]; lok {
 			c.logoAnim = pixelart.NewAnimState(logo, cfg)
-			cmds = append(cmds, logoAnimCmd(c.logoAnimGen))
+			cmds = append(cmds, logoAnimCmd(c.logoAnimGen, cfg.TickMs))
 		}
 	} else {
 		c.logoAnim = nil

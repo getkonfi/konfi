@@ -24,7 +24,7 @@ func (d *Dconf) Info() konfables.AppInfo {
 		Binary:   "dconf",
 		Format:   "dconf",
 		Icon:     "⚙",
-		NerdIcon: "\uf013", // nf-fa-cog
+		NerdIcon: "\U000f164b", // nf-md-database_cog
 	}
 }
 

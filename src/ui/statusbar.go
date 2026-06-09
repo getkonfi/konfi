@@ -263,12 +263,12 @@ func (s *statusbar) bandTextStyle(tone statusTone) lipgloss.Style {
 		Bold(true)
 }
 
-func (s *statusbar) hintStyles(tone statusTone) (lipgloss.Style, lipgloss.Style, lipgloss.Style) {
+func (s *statusbar) hintStyles(tone statusTone) (keyStyle, labelStyle, themeStyle lipgloss.Style) {
 	if tone == statusQuiet {
 		return s.keyCapStyle(), s.quietLabelStyle(), s.quietThemeStyle()
 	}
 	keyBg := s.theme.Palette.Base
-	keyStyle := lipgloss.NewStyle().
+	keyStyle = lipgloss.NewStyle().
 		Background(keyBg).
 		Foreground(s.readableOn(keyBg, s.toneColor(tone), s.theme.Palette.Text, s.theme.Palette.Subtext)).
 		Bold(true).

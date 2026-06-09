@@ -39,7 +39,7 @@ type ExternalChangeMsg struct {
 // splitFlapTickMsg fires every ~60ms to advance the split-flap animation.
 type splitFlapTickMsg struct{ gen int }
 
-// logoAnimTickMsg fires every ~60ms to advance the logo animation.
+// logoAnimTickMsg advances the current logo animation.
 type logoAnimTickMsg struct{ gen int }
 
 // DocOpenedMsg is sent after attempting to open a doc URL in the browser.

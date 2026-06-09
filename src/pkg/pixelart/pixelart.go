@@ -97,13 +97,14 @@ func (p *PixelArt) Clone() PixelArt {
 type AnimKind int
 
 const (
-	AnimNone  AnimKind = iota
-	AnimBlink          // ghostty eye blink
-	AnimFlame          // starship exhaust fire
-	AnimFade           // alacritty radial fade-in
-	AnimWave           // hyprland color wave
-	AnimChomp          // pacman progressive jaw close/open
-	AnimDrip           // water drop ripple from configurable origin
+	AnimNone     AnimKind = iota
+	AnimBlink             // ghostty eye blink
+	AnimFlame             // starship exhaust fire
+	AnimFade              // alacritty radial fade-in
+	AnimWave              // hyprland color wave
+	AnimChomp             // pacman progressive jaw close/open
+	AnimDrip              // water drop ripple from configurable origin
+	AnimSequence          // ordered pixel-group highlight
 )
 
 // Pixel identifies a single pixel coordinate.
@@ -117,14 +118,14 @@ type AnimConfig struct {
 	Loop   bool // restart when done
 
 	// blink-specific
-	BlinkPixels []Pixel  // eye pixel coordinates
-	BlinkSeq    []bool   // per-frame: true = eyes visible
-	BlinkColor  uint8    // color when eyes close (0 = transparent)
+	BlinkPixels []Pixel // eye pixel coordinates
+	BlinkSeq    []bool  // per-frame: true = eyes visible
+	BlinkColor  uint8   // color when eyes close (0 = transparent)
 
 	// flame-specific
-	FlameZone   [4]int   // {rowMin, rowMax, colMin, colMax}
-	FlameColors []uint8  // particle colors (bright→dim)
-	FlameRamp   []int    // per-frame spawn count envelope
+	FlameZone   [4]int  // {rowMin, rowMax, colMin, colMax}
+	FlameColors []uint8 // particle colors (bright→dim)
+	FlameRamp   []int   // per-frame spawn count envelope
 
 	// wave-specific
 	WaveBright []uint8 // brightness color ramp (bright→base)
@@ -137,13 +138,18 @@ type AnimConfig struct {
 	// drip-specific
 	DripOrigin Pixel   // origin point for ripple expansion
 	DripBright []uint8 // brightness ramp (bright→base)
+
+	// sequence-specific
+	SequenceGroups [][]Pixel // ordered groups to highlight
+	SequenceSeq    []int     // per-frame active group, -1 = none
+	SequenceBright []uint8   // active→trail colors
 }
 
 // Particle is a short-lived colored pixel for the flame effect.
 type Particle struct {
-	Row, Col       int
-	Color          uint8
-	Life, MaxLife  int
+	Row, Col      int
+	Color         uint8
+	Life, MaxLife int
 }
 
 // AnimState holds the mutable state of a running animation.
@@ -206,6 +212,8 @@ func (s *AnimState) CurrentFrame() *PixelArt {
 		s.applyChomp(&frame)
 	case AnimDrip:
 		s.applyDrip(&frame)
+	case AnimSequence:
+		s.applySequence(&frame)
 	}
 	return &frame
 }
@@ -396,6 +404,33 @@ func (s *AnimState) applyDrip(frame *PixelArt) {
 					ci = len(s.Config.DripBright) - 1
 				}
 				frame.Pixels[y][x] = s.Config.DripBright[ci]
+			}
+		}
+	}
+}
+
+// applySequence highlights one ordered pixel group with a short trailing ramp.
+func (s *AnimState) applySequence(frame *PixelArt) {
+	if len(s.Config.SequenceGroups) == 0 || len(s.Config.SequenceSeq) == 0 || len(s.Config.SequenceBright) == 0 {
+		return
+	}
+	if s.Frame >= len(s.Config.SequenceSeq) {
+		return
+	}
+
+	active := s.Config.SequenceSeq[s.Frame]
+	if active < 0 {
+		return
+	}
+
+	for offset, color := range s.Config.SequenceBright {
+		groupIdx := active - offset
+		if groupIdx < 0 || groupIdx >= len(s.Config.SequenceGroups) {
+			continue
+		}
+		for _, p := range s.Config.SequenceGroups[groupIdx] {
+			if p.Row >= 0 && p.Row < frame.Height && p.Col >= 0 && p.Col < frame.Width {
+				frame.Pixels[p.Row][p.Col] = color
 			}
 		}
 	}
