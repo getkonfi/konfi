@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/eminert/konfi/theme"
@@ -33,7 +32,6 @@ type sidebar struct {
 	theme     *theme.Theme
 	nerdFont  bool
 	dirtyApps map[string]bool // apps with unsaved changes
-	newCounts map[string]int  // per-app count of "new" fields
 
 	// cached styles
 	collapsedStyle lipgloss.Style
@@ -454,12 +452,6 @@ func (s *sidebar) renderItem(item sidebarItem, isCursor bool, width int) string 
 		dirty = " " + s.theme.Warning.Render("●")
 	}
 
-	// "what's new" badge
-	badge := ""
-	if n := s.newCounts[item.name]; n > 0 {
-		badge = " " + strconv.Itoa(n) + " new"
-	}
-
 	// icon glyph (shown before name)
 	icon := s.itemIcon(item) + " "
 
@@ -473,9 +465,6 @@ func (s *sidebar) renderItem(item sidebarItem, isCursor bool, width int) string 
 			prefix = nameStyle.Render("▎ ")
 		}
 		body := nameStyle.Render(icon+name) + dirty
-		if badge != "" {
-			body += nameStyle.Render(badge)
-		}
 		return clipStyle.Render(prefix + body)
 	}
 
@@ -500,9 +489,6 @@ func (s *sidebar) renderItem(item sidebarItem, isCursor bool, width int) string 
 	}
 
 	rendered := prefix + iconStyle.Render(icon) + nameStyle.Render(name) + dirty
-	if badge != "" {
-		rendered += s.theme.Muted.Render(badge)
-	}
 	return clipStyle.Render(rendered)
 }
 

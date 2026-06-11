@@ -11,6 +11,7 @@ import (
 	"github.com/eminert/konfi/pkg"
 	cfgparse "github.com/eminert/konfi/pkg/parser"
 	"github.com/eminert/konfi/setup"
+	"github.com/eminert/konfi/ui/editors"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -118,6 +119,35 @@ func TestContentDeleteKeyDeletesConfiguredField(t *testing.T) {
 	}
 	if strings.Contains(string(c.config.Content()), "line12") {
 		t.Fatalf("delete key did not remove field from config:\n%s", c.config.Content())
+	}
+}
+
+func TestContentDeleteChangedFieldRevertsBeforeDeleting(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	c.fields[1].Default = "0"
+
+	commitTestField(t, &c, "line12", "99")
+
+	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if got := c.values["line12"]; got != "12" {
+		t.Fatalf("first backspace value = %q, want loaded value 12", got)
+	}
+	if strings.Contains(string(c.config.Content()), "line12 = 99") {
+		t.Fatalf("first backspace kept edited value in config:\n%s", c.config.Content())
+	}
+	if c.config.Dirty() {
+		t.Fatal("first backspace should restore the loaded file value and clear dirty state")
+	}
+
+	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if _, ok := c.values["line12"]; ok {
+		t.Fatal("second delete should remove the configured value")
+	}
+	if strings.Contains(string(c.config.Content()), "line12") {
+		t.Fatalf("second delete did not remove field from config:\n%s", c.config.Content())
+	}
+	if got := stripANSI(c.renderFieldValue(c.fields[1], c.fields[1].Default, true)); got != "0" {
+		t.Fatalf("default render after delete = %q, want 0", got)
 	}
 }
 
@@ -322,6 +352,26 @@ func TestContentBottomHelpersMatchRequestedKeys(t *testing.T) {
 		{".", "configured"},
 		{"⇥", "changed"},
 		{"q", "quit"},
+		{"esc", "cancel"},
+	}
+	if !reflect.DeepEqual(r.status.hints, want) {
+		t.Fatalf("status hints mismatch\ngot:  %#v\nwant: %#v", r.status.hints, want)
+	}
+}
+
+func TestContentBottomHelpersMatchMultiSelectKeys(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	field := pkg.Field{Type: "multi", Options: []string{"bold", "italic"}}
+	c.detail.editor = editors.ForField(field)
+	c.detail.editor.Init(field, "", testTheme())
+	r := &root{content: c, focus: paneContent}
+
+	r.updateHints()
+
+	want := []keyHint{
+		{"↑↓", "nav"},
+		{"␣", "select"},
+		{"⏎", "accept"},
 		{"esc", "cancel"},
 	}
 	if !reflect.DeepEqual(r.status.hints, want) {

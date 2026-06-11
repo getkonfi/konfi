@@ -113,9 +113,6 @@ func (c *content) renderBody(width int) string {
 		if c.showEffective {
 			labels = append(labels, "effective")
 		}
-		if c.showNewOnly {
-			labels = append(labels, "new")
-		}
 		if c.changedOnly {
 			labels = append(labels, "changed")
 		}
@@ -193,7 +190,6 @@ func (c *content) renderBody(width int) string {
 		// single map lookup for current value
 		val, hasVal := c.values[f.Key]
 		isChanged := c.fieldChanged(f)
-		isNewField := c.fieldIsNew(f)
 		isDeprecated := f.Until != ""
 
 		// configured indicator: green when the key is present in the config file,
@@ -240,8 +236,6 @@ func (c *content) renderBody(width int) string {
 		iconStyle := c.typeIconStyle(f.Type, val)
 		if isDeprecated {
 			iconStyle = c.theme.FieldStale
-		} else if isNewField {
-			iconStyle = c.theme.FieldNew
 		}
 		isBookmarked := c.konfable != nil && c.bookmarks[c.konfable.Name()+"/"+f.Key]
 		var prefix, label string
@@ -250,7 +244,7 @@ func (c *content) renderBody(width int) string {
 		} else {
 			prefix = "  " + iconStyle.Faint(true).Render(icon) + " "
 		}
-		label = c.fieldLabelStyle(isCursor, isChanged, isNewField, isDeprecated).Render(paddedLabel)
+		label = c.fieldLabelStyle(isCursor, isChanged, isDeprecated).Render(paddedLabel)
 		if isCursor {
 			if docURL := c.fieldDocURL(f); docURL != "" {
 				label += " " + c.theme.FieldDocLink.Hyperlink(docURL).Render("↗")
@@ -469,23 +463,6 @@ func (c *content) fieldChanged(f *pkg.Field) bool {
 	return hadOld != hasNew || oldVal != newVal
 }
 
-func (c *content) fieldIsNew(f *pkg.Field) bool {
-	if f == nil || f.Since == "" {
-		return false
-	}
-	if c.showNewOnly {
-		return true
-	}
-	if c.konfable == nil {
-		return false
-	}
-	ver := c.versions[c.konfable.Name()]
-	if pkg.NormalizeSemver(ver) == "" || pkg.NormalizeSemver(f.Since) == "" {
-		return false
-	}
-	return pkg.FieldIsNewIn(*f, ver)
-}
-
 func (c *content) fieldDocURL(f *pkg.Field) string {
 	if f == nil {
 		return ""
@@ -509,7 +486,7 @@ func (c *content) fieldStateDot(configured, changed, deprecated bool) string {
 	}
 }
 
-func (c *content) fieldLabelStyle(cursor, changed, isNew, deprecated bool) lipgloss.Style {
+func (c *content) fieldLabelStyle(cursor, changed, deprecated bool) lipgloss.Style {
 	style := c.theme.FieldLabel
 	if cursor {
 		style = c.theme.Text.Bold(true)
@@ -517,8 +494,6 @@ func (c *content) fieldLabelStyle(cursor, changed, isNew, deprecated bool) lipgl
 	switch {
 	case deprecated:
 		style = style.Foreground(c.theme.Palette.Error).Faint(true).Strikethrough(true)
-	case isNew:
-		style = style.Foreground(c.theme.Palette.Success).Underline(true)
 	case changed:
 		style = style.Foreground(c.theme.Palette.Warning).Bold(true)
 	}

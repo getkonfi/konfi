@@ -46,7 +46,6 @@ type Theme struct {
 	FieldValue   lipgloss.Style
 	FieldDefault lipgloss.Style
 	FieldChanged lipgloss.Style
-	FieldNew     lipgloss.Style
 	FieldWarn    lipgloss.Style
 	FieldStale   lipgloss.Style
 	FieldDocLink lipgloss.Style
@@ -133,10 +132,6 @@ func (t *Theme) recompute() {
 	t.FieldChanged = lipgloss.NewStyle().
 		Foreground(fieldChangedOrange).
 		Bold(true)
-
-	t.FieldNew = lipgloss.NewStyle().
-		Foreground(p.Success).
-		Underline(true)
 
 	t.FieldWarn = lipgloss.NewStyle().
 		Foreground(p.Warning).

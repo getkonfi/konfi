@@ -38,6 +38,10 @@ func (r *root) updateHints() {
 			r.content.hints = []keyHint{
 				{"↑↓", "select"}, {"⏎", "confirm"}, {"esc", "cancel"},
 			}
+		case editors.InteractionMulti:
+			r.content.hints = []keyHint{
+				{"↑↓", "nav"}, {"␣", "select"}, {"⏎", "accept"}, {"esc", "cancel"},
+			}
 		default:
 			r.content.hints = []keyHint{
 				{"⏎", "confirm"}, {"esc", "cancel"}, {"tab", "switch mode"},

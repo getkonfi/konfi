@@ -80,9 +80,6 @@ type ToggleFilterMsg struct{}
 // CycleThemeMsg cycles to the next theme from the palette.
 type CycleThemeMsg struct{}
 
-// ToggleNewMsg toggles the "what's new" filter from the palette.
-type ToggleNewMsg struct{}
-
 // OpenEditorMsg opens the config in $EDITOR from the palette.
 type OpenEditorMsg struct{}
 

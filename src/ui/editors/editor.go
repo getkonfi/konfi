@@ -46,6 +46,7 @@ const (
 	InteractionList                             // add/delete/edit list rows
 	InteractionToggleMap                        // toggle/add/delete map entries
 	InteractionEnum                             // select from options
+	InteractionMulti                            // toggle multiple options, then accept
 )
 
 // Interactor is optionally implemented by editors with a non-default key UX.

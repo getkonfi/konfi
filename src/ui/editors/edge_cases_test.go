@@ -407,6 +407,22 @@ func TestListEditor_LargeList(t *testing.T) {
 	_ = e.View(80)
 }
 
+func TestMultiEditorShowsSelectAcceptHelper(t *testing.T) {
+	e := &multiEditor{}
+	e.Init(pkg.Field{Options: []string{"bold", "italic"}}, "bold", testTheme())
+
+	got := stripANSI(e.View(80))
+	if !strings.Contains(got, "␣:select") || !strings.Contains(got, "⏎:accept") {
+		t.Fatalf("multi helper = %q, want select and accept hints", got)
+	}
+	if got, want := e.Height(), 3; got != want {
+		t.Fatalf("multi height = %d, want %d", got, want)
+	}
+	if got := e.Interaction(); got != InteractionMulti {
+		t.Fatalf("multi interaction = %v, want InteractionMulti", got)
+	}
+}
+
 func TestFontEditor_FilterAcceptsJAndK(t *testing.T) {
 	e := &fontEditor{}
 	e.Init(pkg.Field{Widget: "font"}, "", testTheme())

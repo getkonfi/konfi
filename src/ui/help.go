@@ -63,7 +63,6 @@ var helpContent = helpGroup{
 		{"n / N", "next / prev match"},
 		{"f", "toggle configured"},
 		{"g", "effective config"},
-		{"w", "what's new filter"},
 		{"tab", "changed (diff)"},
 		{"m", "bookmark field"},
 		{"b", "show bookmarks"},

@@ -62,13 +62,10 @@ type root struct {
 	navHistory    []navEntry
 	navHistoryPos int
 
-	// per-app count of "new" fields (since == detected version)
-	newCounts map[string]int
-
 	// unsaved per-app working copies kept while browsing other apps
 	dirtyConfigs map[string]dirtyConfigState
 
-	// cached parsed schemas — populated by computeNewCounts, reused by loadApp
+	// cached parsed schemas — reused by loadApp
 	schemaCache map[string]*pkg.Schema
 
 	// diff confirmation overlay before saving
@@ -148,12 +145,10 @@ func NewRoot(app *setup.App) tea.Model {
 		}
 	}
 
-	// compute per-app "what's new" field counts + cache parsed schemas
-	newCounts, schemaCache := computeNewCounts(allK, app.Versions)
+	schemaCache := loadSchemaCache(allK)
 
 	sb := newSidebar(items, th)
 	sb.nerdFont = nerdFont
-	sb.newCounts = newCounts
 	ct := newContent(th)
 	ct.nerdFont = nerdFont
 	ct.detail.nerdFont = nerdFont
@@ -167,7 +162,7 @@ func NewRoot(app *setup.App) tea.Model {
 		ct.bookmarks[b] = true
 	}
 
-	ct.dashboardApps = buildDashboardApps(allK, installed, nerdFont, app.Versions, schemaCache, newCounts)
+	ct.dashboardApps = buildDashboardApps(allK, installed, nerdFont, app.Versions, schemaCache)
 
 	st := newStatusbar(th)
 	pal := newPalette(th)
@@ -182,7 +177,6 @@ func NewRoot(app *setup.App) tea.Model {
 		mode:                 ModeNormal,
 		allKonfables:         allK,
 		installed:            installed,
-		newCounts:            newCounts,
 		dirtyConfigs:         make(map[string]dirtyConfigState),
 		schemaCache:          schemaCache,
 		terminalCapabilities: make(map[string]bool),
@@ -535,14 +529,6 @@ func (r *root) updateKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case "w":
-		// only toggle "what's new" filter when content focused with no active search matches
-		if r.focus == paneContent && !r.content.detailFocused && len(r.content.searchMatches) == 0 {
-			r.toggleNewFilter()
-			r.updateHints()
-			return r, nil
-		}
-
 	case "e":
 		if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
 			cmd := r.openInEditor()
@@ -625,13 +611,6 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CycleThemeMsg:
 		r.cycleTheme()
 		return r, tea.Batch(r.applyThemeChange()...)
-
-	case ToggleNewMsg:
-		if r.focus == paneContent && len(r.content.searchMatches) == 0 {
-			r.toggleNewFilter()
-			r.updateHints()
-		}
-		return r, nil
 
 	case OpenEditorMsg:
 		if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
@@ -1235,11 +1214,8 @@ func (r *root) cycleTheme() {
 	r.app.Theme.SetPalette(&palettes[nextIdx])
 }
 
-// computeNewCounts counts fields with a `since` matching the detected version per app.
-// also populates a schema cache to avoid re-parsing in loadApp.
-func computeNewCounts(allK []konfables.Konfable, versions map[string]string) (counts map[string]int, cache map[string]*pkg.Schema) {
-	counts = make(map[string]int)
-	cache = make(map[string]*pkg.Schema)
+func loadSchemaCache(allK []konfables.Konfable) map[string]*pkg.Schema {
+	cache := make(map[string]*pkg.Schema)
 	for _, k := range allK {
 		schemaData, err := k.Schema()
 		if err != nil || schemaData == nil {
@@ -1250,27 +1226,8 @@ func computeNewCounts(allK []konfables.Konfable, versions map[string]string) (co
 			continue
 		}
 		cache[k.Name()] = s
-
-		ver, ok := versions[k.Name()]
-		if !ok || ver == "" {
-			continue
-		}
-		if pkg.NormalizeSemver(ver) == "" {
-			continue
-		}
-		count := 0
-		for si := range s.Sections {
-			for fi := range s.Sections[si].Fields {
-				if pkg.FieldIsNewIn(s.Sections[si].Fields[fi], ver) {
-					count++
-				}
-			}
-		}
-		if count > 0 {
-			counts[k.Name()] = count
-		}
 	}
-	return counts, cache
+	return cache
 }
 
 // yankField copies the current field's value to the system clipboard.
@@ -1293,23 +1250,6 @@ func (r *root) yankField() tea.Cmd {
 			return statusClearMsg{}
 		}),
 	)
-}
-
-// toggleNewFilter toggles the "what's new" field filter on content.
-func (r *root) toggleNewFilter() {
-	r.content.showNewOnly = !r.content.showNewOnly
-	r.content.refilter()
-	r.content.syncDetail()
-	if r.content.showNewOnly {
-		name := ""
-		if r.content.konfable != nil {
-			name = r.content.konfable.Name()
-		}
-		count := r.newCounts[name]
-		r.status.status = fmt.Sprintf("showing %d new fields", count)
-	} else {
-		r.status.status = ""
-	}
 }
 
 func (r *root) toggleConfiguredFilter() {

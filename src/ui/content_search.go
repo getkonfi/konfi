@@ -44,7 +44,7 @@ func (c *content) changedFieldKeys() map[string]bool {
 }
 
 // clearTopFilter clears the highest-priority active filter (bookmarks, then
-// effective, new, changed, configured) and refilters. cleared reports whether
+// effective, changed, configured) and refilters. cleared reports whether
 // any filter was active; clearStatus reports whether the caller should also
 // reset the status line (only the filters that set a status message on toggle).
 func (c *content) clearTopFilter() (cleared, clearStatus bool) {
@@ -54,9 +54,6 @@ func (c *content) clearTopFilter() (cleared, clearStatus bool) {
 		clearStatus = true
 	case c.showEffective:
 		c.showEffective = false
-	case c.showNewOnly:
-		c.showNewOnly = false
-		clearStatus = true
 	case c.changedOnly:
 		c.changedOnly = false
 		clearStatus = true
@@ -101,17 +98,6 @@ func (c *content) refilter() {
 		if c.configuredOnly && !c.showEffective {
 			if _, ok := c.values[f.Key]; !ok {
 				continue
-			}
-		}
-		if c.showNewOnly {
-			if f.Since == "" {
-				continue
-			}
-			if c.konfable != nil {
-				ver := c.versions[c.konfable.Name()]
-				if pkg.NormalizeSemver(ver) != "" && pkg.NormalizeSemver(f.Since) != "" && !pkg.FieldIsNewIn(*f, ver) {
-					continue
-				}
 			}
 		}
 		if c.bookmarkedOnly && c.konfable != nil {
@@ -189,17 +175,6 @@ func (c *content) refilterRanked(query string) {
 		if c.configuredOnly && !c.showEffective {
 			if _, ok := c.values[f.Key]; !ok {
 				continue
-			}
-		}
-		if c.showNewOnly {
-			if f.Since == "" {
-				continue
-			}
-			if c.konfable != nil {
-				ver := c.versions[c.konfable.Name()]
-				if pkg.NormalizeSemver(ver) != "" && pkg.NormalizeSemver(f.Since) != "" && !pkg.FieldIsNewIn(*f, ver) {
-					continue
-				}
 			}
 		}
 		if c.bookmarkedOnly && c.konfable != nil {

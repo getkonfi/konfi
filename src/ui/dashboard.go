@@ -21,16 +21,13 @@ type dashboardApp struct {
 	configuredCount int    // fields with non-default values
 	totalFields     int    // total schema fields
 	deprecatedCount int    // deprecated diagnostics
-	newCount        int    // fields added in the detected version
-	coverage        string // from schema.Coverage
 	minAppVersion   string // schema min supported version
 	maxAppVersion   string // schema max supported version
 }
 
-// buildDashboardApps computes the landing-page tiles and their stats (field
-// counts, configured/deprecated counts, coverage). it opens each installed
-// app's config file, so it does real I/O — kept out of NewRoot's wiring.
-func buildDashboardApps(apps []konfables.Konfable, installed map[string]bool, nerdFont bool, versions map[string]string, schemaCache map[string]*pkg.Schema, newCounts map[string]int) []dashboardApp {
+// buildDashboardApps computes the landing-page tiles and their stats. it opens
+// each installed app's config file, so it does real I/O — kept out of NewRoot's wiring.
+func buildDashboardApps(apps []konfables.Konfable, installed map[string]bool, nerdFont bool, versions map[string]string, schemaCache map[string]*pkg.Schema) []dashboardApp {
 	var out []dashboardApp
 	for _, k := range apps {
 		info := k.Info()
@@ -55,7 +52,6 @@ func buildDashboardApps(apps []konfables.Konfable, installed map[string]bool, ne
 			for si := range s.Sections {
 				da.totalFields += len(s.Sections[si].Fields)
 			}
-			da.coverage = s.Coverage
 			da.minAppVersion = s.MinAppVersion
 			da.maxAppVersion = s.MaxAppVersion
 
@@ -104,7 +100,6 @@ func buildDashboardApps(apps []konfables.Konfable, installed map[string]bool, ne
 			}
 		}
 
-		da.newCount = newCounts[k.Name()]
 		out = append(out, da)
 	}
 	return out
@@ -130,12 +125,11 @@ func (c *content) renderDashboard(width int) string {
 
 	// app list
 	var installed, notInstalled []dashboardApp
-	var totalDeprecated, totalNew int
+	var totalDeprecated int
 	for i := range c.dashboardApps {
 		if c.dashboardApps[i].installed {
 			installed = append(installed, c.dashboardApps[i])
 			totalDeprecated += c.dashboardApps[i].deprecatedCount
-			totalNew += c.dashboardApps[i].newCount
 		} else {
 			notInstalled = append(notInstalled, c.dashboardApps[i])
 		}
@@ -156,9 +150,6 @@ func (c *content) renderDashboard(width int) string {
 	// aggregate summary — actionable signals only
 	if len(installed) > 0 {
 		var parts []string
-		if totalNew > 0 {
-			parts = append(parts, fmt.Sprintf("%d new", totalNew))
-		}
 		if totalDeprecated > 0 {
 			parts = append(parts, fmt.Sprintf("%d deprecated", totalDeprecated))
 		}
@@ -291,14 +282,8 @@ func (c *content) renderDashboard(width int) string {
 // configured count is omitted — sort order communicates engagement.
 func (c *content) dashboardStats(a *dashboardApp) string {
 	var parts []string
-	if a.newCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d new", a.newCount))
-	}
 	if a.deprecatedCount > 0 {
 		parts = append(parts, fmt.Sprintf("%d deprecated", a.deprecatedCount))
-	}
-	if a.coverage != "" && a.coverage != "full" {
-		parts = append(parts, a.coverage)
 	}
 	if len(parts) == 0 {
 		return ""

@@ -53,13 +53,6 @@ func (r *root) buildPaletteItems() []PaletteItem {
 			Action:     CycleThemeMsg{},
 		},
 		PaletteItem{
-			Label:      "What's New",
-			Shortcut:   "w",
-			Category:   "action",
-			MatchTerms: "new version fields",
-			Action:     ToggleNewMsg{},
-		},
-		PaletteItem{
 			Label:      "Open in $EDITOR",
 			Shortcut:   "e",
 			Category:   "action",

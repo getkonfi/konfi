@@ -101,7 +101,7 @@ func (d *detail) viewBrowse(width, height int) string {
 
 	// version badges (inline with type badge)
 	if f.Since != "" {
-		b.WriteString(" " + d.theme.FieldNew.Render("since "+f.Since))
+		b.WriteString(" " + d.theme.Muted.Render("since "+f.Since))
 	}
 	if f.Until != "" {
 		b.WriteString(" " + d.theme.FieldWarn.Render("until "+f.Until))
@@ -112,8 +112,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	labelStyle := d.theme.Text.Bold(true)
 	if f.Until != "" {
 		labelStyle = labelStyle.Foreground(d.theme.Palette.Error).Faint(true).Strikethrough(true)
-	} else if f.Since != "" {
-		labelStyle = labelStyle.Foreground(d.theme.Palette.Success).Underline(true)
 	}
 	b.WriteString(labelStyle.Render(f.Label))
 	b.WriteByte('\n')

@@ -84,6 +84,10 @@ func (e *multiEditor) View(width int) string {
 			b.WriteByte('\n')
 		}
 	}
+	if len(e.options) > 0 {
+		b.WriteByte('\n')
+	}
+	b.WriteString("    " + e.th.Muted.Render("↑↓:nav  ␣:select  ⏎:accept  esc:cancel"))
 	return b.String()
 }
 
@@ -97,6 +101,8 @@ func (e *multiEditor) Value() string {
 	return strings.Join(selected, ",")
 }
 
+func (e *multiEditor) Interaction() InteractionKind { return InteractionMulti }
+
 func (e *multiEditor) Height() int {
-	return len(e.options)
+	return len(e.options) + 1
 }

@@ -102,9 +102,6 @@ type content struct {
 	searchIdx       int            // current position in searchMatches
 	searchMatchInfo map[int]string // visible row index → match explanation
 
-	// "what's new" filter — toggled by root via n key
-	showNewOnly bool
-
 	// effective config view — shows all fields with defaults filled in
 	showEffective bool
 
@@ -609,13 +606,30 @@ func (c *content) toggleBool(f pkg.Field) tea.Cmd {
 	return c.settingChangedCmd(f.Key, next)
 }
 
-// deleteField removes a field's key from the config file.
+// deleteField reverts dirty fields to the loaded value before removing the key.
 func (c *content) deleteField(f pkg.Field) {
-	p := c.konfable.Parser()
-	if p == nil {
+	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return
 	}
-	oldVal := c.values[f.Key]
+	p := c.konfable.Parser()
+	curVal, hasCur := c.values[f.Key]
+	if !hasCur {
+		return
+	}
+
+	if origVal, hadOrig := c.origValues[f.Key]; hadOrig && curVal != origVal {
+		data := c.config.Content()
+		newData, err := konfables.WriteField(p, data, f, origVal, c.konfable.Info().Format)
+		if err != nil {
+			c.lastErr = "delete failed: " + err.Error()
+			return
+		}
+		c.config.SetContent(newData)
+		c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: origVal})
+		c.refreshValues()
+		return
+	}
+
 	data := c.config.Content()
 	newData, err := p.DeleteKey(data, f.Key)
 	if err != nil {
@@ -623,7 +637,7 @@ func (c *content) deleteField(f pkg.Field) {
 		return
 	}
 	c.config.SetContent(newData)
-	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldVal, NewValue: ""})
+	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: ""})
 	c.refreshValues()
 }
 
@@ -768,7 +782,6 @@ func (c *content) showDashboard() {
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
 	c.changedOnly = false
-	c.showNewOnly = false
 	c.showEffective = false
 	c.searching = false
 	c.search.SetValue("")
@@ -818,7 +831,6 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.collapsed = make(map[int]bool)
 	c.configuredOnly = false
 	c.changedOnly = false
-	c.showNewOnly = false
 	c.showEffective = false
 	c.searching = false
 	c.search.SetValue("")

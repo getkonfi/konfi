@@ -80,7 +80,7 @@ func (c *content) fieldAreaOverhead() int {
 
 // filterIndicatorVisible returns true when a filter indicator line should be shown.
 func (c *content) filterIndicatorVisible() bool {
-	return !c.searching && (c.configuredOnly || c.changedOnly || c.showNewOnly || c.showEffective || c.bookmarkedOnly)
+	return !c.searching && (c.configuredOnly || c.changedOnly || c.showEffective || c.bookmarkedOnly)
 }
 
 // cursorLine returns the rendered line number for the current cursor position
