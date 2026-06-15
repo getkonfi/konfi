@@ -43,10 +43,8 @@ func TestFindValueListeners(t *testing.T) {
 	if !ok {
 		t.Fatal("expected listeners")
 	}
-	want := strings.Join([]string{
-		"150 <-> brightnessctl -s set 10 <-> brightnessctl -r <-> ",
-		"300 <-> loginctl lock-session <->  <-> true",
-	}, "\n")
+	want := "150 <-> brightnessctl -s set 10 <-> brightnessctl -r <-> \n" +
+		"300 <-> loginctl lock-session <->  <-> true"
 	if got != want {
 		t.Fatalf("listeners = %q, want %q", got, want)
 	}
@@ -54,10 +52,8 @@ func TestFindValueListeners(t *testing.T) {
 
 func TestSetValueListenersRewritesListenerBlocks(t *testing.T) {
 	p := newParser()
-	value := strings.Join([]string{
-		"300 <-> loginctl lock-session <->  <-> false",
-		"900 <-> hyprctl dispatch dpms off <-> hyprctl dispatch dpms on <-> ",
-	}, "\n")
+	value := "300 <-> loginctl lock-session <->  <-> false\n" +
+		"900 <-> hyprctl dispatch dpms off <-> hyprctl dispatch dpms on <-> "
 
 	out, err := p.SetValue(sampleConfig, listenersKey, value)
 	if err != nil {

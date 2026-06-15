@@ -172,13 +172,15 @@ func (c content) updateHypridleDashboard(msg tea.KeyPressMsg) (content, tea.Cmd)
 				errCmd := c.drainErr()
 				return c, tea.Batch(settingCmd, errCmd)
 			}
-			return c, c.openEditor()
+			cmd := c.openEditor()
+			return c, cmd
 		}
 	case "a":
 		if idx, ok := c.firstHypridleListenerRow(); ok {
 			c.cursor = idx
 		}
-		return c, c.openEditor()
+		cmd := c.openEditor()
+		return c, cmd
 	case "f":
 		c.configuredOnly = !c.configuredOnly
 		c.refreshHypridleSearchMatches()
@@ -232,7 +234,8 @@ func (c content) updateHypridleDashboard(msg tea.KeyPressMsg) (content, tea.Cmd)
 			if _, hasCur := c.values[f.Key]; hasCur {
 				c.deleteField(*f)
 			}
-			return c, c.drainErr()
+			cmd := c.drainErr()
+			return c, cmd
 		}
 	case "o":
 		if url := c.currentDocURL(); url != "" {
@@ -242,7 +245,8 @@ func (c content) updateHypridleDashboard(msg tea.KeyPressMsg) (content, tea.Cmd)
 		if f := c.currentField(); f != nil && msg.Text != "" {
 			if f.Type != "bool" && f.Type != "enum" && f.Type != "list" && f.Type != "multi" && f.Widget == "" {
 				r, _ := utf8.DecodeRuneInString(msg.Text)
-				return c, c.openEditorWithSeed(r)
+				cmd := c.openEditorWithSeed(r)
+				return c, cmd
 			}
 		}
 	}

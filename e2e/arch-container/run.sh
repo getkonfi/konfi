@@ -2,7 +2,7 @@
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-image=${KONFI_ARCH_E2E_IMAGE:-konfi-arch-container-e2e:latest}
+image=${KONFI_CONTAINER_E2E_IMAGE:-konfi-container-e2e:latest}
 runtime=${CONTAINER_RUNTIME:-}
 
 if [ -z "$runtime" ]; then
@@ -16,8 +16,13 @@ if [ -z "$runtime" ]; then
 	fi
 fi
 
-uid=${KONFI_ARCH_E2E_UID:-$(id -u)}
-gid=${KONFI_ARCH_E2E_GID:-$(id -g)}
+uid=${KONFI_CONTAINER_E2E_UID:-$(id -u)}
+gid=${KONFI_CONTAINER_E2E_GID:-$(id -g)}
+
+set --
+if [ "$runtime" = "podman" ]; then
+	set -- --network host
+fi
 
 "$runtime" build \
 	-f "$root/e2e/arch-container/Dockerfile" \
@@ -25,6 +30,7 @@ gid=${KONFI_ARCH_E2E_GID:-$(id -g)}
 	"$root"
 
 "$runtime" run --rm -t \
+	"$@" \
 	--user "$uid:$gid" \
 	-e HOME=/tmp/konfi-home \
 	-e GOCACHE=/tmp/konfi-go-cache \
