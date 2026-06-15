@@ -29,7 +29,7 @@ fi
 	-t "$image" \
 	"$root"
 
-"$runtime" run --rm -t \
+"$runtime" run --rm \
 	"$@" \
 	--user "$uid:$gid" \
 	-e HOME=/tmp/konfi-home \
