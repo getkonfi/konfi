@@ -298,7 +298,7 @@ func (s *AnimState) applyFade(frame *PixelArt) {
 	cx := float64(frame.Width) / 2.0
 	cy := float64(frame.Height) / 2.0
 	maxDist := math.Sqrt(cx*cx + cy*cy)
-	progress := float64(s.Frame) / float64(s.Config.Frames)
+	progress := float64(s.Frame+1) / float64(s.Config.Frames)
 	threshold := progress * maxDist
 
 	for y := 0; y < frame.Height; y++ {

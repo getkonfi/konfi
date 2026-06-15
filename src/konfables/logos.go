@@ -67,22 +67,22 @@ var ghosttyLogo = pixelart.PixelArt{
 	},
 }
 
-// alacritty — A mark in orange and yellow with crossbar
+// alacritty — terminal frame with scanlines and rocket-like A
 var alacrittyLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, __, __, __, yl, yl, __, __, __, __, __, __, __},
-		{__, __, __, __, __, __, yl, yl, yl, yl, __, __, __, __, __, __},
-		{__, __, __, __, __, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
-		{__, __, __, __, or, yl, yl, yl, yl, yl, yl, or, __, __, __, __},
-		{__, __, __, or, or, yl, yl, yl, yl, yl, yl, or, or, __, __, __},
-		{__, __, or, or, yl, yl, yl, __, __, yl, yl, yl, or, or, __, __},
-		{__, or, or, yl, yl, yl, __, __, __, __, yl, yl, yl, or, or, __},
-		{__, or, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, or, __},
-		{or, or, yl, yl, __, __, __, __, __, __, __, __, yl, yl, or, or},
-		{or, yl, yl, __, __, __, __, __, __, __, __, __, __, yl, yl, or},
-		{or, yl, __, __, __, __, __, __, __, __, __, __, __, __, yl, or},
-		{or, or, __, __, __, __, __, __, __, __, __, __, __, __, or, or},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, dk, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, dk, __},
+		{__, dk, __, __, __, __, yl, yl, __, __, __, __, __, __, dk, __},
+		{__, dk, __, __, __, yl, yl, yl, yl, __, __, __, __, __, dk, __},
+		{__, dk, __, __, or, yl, yl, yl, yl, or, __, __, __, __, dk, __},
+		{__, dk, __, or, or, yl, __, __, yl, or, or, __, __, __, dk, __},
+		{__, dk, or, or, yl, __, __, __, __, yl, or, or, __, __, dk, __},
+		{__, dk, or, yl, yl, yl, yl, yl, yl, yl, yl, or, __, __, dk, __},
+		{__, dk, or, yl, __, __, __, __, __, __, yl, or, __, __, dk, __},
+		{__, dk, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, dk, __},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, __, __, __, __, dk, dk, dk, dk, __, __, __, __, __, __},
 	},
 }
 
@@ -179,16 +179,8 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 	"alacritty": {
 		Kind: pixelart.AnimFade, Frames: 12, TickMs: 60,
 	},
-	"hyprland": {
-		Kind: pixelart.AnimDrip, Frames: 33, TickMs: 60,
-		DripOrigin: pixelart.Pixel{Row: 0, Col: 7},
-		DripBright: []uint8{255, 195, 153, 111},
-	},
-	"hypridle": {
-		Kind: pixelart.AnimDrip, Frames: 33, TickMs: 60,
-		DripOrigin: pixelart.Pixel{Row: 0, Col: 7},
-		DripBright: []uint8{255, 195, 153, 111},
-	},
+	"hyprland": hyprLogoAnim,
+	"hypridle": hyprLogoAnim,
 	"fuzzel": sequenceAnim(
 		20, 65, []uint8{wh, lg},
 		[]int{-1, 0, 0, 1, 2, 3, 4, 3, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -251,21 +243,20 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 	"gnome": sequenceAnim(
 		20, 75, []uint8{wh, lg},
 		[]int{-1, 0, 1, 2, 3, 4, 4, -1, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		logoRectPixels(gnomeLogo, 0, 1, 4, 5, lb),
-		logoRectPixels(gnomeLogo, 0, 1, 8, 9, lb),
-		logoRectPixels(gnomeLogo, 0, 1, 11, 12, lb),
-		logoRectPixels(gnomeLogo, 2, 3, 5, 11, lb),
-		logoRectPixels(gnomeLogo, 4, 10, 3, 11, lb),
+		logoRectPixels(gnomeLogo, 0, 1, 4, 5, wh),
+		logoRectPixels(gnomeLogo, 0, 1, 8, 9, wh),
+		logoRectPixels(gnomeLogo, 0, 1, 11, 12, wh),
+		logoRectPixels(gnomeLogo, 2, 3, 5, 11, wh),
+		logoRectPixels(gnomeLogo, 4, 10, 3, 11, wh),
 	),
 	"dconf": sequenceAnim(
 		22, 65, []uint8{wh, lg},
-		[]int{-1, 0, 1, 2, 3, 4, 5, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		logoRectPixels(dconfLogo, 0, 1, 3, 12, bl, lb),
-		logoRectPixels(dconfLogo, 2, 3, 2, 12, bl, lb),
-		logoRectPixels(dconfLogo, 4, 5, 2, 12, bl, lb),
-		logoRectPixels(dconfLogo, 6, 8, 2, 12, bl, lb),
-		logoRectPixels(dconfLogo, 9, 11, 2, 12, bl, lb),
-		logoRectPixels(dconfLogo, 6, 8, 6, 8, lg, dk),
+		[]int{-1, 0, 1, 2, 3, 4, 3, 2, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+		logoRectPixels(dconfLogo, 1, 3, 2, 13, lg, wh, dk, bl),
+		logoRectPixels(dconfLogo, 4, 5, 3, 12, lg),
+		logoRectPixels(dconfLogo, 6, 7, 6, 12, bl, wh),
+		logoRectPixels(dconfLogo, 8, 9, 3, 8, lg),
+		logoRectPixels(dconfLogo, 10, 10, 2, 13, dk),
 	),
 	"kitty": {
 		Kind: pixelart.AnimBlink, Frames: 18, TickMs: 80,
@@ -291,20 +282,18 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 	"yazi": sequenceAnim(
 		20, 65, []uint8{wh, lg},
 		[]int{-1, 0, 1, 2, 3, 2, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		logoRectPixels(yaziLogo, 0, 2, 2, 13, yl),
-		logoRectPixels(yaziLogo, 4, 9, 1, 4, yl),
-		logoRectPixels(yaziLogo, 4, 9, 5, 8, dk, lg),
-		logoRectPixels(yaziLogo, 4, 9, 9, 14, yl, dk, lg),
+		logoRectPixels(yaziLogo, 0, 4, 0, 12, yl, or, dk),
+		logoRectPixels(yaziLogo, 5, 8, 1, 14, cy, wh),
+		logoRectPixels(yaziLogo, 4, 8, 8, 13, yl),
+		logoRectPixels(yaziLogo, 9, 10, 4, 10, or),
 	),
 	"gtk": sequenceAnim(
 		22, 65, []uint8{wh, lg},
-		[]int{-1, 0, 1, 2, 3, 4, 5, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+		[]int{-1, 0, 1, 2, 3, 3, 2, 1, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
 		logoColorPixels(gtkLogo, rd),
-		logoColorPixels(gtkLogo, cy),
+		logoColorPixels(gtkLogo, lb),
 		logoColorPixels(gtkLogo, gn),
-		logoColorPixels(gtkLogo, yl),
-		logoColorPixels(gtkLogo, pu),
-		logoColorPixels(gtkLogo, wh, or),
+		logoColorPixels(gtkLogo, wh),
 	),
 	"brew": sequenceAnim(
 		22, 75, []uint8{wh, lg},
@@ -324,6 +313,15 @@ var sshKeyAnim = sequenceAnim(
 	logoRectPixels(sshLogo, 5, 6, 7, 8, yl),
 	logoRectPixels(sshLogo, 7, 7, 7, 10, yl),
 	logoRectPixels(sshLogo, 8, 10, 7, 9, yl),
+)
+
+var hyprLogoAnim = sequenceAnim(
+	24, 60, []uint8{wh, lb},
+	[]int{-1, 0, 1, 2, 3, 2, 1, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+	logoRectPixels(hyprlandLogo, 0, 3, 5, 12, cy, mb),
+	logoRectPixels(hyprlandLogo, 3, 8, 1, 4, bl, cy),
+	logoRectPixels(hyprlandLogo, 9, 11, 3, 11, bl, mb),
+	logoRectPixels(hyprlandLogo, 3, 8, 12, 15, mb),
 )
 
 var pacmanMouthLayers = [][]pixelart.Pixel{
@@ -440,22 +438,22 @@ var waybarLogo = pixelart.PixelArt{
 	},
 }
 
-// hyprland — water drop with glossy highlight
+// hyprland — split outline droplet
 var hyprlandLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __},
-		{__, __, __, __, __, __, lb, mb, mb, lb, __, __, __, __, __, __},
-		{__, __, __, __, __, lb, mb, mb, mb, mb, lb, __, __, __, __, __},
-		{__, __, __, __, lb, mb, mb, mb, mb, mb, mb, lb, __, __, __, __},
-		{__, __, __, lb, lb, mb, mb, mb, mb, mb, mb, lb, lb, __, __, __},
-		{__, __, __, lb, mb, mb, wh, wh, mb, mb, mb, mb, lb, __, __, __},
-		{__, __, lb, lb, mb, mb, wh, mb, mb, mb, mb, mb, lb, lb, __, __},
-		{__, __, lb, mb, mb, mb, mb, mb, mb, mb, mb, mb, mb, lb, __, __},
-		{__, __, lb, lb, mb, mb, mb, mb, mb, mb, mb, mb, lb, lb, __, __},
-		{__, __, __, lb, lb, mb, mb, mb, mb, mb, mb, lb, lb, __, __, __},
-		{__, __, __, __, lb, lb, lb, mb, mb, lb, lb, lb, __, __, __, __},
-		{__, __, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __},
+		{__, __, __, __, __, __, cy, cy, __, __, mb, mb, __, __, __, __},
+		{__, __, __, __, __, cy, cy, __, __, __, mb, mb, __, __, __, __},
+		{__, __, __, __, cy, cy, __, __, __, __, __, mb, mb, __, __, __},
+		{__, __, __, cy, cy, __, __, __, __, __, __, __, mb, mb, __, __},
+		{__, __, bl, bl, __, __, __, __, __, __, __, __, __, mb, mb, __},
+		{__, bl, bl, __, __, __, __, __, __, __, __, __, __, __, mb, mb},
+		{__, bl, bl, __, __, __, __, __, __, __, __, __, __, __, mb, mb},
+		{__, bl, bl, __, __, __, __, __, __, __, __, __, __, __, mb, mb},
+		{__, __, bl, bl, __, __, __, __, __, __, __, __, __, mb, mb, __},
+		{__, __, __, bl, bl, __, __, __, __, __, __, mb, mb, __, __, __},
+		{__, __, __, __, bl, bl, bl, __, __, mb, mb, mb, __, __, __, __},
+		{__, __, __, __, __, bl, bl, bl, mb, mb, mb, __, __, __, __, __},
 	},
 }
 
@@ -535,41 +533,41 @@ var sshLogo = pixelart.PixelArt{
 	},
 }
 
-// gnome — foot silhouette in light blue
+// gnome — monochrome foot silhouette
 var gnomeLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, lb, lb, __, __, lb, lb, __, lb, lb, __, __, __},
-		{__, __, __, __, lb, lb, __, __, lb, lb, __, lb, lb, __, __, __},
-		{__, __, __, __, __, lb, lb, __, __, lb, lb, lb, __, __, __, __},
-		{__, __, __, __, __, __, lb, lb, lb, lb, lb, __, __, __, __, __},
-		{__, __, __, __, __, lb, lb, lb, lb, lb, lb, lb, __, __, __, __},
-		{__, __, __, __, lb, lb, lb, lb, lb, lb, lb, lb, __, __, __, __},
-		{__, __, __, lb, lb, lb, lb, lb, lb, lb, lb, __, __, __, __, __},
-		{__, __, __, lb, lb, lb, lb, lb, lb, lb, __, __, __, __, __, __},
-		{__, __, __, __, lb, lb, lb, lb, lb, lb, __, __, __, __, __, __},
-		{__, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __, __},
-		{__, __, __, __, __, __, lb, lb, __, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, wh, wh, wh, __, __, __, __, __, __},
+		{__, __, __, __, wh, wh, __, wh, wh, wh, wh, __, wh, wh, __, __},
+		{__, __, wh, wh, __, wh, wh, __, wh, wh, wh, __, wh, wh, __, __},
+		{__, __, wh, wh, __, wh, wh, __, __, wh, wh, wh, __, __, __, __},
+		{__, __, __, wh, wh, wh, __, __, __, wh, wh, wh, wh, __, __, __},
+		{__, __, __, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __},
+		{__, __, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __},
+		{__, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __, __},
+		{__, __, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __, __, __},
+		{__, __, __, wh, wh, wh, wh, wh, wh, __, __, __, __, __, __, __},
+		{__, __, __, __, wh, wh, wh, wh, __, __, __, __, __, __, __, __},
 		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }
 
-// dconf — settings database with cog teeth
+// dconf — settings panel with toggle
 var dconfLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, bl, bl, bl, bl, bl, bl, bl, bl, __, __, __, __},
-		{__, __, __, bl, bl, lb, lb, lb, lb, lb, lb, bl, bl, __, __, __},
-		{__, __, bl, lb, lb, lb, lb, lb, lb, lb, lb, lb, bl, __, __, __},
-		{__, __, bl, lb, lb, lb, lb, lb, lb, lb, lb, lb, bl, __, __, __},
-		{__, __, bl, lb, lb, bl, bl, bl, bl, bl, lb, lb, bl, __, __, __},
-		{__, __, bl, lb, bl, bl, __, __, __, bl, bl, lb, bl, __, __, __},
-		{__, __, bl, lb, bl, __, lg, lg, lg, __, bl, lb, bl, __, __, __},
-		{__, __, bl, lb, bl, __, lg, dk, lg, __, bl, lb, bl, __, __, __},
-		{__, __, bl, lb, bl, __, lg, lg, lg, __, bl, lb, bl, __, __, __},
-		{__, __, bl, lb, bl, bl, __, __, __, bl, bl, lb, bl, __, __, __},
-		{__, __, __, bl, lb, bl, bl, bl, bl, bl, lb, bl, __, __, __, __},
-		{__, __, __, __, bl, bl, bl, bl, bl, bl, bl, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+		{__, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __},
+		{__, __, wh, wh, dk, wh, dk, wh, wh, lg, lg, lg, wh, wh, __, __},
+		{__, __, wh, wh, wh, wh, wh, wh, wh, bl, bl, bl, wh, wh, __, __},
+		{__, __, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, lg, __, __},
+		{__, __, wh, wh, lg, lg, lg, __, __, __, __, __, wh, wh, __, __},
+		{__, __, wh, wh, __, __, __, bl, bl, bl, wh, wh, wh, wh, __, __},
+		{__, __, wh, wh, __, __, __, bl, bl, bl, wh, wh, wh, wh, __, __},
+		{__, __, wh, wh, lg, lg, __, __, __, __, __, __, wh, wh, __, __},
+		{__, __, wh, wh, lg, lg, lg, lg, __, __, __, __, wh, wh, __, __},
+		{__, __, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, dk, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }
 
@@ -611,41 +609,41 @@ var helixLogo = pixelart.PixelArt{
 	},
 }
 
-// yazi — split folder/file panes
+// yazi — duck mark
 var yaziLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, yl, yl, yl, yl, __, __, __, __, __, __, __, __, __, __},
-		{__, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __},
-		{__, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, __},
-		{__, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, __},
-		{__, yl, yl, yl, yl, dk, dk, dk, dk, yl, yl, yl, yl, yl, yl, __},
-		{__, yl, yl, yl, yl, dk, lg, lg, dk, yl, yl, yl, yl, yl, yl, __},
-		{__, yl, yl, yl, yl, dk, lg, lg, dk, yl, yl, dk, dk, yl, yl, __},
-		{__, yl, yl, yl, yl, dk, dk, dk, dk, yl, yl, dk, lg, yl, yl, __},
-		{__, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, dk, lg, yl, yl, __},
-		{__, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, dk, dk, yl, yl, __},
-		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __},
-		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __},
+		{__, __, __, __, __, yl, yl, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, or, or, yl, yl, yl, yl, yl, __, __, __, __, __, __},
+		{__, or, or, or, yl, yl, dk, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, or, or, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __},
+		{__, __, __, __, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, __, cy, cy, cy, wh, wh, cy, cy, yl, yl, yl, __, __, __},
+		{__, __, cy, cy, cy, wh, wh, cy, cy, cy, yl, yl, yl, __, __, __},
+		{__, cy, cy, cy, cy, wh, cy, cy, cy, yl, yl, yl, __, __, __, __},
+		{__, __, cy, cy, cy, cy, cy, cy, cy, cy, yl, __, __, __, __, __},
+		{__, __, __, cy, cy, cy, cy, cy, cy, cy, __, __, __, __, __, __},
+		{__, __, __, __, or, or, __, __, or, or, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }
 
-// gtk — paint brush over palette swatches
+// gtk — isometric toolkit cube
 var gtkLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, __, __, __, wh, wh, __, __, __, __, __, __, __},
-		{__, __, __, __, __, __, wh, wh, wh, wh, __, __, __, __, __, __},
-		{__, __, __, __, __, wh, wh, dk, dk, wh, wh, __, __, __, __, __},
-		{__, __, __, __, wh, wh, dk, dk, dk, dk, wh, wh, __, __, __, __},
-		{__, __, __, or, or, dk, dk, dk, dk, dk, dk, or, or, __, __, __},
-		{__, __, or, or, dk, dk, dk, dk, dk, dk, dk, dk, or, or, __, __},
-		{__, or, or, dk, dk, rd, rd, dk, cy, cy, dk, dk, dk, or, or, __},
-		{__, or, dk, dk, dk, rd, rd, dk, cy, cy, dk, gn, gn, dk, or, __},
-		{or, or, dk, yl, yl, dk, dk, dk, dk, dk, dk, gn, gn, dk, or, or},
-		{or, dk, dk, yl, yl, dk, pu, pu, dk, dk, dk, dk, dk, dk, dk, or},
-		{or, or, dk, dk, dk, dk, pu, pu, dk, dk, dk, dk, dk, dk, or, or},
-		{__, or, or, or, dk, dk, dk, dk, dk, dk, dk, or, or, or, __, __},
+		{__, __, __, __, __, __, lb, lb, lb, lb, __, __, __, __, __, __},
+		{__, __, __, __, lb, lb, lb, lb, lb, lb, lb, lb, __, __, __, __},
+		{__, __, rd, rd, wh, lb, lb, lb, wh, lb, lb, gn, gn, __, __, __},
+		{__, rd, rd, rd, wh, lb, lb, wh, gn, gn, gn, gn, gn, __, __, __},
+		{__, rd, rd, rd, rd, wh, wh, gn, gn, gn, gn, gn, gn, __, __, __},
+		{__, rd, rd, rd, rd, wh, gn, gn, gn, gn, gn, gn, gn, __, __, __},
+		{__, rd, rd, rd, wh, gn, gn, wh, gn, gn, gn, gn, __, __, __, __},
+		{__, __, rd, wh, gn, gn, gn, gn, wh, gn, gn, __, __, __, __, __},
+		{__, __, __, wh, gn, gn, gn, gn, gn, wh, __, __, __, __, __, __},
+		{__, __, __, __, gn, gn, gn, gn, gn, __, __, __, __, __, __, __},
+		{__, __, __, __, __, gn, gn, gn, __, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }
 

@@ -19,6 +19,20 @@ func TestLogoAnimsCoverLogos(t *testing.T) {
 	}
 }
 
+func TestLogoPixelGridsMatchDeclaredSize(t *testing.T) {
+	for name, logo := range Logos {
+		if len(logo.Pixels) != logo.Height {
+			t.Errorf("%s logo height = %d rows, want %d", name, len(logo.Pixels), logo.Height)
+			continue
+		}
+		for row, pixels := range logo.Pixels {
+			if len(pixels) != logo.Width {
+				t.Errorf("%s logo row %d width = %d, want %d", name, row, len(pixels), logo.Width)
+			}
+		}
+	}
+}
+
 func TestLogoAnimConfigsAreSane(t *testing.T) {
 	for name, cfg := range LogoAnims {
 		logo, ok := Logos[name]
@@ -69,7 +83,7 @@ func TestExistingLogoAnimsRemainStable(t *testing.T) {
 		"ghostty":   {kind: pixelart.AnimBlink, frames: 18, tickMs: 80},
 		"starship":  {kind: pixelart.AnimFlame, frames: 20, tickMs: 60},
 		"alacritty": {kind: pixelart.AnimFade, frames: 12, tickMs: 60},
-		"hyprland":  {kind: pixelart.AnimDrip, frames: 33, tickMs: 60},
+		"hyprland":  {kind: pixelart.AnimSequence, frames: 24, tickMs: 60},
 		"pacman":    {kind: pixelart.AnimChomp, frames: 25, tickMs: 100},
 		"kitty":     {kind: pixelart.AnimBlink, frames: 18, tickMs: 80},
 		"helix":     {kind: pixelart.AnimWave, frames: 33, tickMs: 60},

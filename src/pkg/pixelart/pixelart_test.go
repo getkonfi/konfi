@@ -33,3 +33,30 @@ func TestSequenceAnimationAppliesActiveGroupAndTrail(t *testing.T) {
 		t.Fatalf("trail group color = %d, want 8", got)
 	}
 }
+
+func TestFadeAnimationFirstFrameIsNotBlank(t *testing.T) {
+	base := PixelArt{
+		Width: 4, Height: 4,
+		Pixels: [][]uint8{
+			{1, 1, 1, 1},
+			{1, 1, 1, 1},
+			{1, 1, 1, 1},
+			{1, 1, 1, 1},
+		},
+	}
+	state := NewAnimState(base, AnimConfig{
+		Kind:   AnimFade,
+		Frames: 4,
+		TickMs: 1,
+	})
+
+	frame := state.CurrentFrame()
+	for _, row := range frame.Pixels {
+		for _, pixel := range row {
+			if pixel != 0 {
+				return
+			}
+		}
+	}
+	t.Fatal("first fade frame is blank")
+}
