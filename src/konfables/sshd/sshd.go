@@ -48,8 +48,8 @@ func (s *SSHD) Info() konfables.AppInfo {
 		Binary:     "sshd",
 		ConfigPath: s.Path,
 		Format:     "sshd",
-		Icon:       "",
-		NerdIcon:   "\uf489", // nf-oct-terminal
+		Icon:       "\U0001F5A5",
+		NerdIcon:   "\uf233", // nf-fa-server
 	}
 }
 

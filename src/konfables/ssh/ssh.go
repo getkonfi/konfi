@@ -51,8 +51,8 @@ func (s *SSH) Info() konfables.AppInfo {
 		Binary:     "ssh",
 		ConfigPath: s.Path,
 		Format:     "ssh",
-		Icon:       "",
-		NerdIcon:   "\uf489", // nf-oct-terminal
+		Icon:       "\U0001F511",
+		NerdIcon:   "\uf084", // nf-fa-key
 	}
 }
 
