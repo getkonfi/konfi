@@ -5,11 +5,15 @@ package konfables_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/eminert/konfi/konfables"
 	appalacritty "github.com/eminert/konfi/konfables/alacritty"
@@ -49,11 +53,45 @@ type containerCase struct {
 	addKey       string
 	addWrite     string
 	addWant      string
+	extraWrites  []configWrite
 	deleteKey    string
 	survivorKey  string
 	survivorWant string
 	fileBacked   bool
+
+	validationKind    string
+	validateSaved     func(t *testing.T, saved savedConfig)
+	validateCommanded func(t *testing.T)
+	unsupportedReason string
 }
+
+type savedConfig struct {
+	path    string
+	content []byte
+}
+
+type configWrite struct {
+	key   string
+	write string
+	want  string
+}
+
+type validatorEnv struct {
+	home       string
+	configHome string
+	cacheHome  string
+	dataHome   string
+	runtimeDir string
+	environ    []string
+}
+
+const (
+	validationValue     = "value"
+	validationParse     = "parse"
+	validationWeakParse = "weak-parse"
+)
+
+const validatorTimeout = 5 * time.Second
 
 func TestContainerE2E(t *testing.T) {
 	requireArchContainer(t)
@@ -61,6 +99,7 @@ func TestContainerE2E(t *testing.T) {
 	root := t.TempDir()
 	cases := containerCases(t)
 	assertRegisteredCoverage(t, cases)
+	assertValidationDisposition(t, cases)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -71,7 +110,20 @@ func TestContainerE2E(t *testing.T) {
 			exerciseParser(t, p, tc)
 
 			if tc.fileBacked {
-				exerciseFileBackedEdit(t, app, tc)
+				saved := exerciseFileBackedEdit(t, app, tc)
+				if tc.validateSaved != nil {
+					t.Run("real-app/"+tc.validationKind, func(t *testing.T) {
+						tc.validateSaved(t, saved)
+					})
+				} else if tc.unsupportedReason != "" {
+					t.Logf("real-app validation unsupported: %s", tc.unsupportedReason)
+				}
+			} else if tc.validateCommanded != nil {
+				t.Run("real-app/"+tc.validationKind, func(t *testing.T) {
+					tc.validateCommanded(t)
+				})
+			} else if tc.unsupportedReason != "" {
+				t.Logf("real-app validation unsupported: %s", tc.unsupportedReason)
 			}
 		})
 	}
@@ -115,6 +167,47 @@ func assertRegisteredCoverage(t *testing.T, cases []containerCase) {
 	sort.Strings(extras)
 	for _, name := range extras {
 		t.Errorf("container e2e case %q is not registered in setup detection", name)
+	}
+}
+
+func assertValidationDisposition(t *testing.T, cases []containerCase) {
+	t.Helper()
+
+	for _, tc := range cases {
+		hasSavedValidator := tc.validateSaved != nil
+		hasCommandValidator := tc.validateCommanded != nil
+		hasValidator := hasSavedValidator || hasCommandValidator
+		hasKind := tc.validationKind != ""
+		hasUnsupported := tc.unsupportedReason != ""
+
+		if hasSavedValidator && hasCommandValidator {
+			t.Errorf("%s has both saved-file and command-backed validators", tc.name)
+		}
+		if !tc.fileBacked && hasSavedValidator {
+			t.Errorf("%s has saved-file validator but is not file-backed", tc.name)
+		}
+
+		if hasValidator {
+			if !hasKind {
+				t.Errorf("%s has real-app validator without validation kind", tc.name)
+			}
+			if hasUnsupported {
+				t.Errorf("%s has both real-app validator and unsupported reason", tc.name)
+			}
+		} else {
+			if hasKind {
+				t.Errorf("%s has validation kind without real-app validator", tc.name)
+			}
+			if !hasUnsupported {
+				t.Errorf("%s has no real-app validator or unsupported reason", tc.name)
+			}
+		}
+
+		switch tc.validationKind {
+		case "", validationValue, validationParse, validationWeakParse:
+		default:
+			t.Errorf("%s has unknown validation kind %q", tc.name, tc.validationKind)
+		}
 	}
 }
 
@@ -197,7 +290,7 @@ func exerciseParser(t *testing.T, p konfables.Parser, tc containerCase) {
 	}
 }
 
-func exerciseFileBackedEdit(t *testing.T, app konfables.Konfable, tc containerCase) {
+func exerciseFileBackedEdit(t *testing.T, app konfables.Konfable, tc containerCase) savedConfig {
 	t.Helper()
 
 	path := app.ConfigPath()
@@ -219,6 +312,16 @@ func exerciseFileBackedEdit(t *testing.T, app konfables.Konfable, tc containerCa
 	updated, err := app.Parser().SetValue(cf.Content(), tc.existingKey, tc.replaceWrite)
 	if err != nil {
 		t.Fatalf("edit config file content: %v", err)
+	}
+	updated, err = app.Parser().SetValue(updated, tc.addKey, tc.addWrite)
+	if err != nil {
+		t.Fatalf("add config file content: %v", err)
+	}
+	for _, write := range tc.extraWrites {
+		updated, err = app.Parser().SetValue(updated, write.key, write.write)
+		if err != nil {
+			t.Fatalf("set extra config file content %q: %v", write.key, err)
+		}
 	}
 	cf.SetContent(updated)
 	if !cf.Dirty() {
@@ -244,6 +347,16 @@ func exerciseFileBackedEdit(t *testing.T, app konfables.Konfable, tc containerCa
 	if !ok || got != tc.replaceWant {
 		t.Fatalf("saved FindValue(%q) = %q, %v; want %q, true", tc.existingKey, got, ok, tc.replaceWant)
 	}
+	got, ok = app.Parser().FindValue(onDisk, tc.addKey)
+	if !ok || got != tc.addWant {
+		t.Fatalf("saved FindValue(%q) = %q, %v; want %q, true", tc.addKey, got, ok, tc.addWant)
+	}
+	for _, write := range tc.extraWrites {
+		got, ok = app.Parser().FindValue(onDisk, write.key)
+		if !ok || got != write.want {
+			t.Fatalf("saved FindValue(%q) = %q, %v; want %q, true", write.key, got, ok, write.want)
+		}
+	}
 
 	backup, err := os.ReadFile(pkg.BackupPath(path))
 	if err != nil {
@@ -252,6 +365,358 @@ func exerciseFileBackedEdit(t *testing.T, app konfables.Konfable, tc containerCa
 	if !bytes.Equal(backup, tc.sample) {
 		t.Fatalf("backup mismatch\ngot:\n%s\nwant:\n%s", backup, tc.sample)
 	}
+
+	return savedConfig{path: path, content: onDisk}
+}
+
+func newValidatorEnv(t *testing.T) validatorEnv {
+	t.Helper()
+
+	root := t.TempDir()
+	env := validatorEnv{
+		home:       filepath.Join(root, "home"),
+		configHome: filepath.Join(root, "config"),
+		cacheHome:  filepath.Join(root, "cache"),
+		dataHome:   filepath.Join(root, "data"),
+		runtimeDir: filepath.Join(root, "runtime"),
+	}
+	for _, dir := range []string{env.home, env.configHome, env.cacheHome, env.dataHome} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("create validator dir %s: %v", dir, err)
+		}
+	}
+	if err := os.MkdirAll(env.runtimeDir, 0o700); err != nil {
+		t.Fatalf("create validator runtime dir: %v", err)
+	}
+
+	env.environ = []string{
+		"PATH=" + os.Getenv("PATH"),
+		"HOME=" + env.home,
+		"XDG_CONFIG_HOME=" + env.configHome,
+		"XDG_CACHE_HOME=" + env.cacheHome,
+		"XDG_DATA_HOME=" + env.dataHome,
+		"XDG_RUNTIME_DIR=" + env.runtimeDir,
+		"TERM=xterm-256color",
+		"SHELL=/bin/sh",
+		"USER=konfi",
+		"LOGNAME=konfi",
+		"LANG=C",
+		"LC_ALL=C",
+	}
+	return env
+}
+
+func newDBusValidatorEnv(t *testing.T) validatorEnv {
+	t.Helper()
+
+	env := newValidatorEnv(t)
+	out := runValidatorCommand(t, env, nil, "dbus-daemon", "--session", "--fork", "--print-address=1", "--print-pid=1")
+	address, pid := parseDBusDaemonOutput(t, out)
+	env.environ = append(env.environ, "DBUS_SESSION_BUS_ADDRESS="+address)
+	t.Cleanup(func() {
+		_ = exec.Command("kill", pid).Run()
+	})
+	return env
+}
+
+func parseDBusDaemonOutput(t *testing.T, output string) (address, pid string) {
+	t.Helper()
+
+	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, ":") && strings.Contains(line, "=") {
+			address = line
+			continue
+		}
+		if isDecimal(line) {
+			pid = line
+		}
+	}
+	if address == "" || pid == "" {
+		t.Fatalf("could not parse dbus-daemon output\noutput:\n%s", output)
+	}
+	return address, pid
+}
+
+func isDecimal(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func useValidatorProcessEnv(t *testing.T, env validatorEnv) {
+	t.Helper()
+	for _, kv := range env.environ {
+		key, value, ok := strings.Cut(kv, "=")
+		if ok {
+			t.Setenv(key, value)
+		}
+	}
+}
+
+func requireValidatorBinary(t *testing.T, name string) string {
+	t.Helper()
+
+	bin, err := exec.LookPath(name)
+	if err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			t.Skipf("real-app validator binary %q is not installed", name)
+		}
+		t.Fatalf("resolve real-app validator binary %q: %v", name, err)
+	}
+	return bin
+}
+
+func runValidatorCommand(t *testing.T, env validatorEnv, extraEnv []string, name string, args ...string) string {
+	t.Helper()
+
+	bin := requireValidatorBinary(t, name)
+
+	ctx, cancel := context.WithTimeout(context.Background(), validatorTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Env = append(append([]string{}, env.environ...), extraEnv...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	out, err := cmd.CombinedOutput()
+	output := string(out)
+	if ctx.Err() == context.DeadlineExceeded {
+		t.Fatalf("real-app validator timed out after %s\ncommand: %s\noutput:\n%s", validatorTimeout, commandLine(name, args), output)
+	}
+	if err != nil {
+		t.Fatalf("real-app validator failed: %v\ncommand: %s\nHOME=%s\nXDG_CONFIG_HOME=%s\noutput:\n%s", err, commandLine(name, args), env.home, env.configHome, output)
+	}
+	return output
+}
+
+func commandLine(name string, args []string) string {
+	parts := append([]string{name}, args...)
+	return strings.Join(parts, " ")
+}
+
+func writeValidatorConfig(t *testing.T, path string, content []byte) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("create validator config dir: %v", err)
+	}
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatalf("write validator config: %v", err)
+	}
+}
+
+func requireTrimmedOutput(t *testing.T, output, want string) {
+	t.Helper()
+	if got := strings.TrimSpace(output); got != want {
+		t.Fatalf("validator output = %q, want %q\nfull output:\n%s", got, want, output)
+	}
+}
+
+func requireGVariantString(t *testing.T, output, want string) {
+	t.Helper()
+	quoted := "'" + strings.ReplaceAll(want, "'", "\\'") + "'"
+	got := strings.TrimSpace(output)
+	if got == quoted || got == want {
+		return
+	}
+	t.Fatalf("validator output = %q, want %q\nfull output:\n%s", got, quoted, output)
+}
+
+func requireOutputLine(t *testing.T, output, want string) {
+	t.Helper()
+	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+		if strings.TrimSpace(line) == want {
+			return
+		}
+	}
+	t.Fatalf("validator output missing line %q\nfull output:\n%s", want, output)
+}
+
+func requireOutputContains(t *testing.T, output, want string) {
+	t.Helper()
+	if !strings.Contains(output, want) {
+		t.Fatalf("validator output missing %q\nfull output:\n%s", want, output)
+	}
+}
+
+func requireOutputNotContains(t *testing.T, output, bad string) {
+	t.Helper()
+	if strings.Contains(output, bad) {
+		t.Fatalf("validator output contains %q\nfull output:\n%s", bad, output)
+	}
+}
+
+func validateAlacritty(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	runValidatorCommand(t, env, nil, "alacritty", "migrate", "--dry-run", "--config-file", saved.path)
+}
+
+func validateFuzzel(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	writeValidatorConfig(t, filepath.Join(env.configHome, "fuzzel", "fuzzel.ini"), saved.content)
+	runValidatorCommand(t, env, nil, "fuzzel", "--check-config")
+}
+
+func validateGhostty(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	runValidatorCommand(t, env, nil, "ghostty", "+validate-config", "--config-file="+saved.path)
+}
+
+func validateDconf(t *testing.T) {
+	requireValidatorBinary(t, "dconf")
+	env := newDBusValidatorEnv(t)
+	useValidatorProcessEnv(t, env)
+
+	values := saveCommandBackedValues(t, appdconf.New(appdconf.NewPersister()),
+		commandBackedEdit{key: "/org/gnome/desktop/wm/preferences/focus-mode", value: "sloppy", fallback: "click"},
+		commandBackedEdit{key: "/org/gnome/desktop/wm/preferences/auto-raise", value: "true", fallback: "false"},
+	)
+	out := runValidatorCommand(t, env, nil, "dconf", "read", "/org/gnome/desktop/wm/preferences/focus-mode")
+	requireGVariantString(t, out, values["/org/gnome/desktop/wm/preferences/focus-mode"])
+	out = runValidatorCommand(t, env, nil, "dconf", "read", "/org/gnome/desktop/wm/preferences/auto-raise")
+	requireTrimmedOutput(t, out, values["/org/gnome/desktop/wm/preferences/auto-raise"])
+}
+
+func validateGit(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	out := runValidatorCommand(t, env, []string{"GIT_CONFIG_NOSYSTEM=1"}, "git", "config", "--file", saved.path, "--get", "user.name")
+	requireTrimmedOutput(t, out, "Jane Doe")
+	out = runValidatorCommand(t, env, []string{"GIT_CONFIG_NOSYSTEM=1"}, "git", "config", "--file", saved.path, "--get", "core.pager")
+	requireTrimmedOutput(t, out, "less")
+}
+
+func validateGNOME(t *testing.T) {
+	requireValidatorBinary(t, "gsettings")
+	env := newDBusValidatorEnv(t)
+	useValidatorProcessEnv(t, env)
+
+	values := saveCommandBackedValues(t, appgnome.New(appgnome.NewPersister()),
+		commandBackedEdit{key: "org.gnome.desktop.interface/color-scheme", value: "prefer-dark", fallback: "default"},
+		commandBackedEdit{key: "org.gnome.desktop.interface/font-name", value: "Inter 11", fallback: "Konfi Sans 12"},
+	)
+	out := runValidatorCommand(t, env, nil, "gsettings", "get", "org.gnome.desktop.interface", "color-scheme")
+	requireGVariantString(t, out, values["org.gnome.desktop.interface/color-scheme"])
+	out = runValidatorCommand(t, env, nil, "gsettings", "get", "org.gnome.desktop.interface", "font-name")
+	requireGVariantString(t, out, values["org.gnome.desktop.interface/font-name"])
+}
+
+func validateHelix(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	out := runValidatorCommand(t, env, nil, "helix", "--config", saved.path, "--health")
+	requireOutputContains(t, out, "Config file: "+saved.path)
+	requireOutputNotContains(t, out, "Configuration file malformed")
+}
+
+func validatePacman(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	out := runValidatorCommand(t, env, nil, "pacman-conf", "--config", saved.path, "ParallelDownloads")
+	requireTrimmedOutput(t, out, "10")
+	out = runValidatorCommand(t, env, nil, "pacman-conf", "--config", saved.path, "XferCommand")
+	requireTrimmedOutput(t, out, "/usr/bin/curl -L -C - -f -o %%o %%u")
+}
+
+func validatePowerlevel10k(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	runValidatorCommand(t, env, nil, "zsh", "-n", saved.path)
+	out := runValidatorCommand(t, env, nil, "zsh", "-fc", `source "$1"; print -r -- "$POWERLEVEL9K_MODE"`, "zsh", saved.path)
+	requireTrimmedOutput(t, out, "ascii")
+	out = runValidatorCommand(t, env, nil, "zsh", "-fc", `source "$1"; print -r -- "$POWERLEVEL9K_VCS_BACKENDS"`, "zsh", saved.path)
+	requireTrimmedOutput(t, out, "git")
+}
+
+func validateSSH(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	out := runValidatorCommand(t, env, nil, "ssh", "-G", "-F", saved.path, "myserver")
+	requireOutputLine(t, out, "hostname example.com")
+	requireOutputLine(t, out, "serveraliveinterval 120")
+	requireOutputLine(t, out, "forwardagent yes")
+}
+
+func validateSSHD(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	keyPath := filepath.Join(t.TempDir(), "host_ed25519")
+	runValidatorCommand(t, env, nil, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", keyPath)
+	out := runValidatorCommand(t, env, nil, "sshd", "-T", "-f", saved.path, "-h", keyPath, "-C", "user=alice,host=localhost,addr=127.0.0.1")
+	requireOutputLine(t, out, "port 22")
+	requireOutputLine(t, out, "passwordauthentication yes")
+	requireOutputLine(t, out, "clientaliveinterval 60")
+}
+
+func validateStarship(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	out := runValidatorCommand(t, env, []string{"STARSHIP_CONFIG=" + saved.path}, "starship", "print-config")
+	requireOutputLine(t, out, "scan_timeout = 60")
+	requireOutputLine(t, out, "add_newline = false")
+}
+
+func validateTmux(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	socket := "konfi-" + filepath.Base(t.TempDir())
+	out := runValidatorCommand(t, env, nil, "tmux", "-L", socket, "-f", saved.path, "start-server", ";", "show-options", "-g", "escape-time", ";", "show-options", "-g", "base-index", ";", "show-options", "-g", "status", ";", "kill-server")
+	requireOutputLine(t, out, "escape-time 10")
+	requireOutputLine(t, out, "base-index 1")
+	requireOutputLine(t, out, "status off")
+}
+
+func validateYazi(t *testing.T, saved savedConfig) {
+	env := newValidatorEnv(t)
+	configPath := filepath.Join(env.configHome, "yazi", "yazi.toml")
+	writeValidatorConfig(t, configPath, saved.content)
+	out := runValidatorCommand(t, env, nil, "yazi", "--debug")
+	requireOutputContains(t, out, configPath)
+}
+
+type commandBackedEdit struct {
+	key      string
+	value    string
+	fallback string
+}
+
+func saveCommandBackedValues(t *testing.T, app konfables.Konfable, edits ...commandBackedEdit) map[string]string {
+	t.Helper()
+
+	loadCtx, loadCancel := context.WithTimeout(context.Background(), validatorTimeout)
+	cf, err := pkg.NewConfigFile(loadCtx, app)
+	loadCancel()
+	if err != nil {
+		t.Fatalf("load command-backed config: %v", err)
+	}
+
+	content := cf.Content()
+	writes := make(map[string]string, len(edits))
+	updated := content
+	for _, edit := range edits {
+		write := edit.value
+		if got, ok := app.Parser().FindValue(updated, edit.key); ok && got == write && edit.fallback != "" {
+			write = edit.fallback
+		}
+		var err error
+		updated, err = app.Parser().SetValue(updated, edit.key, write)
+		if err != nil {
+			t.Fatalf("edit command-backed config %s: %v", edit.key, err)
+		}
+		writes[edit.key] = write
+	}
+	cf.SetContent(updated)
+	if !cf.Dirty() {
+		t.Fatal("command-backed config should be dirty after edits")
+	}
+
+	saveCtx, saveCancel := context.WithTimeout(context.Background(), validatorTimeout)
+	err = cf.Save(saveCtx)
+	saveCancel()
+	if err != nil {
+		t.Fatalf("save command-backed config: %v", err)
+	}
+	return writes
 }
 
 func hasKey(keys []string, want string) bool {
@@ -293,10 +758,18 @@ func containerCases(t *testing.T) []containerCase {
 			addKey:       "window.title",
 			addWrite:     `"Terminal"`,
 			addWant:      "Terminal",
+			extraWrites: []configWrite{
+				{key: "colors.primary.background", write: `"#1e1e2e"`, want: "#1e1e2e"},
+				{key: "window.dynamic_padding", write: "true", want: "true"},
+				{key: "terminal.shell.args", write: `["-l"]`, want: `["-l"]`},
+			},
 			deleteKey:    "colors.primary.background",
 			survivorKey:  "font.normal.family",
 			survivorWant: "JetBrains Mono",
 			fileBacked:   true,
+
+			validationKind: validationParse,
+			validateSaved:  validateAlacritty,
 		},
 		{
 			name: "brew",
@@ -315,6 +788,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "brew",
 			survivorWant: "git",
 			fileBacked:   true,
+
+			unsupportedReason: "brew bundle validation depends on Homebrew state and installed package availability",
 		},
 		{
 			name: "dconf",
@@ -332,6 +807,9 @@ func containerCases(t *testing.T) []containerCase {
 			deleteKey:    "/org/gnome/desktop/peripherals/touchpad/tap-to-click",
 			survivorKey:  "/org/gnome/desktop/wm/preferences/button-layout",
 			survivorWant: "appmenu:minimize,maximize,close",
+
+			validationKind:    validationValue,
+			validateCommanded: validateDconf,
 		},
 		{
 			name: "fuzzel",
@@ -346,10 +824,17 @@ func containerCases(t *testing.T) []containerCase {
 			addKey:       "colors.selection-match",
 			addWrite:     "f38ba8ff",
 			addWant:      "f38ba8ff",
+			extraWrites: []configWrite{
+				{key: "dpi-aware", write: "yes", want: "yes"},
+				{key: "colors.background", write: "1e1e2eff", want: "1e1e2eff"},
+			},
 			deleteKey:    "colors.match",
 			survivorKey:  "font",
 			survivorWant: "monospace",
 			fileBacked:   true,
+
+			validationKind: validationParse,
+			validateSaved:  validateFuzzel,
 		},
 		{
 			name: "ghostty",
@@ -364,10 +849,19 @@ func containerCases(t *testing.T) []containerCase {
 			addKey:       "cursor-style",
 			addWrite:     "block",
 			addWant:      "block",
+			extraWrites: []configWrite{
+				{key: "background", write: "1e1e2e", want: "1e1e2e"},
+				{key: "font-thicken", write: "true", want: "true"},
+				{key: "font-variation", write: "wght=500", want: "wght=500"},
+				{key: "shell-integration-features", write: "cursor,sudo,title", want: "cursor,sudo,title"},
+			},
 			deleteKey:    "window-decoration",
 			survivorKey:  "font-family",
 			survivorWant: "JetBrains Mono",
 			fileBacked:   true,
+
+			validationKind: validationParse,
+			validateSaved:  validateGhostty,
 		},
 		{
 			name: "git",
@@ -386,6 +880,9 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "user.email",
 			survivorWant: "john@example.com",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validateGit,
 		},
 		{
 			name: "gtk",
@@ -404,6 +901,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "Settings.gtk-font-name",
 			survivorWant: "JetBrainsMono Nerd Font 11",
 			fileBacked:   true,
+
+			unsupportedReason: "GTK settings need runtime discovery and have no exact headless file validator here",
 		},
 		{
 			name: "gnome",
@@ -421,6 +920,9 @@ func containerCases(t *testing.T) []containerCase {
 			deleteKey:    "org.gnome.desktop.interface/cursor-size",
 			survivorKey:  "org.gnome.desktop.interface/gtk-theme",
 			survivorWant: "Adwaita",
+
+			validationKind:    validationValue,
+			validateCommanded: validateGNOME,
 		},
 		{
 			name: "helix",
@@ -435,10 +937,17 @@ func containerCases(t *testing.T) []containerCase {
 			addKey:       "editor.cursor-shape.select",
 			addWrite:     `"underline"`,
 			addWant:      "underline",
+			extraWrites: []configWrite{
+				{key: "editor.color-modes", write: "true", want: "true"},
+				{key: "editor.rulers", write: "[80, 120]", want: "[80, 120]"},
+			},
 			deleteKey:    "editor.cursor-shape.normal",
 			survivorKey:  "editor.mouse",
 			survivorWant: "false",
 			fileBacked:   true,
+
+			validationKind: validationWeakParse,
+			validateSaved:  validateHelix,
 		},
 		{
 			name: "hyprland",
@@ -457,6 +966,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "$mainMod",
 			survivorWant: "SUPER",
 			fileBacked:   true,
+
+			unsupportedReason: "hyprctl validation requires a running Hyprland compositor",
 		},
 		{
 			name: "kitty",
@@ -475,6 +986,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "font_family",
 			survivorWant: "JetBrains Mono",
 			fileBacked:   true,
+
+			unsupportedReason: "no deterministic in-container headless kitty config validator was confirmed for this milestone",
 		},
 		{
 			name: "konfi",
@@ -493,6 +1006,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "theme",
 			survivorWant: "tokyonight",
 			fileBacked:   true,
+
+			unsupportedReason: "konfi has no separate headless real-app config validation command",
 		},
 		{
 			name: "pacman",
@@ -511,6 +1026,9 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "options.HoldPkg",
 			survivorWant: "pacman glibc",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validatePacman,
 		},
 		{
 			name: "powerlevel10k",
@@ -529,6 +1047,9 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT",
 			survivorWant: "d h m s",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validatePowerlevel10k,
 		},
 		{
 			name: "rio",
@@ -547,6 +1068,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "renderer.backend",
 			survivorWant: "Automatic",
 			fileBacked:   true,
+
+			unsupportedReason: "rio has no confirmed parse-only or effective-value CLI; starting rio launches the terminal",
 		},
 		{
 			name: "ssh",
@@ -565,6 +1088,9 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "AddKeysToAgent",
 			survivorWant: "yes",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validateSSH,
 		},
 		{
 			name: "sshd",
@@ -583,6 +1109,9 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "Port",
 			survivorWant: "22",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validateSSHD,
 		},
 		{
 			name: "starship",
@@ -601,6 +1130,9 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "format",
 			survivorWant: "$all",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validateStarship,
 		},
 		{
 			name: "tmux",
@@ -615,10 +1147,16 @@ func containerCases(t *testing.T) []containerCase {
 			addKey:       "base-index",
 			addWrite:     "1",
 			addWant:      "1",
+			extraWrites: []configWrite{
+				{key: "status", write: "off", want: "off"},
+			},
 			deleteKey:    "mouse",
 			survivorKey:  "history-limit",
 			survivorWant: "10000",
 			fileBacked:   true,
+
+			validationKind: validationValue,
+			validateSaved:  validateTmux,
 		},
 		{
 			name: "waybar",
@@ -637,6 +1175,8 @@ func containerCases(t *testing.T) []containerCase {
 			survivorKey:  "clock.format",
 			survivorWant: "{:%H:%M}",
 			fileBacked:   true,
+
+			unsupportedReason: "waybar --config starts the bar and needs a compositor/session",
 		},
 		{
 			name: "yazi",
@@ -651,10 +1191,17 @@ func containerCases(t *testing.T) []containerCase {
 			addKey:       "manager.sort_reverse",
 			addWrite:     "true",
 			addWant:      "true",
+			extraWrites: []configWrite{
+				{key: "manager.sort_by", write: `"natural"`, want: "natural"},
+				{key: "preview.max_width", write: "1024", want: "1024"},
+			},
 			deleteKey:    "preview.wrap",
 			survivorKey:  "manager.sort_by",
 			survivorWant: "alphabetical",
 			fileBacked:   true,
+
+			validationKind: validationWeakParse,
+			validateSaved:  validateYazi,
 		},
 	}
 }
