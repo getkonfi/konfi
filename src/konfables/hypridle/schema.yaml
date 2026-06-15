@@ -1,0 +1,125 @@
+app: hypridle
+format: hyprland
+schema_version: "0.1.7"
+docs_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/"
+coverage: partial
+upstream:
+  kind: github
+  repo: hyprwm/hypridle
+  tag_prefix: v
+hints:
+  - "add `exec-once = hypridle` to hyprland.conf to start the daemon with Hyprland"
+  - "hypridle uses ~/.config/hypr/hypridle.conf and requires the file to exist"
+  - "listener timeouts are seconds"
+
+sections:
+  - name: General
+    key: general
+    fields:
+      - key: general.lock_cmd
+        label: Lock Command
+        type: string
+        default: ""
+        description: command to run when hypridle receives a dbus lock event
+        example: "lock_cmd = pidof hyprlock || hyprlock"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.unlock_cmd
+        label: Unlock Command
+        type: string
+        default: ""
+        description: command to run when hypridle receives a dbus unlock event
+        example: "unlock_cmd = loginctl unlock-session"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.on_lock_cmd
+        label: On Lock Command
+        type: string
+        default: ""
+        description: command to run after the session is locked by a lock screen app
+        example: "on_lock_cmd = notify-send locked"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.on_unlock_cmd
+        label: On Unlock Command
+        type: string
+        default: ""
+        description: command to run after the session is unlocked by a lock screen app
+        example: "on_unlock_cmd = notify-send unlocked"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.before_sleep_cmd
+        label: Before Sleep Command
+        type: string
+        default: ""
+        description: command to run before a dbus prepare_sleep event completes
+        example: "before_sleep_cmd = loginctl lock-session"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.after_sleep_cmd
+        label: After Sleep Command
+        type: string
+        default: ""
+        description: command to run after a dbus post prepare_sleep event
+        example: "after_sleep_cmd = hyprctl dispatch dpms on"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.ignore_dbus_inhibit
+        label: Ignore DBus Inhibit
+        type: bool
+        default: "false"
+        description: ignore dbus-sent idle inhibit events
+        example: "ignore_dbus_inhibit = false"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.ignore_systemd_inhibit
+        label: Ignore Systemd Inhibit
+        type: bool
+        default: "false"
+        description: ignore systemd idle inhibitors
+        example: "ignore_systemd_inhibit = false"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.ignore_wayland_inhibit
+        label: Ignore Wayland Inhibit
+        type: bool
+        default: "false"
+        description: ignore wayland protocol idle inhibitors
+        example: "ignore_wayland_inhibit = false"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+      - key: general.inhibit_sleep
+        label: Inhibit Sleep
+        type: enum
+        default: "2"
+        description: sleep inhibition mode used before the system sleeps
+        options: ["0", "1", "2", "3"]
+        example: "inhibit_sleep = 2"
+        hint: "0 disables, 1 waits for before_sleep_cmd, 2 auto-selects, 3 waits for session lock"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#general"
+
+  - name: Listeners
+    fields:
+      - key: listeners
+        label: Listeners
+        type: list
+        widget: structlist
+        default: ""
+        description: idle listeners, one row per listener block
+        example: "listener {\n    timeout = 300\n    on-timeout = loginctl lock-session\n}"
+        hint: "fields are timeout, on-timeout command, on-resume command, ignore_inhibit"
+        doc_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/#listeners"
+        item_schema:
+          - name: timeout
+            label: Timeout
+            type: number
+            required: true
+            default: "300"
+            placeholder: "300"
+          - name: on-timeout
+            label: On Timeout
+            type: string
+            default: "loginctl lock-session"
+            placeholder: "loginctl lock-session"
+          - name: on-resume
+            label: On Resume
+            type: string
+            default: ""
+            placeholder: "hyprctl dispatch dpms on"
+          - name: ignore_inhibit
+            label: Ignore Inhibit
+            type: enum
+            default: "false"
+            options: ["false", "true"]
+        separator: " <-> "

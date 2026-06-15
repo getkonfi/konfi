@@ -171,6 +171,10 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		return c, cmd
 	}
 
+	if c.hypridleDashboardActive() && c.searching {
+		return c.updateHypridleSearch(msg)
+	}
+
 	// when searching, forward keys to search textinput
 	if c.searching {
 		if km, ok := msg.(tea.KeyPressMsg); ok {
@@ -237,6 +241,10 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 		}
 
 		hasRows := c.schema != nil && len(c.visible) > 0
+
+		if c.hypridleDashboardActive() {
+			return c.updateHypridleDashboard(msg)
+		}
 
 		switch msg.String() {
 		case "right":
@@ -470,12 +478,16 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 
 // openEditor creates and initializes an editor for the current cursor field.
 func (c *content) openEditor() tea.Cmd {
-	f := c.currentField()
-	if f == nil || c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+	fieldIdx := c.currentFieldIndex()
+	if fieldIdx < 0 || fieldIdx >= len(c.fields) {
+		return nil
+	}
+	f := &c.fields[fieldIdx]
+	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return nil
 	}
 
-	c.detail.editField = c.visible[c.cursor].fieldIdx
+	c.detail.editField = fieldIdx
 	c.detail.editOrigVal = c.values[f.Key]
 
 	e := editors.ForField(*f)
@@ -522,12 +534,16 @@ func (c *content) openEditor() tea.Cmd {
 // openEditorWithSeed starts the editor in replace mode (empty value) and
 // injects the seed rune as the first keystroke.
 func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
-	f := c.currentField()
-	if f == nil || c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+	fieldIdx := c.currentFieldIndex()
+	if fieldIdx < 0 || fieldIdx >= len(c.fields) {
+		return nil
+	}
+	f := &c.fields[fieldIdx]
+	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return nil
 	}
 
-	c.detail.editField = c.visible[c.cursor].fieldIdx
+	c.detail.editField = fieldIdx
 	c.detail.editOrigVal = c.values[f.Key]
 
 	e := editors.ForField(*f)
@@ -917,14 +933,11 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 
 // currentField returns the field under the cursor, or nil if empty.
 func (c *content) currentField() *pkg.Field {
-	if len(c.visible) == 0 || c.cursor < 0 || c.cursor >= len(c.visible) {
+	fieldIdx := c.currentFieldIndex()
+	if fieldIdx < 0 || fieldIdx >= len(c.fields) {
 		return nil
 	}
-	r := c.visible[c.cursor]
-	if r.isSection {
-		return nil
-	}
-	return &c.fields[r.fieldIdx]
+	return &c.fields[fieldIdx]
 }
 
 func (c *content) fieldListFocused() bool {
@@ -932,6 +945,9 @@ func (c *content) fieldListFocused() bool {
 }
 
 func (c *content) detailPaneVisible() bool {
+	if c.hypridleDashboardActive() {
+		return false
+	}
 	if c.schema == nil || c.config == nil || len(c.fields) == 0 {
 		return false
 	}
@@ -1070,6 +1086,9 @@ func (c *content) refreshValues() {
 		}
 	}
 
+	if c.hypridleDashboardActive() {
+		c.clampHypridleCursor()
+	}
 	c.detail.forceRescan()
 	c.syncDetail()
 	c.buildInsights()
@@ -1180,7 +1199,11 @@ func (c *content) syncDetail() {
 		field = f.Key
 	}
 	section := ""
-	if c.cursor >= 0 && c.cursor < len(c.visible) {
+	if c.hypridleDashboardActive() {
+		if row, ok := c.currentHypridleRow(); ok {
+			section = row.sectionLabel()
+		}
+	} else if c.cursor >= 0 && c.cursor < len(c.visible) {
 		r := c.visible[c.cursor]
 		if !r.isSection && c.schema != nil && r.sectionIdx < len(c.schema.Sections) {
 			section = c.schema.Sections[r.sectionIdx].Name

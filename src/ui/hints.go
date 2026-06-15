@@ -98,6 +98,20 @@ func (r *root) updateHints() {
 			r.status.hints = r.content.hints
 			return
 		}
+		if r.content.hypridleDashboardActive() {
+			r.content.hints = []keyHint{
+				{"↑↓", "nav"},
+				{"⏎", "edit"},
+				{"a", "listeners"},
+				{"⌫", "del"},
+				{"/", "search"},
+				{"⇥", "changed"},
+				{"^S", "save"},
+				{"q", "quit"},
+			}
+			r.status.hints = r.content.hints
+			return
+		}
 		r.content.hints = []keyHint{
 			{"↑↓", "nav"},
 			{"⏎", "edit"},

@@ -160,6 +160,10 @@ func (c *content) View() string {
 		return outerStyle.Render(headerStr + bodyStr)
 	}
 
+	if c.hypridleDashboardActive() {
+		return c.viewHypridleDashboard(outerStyle, innerW, bodyH)
+	}
+
 	fieldListW, detailW := c.splitWidths(innerW)
 	wide := c.width > wideLayoutMinW && detailW > 0
 

@@ -10,6 +10,7 @@ var Logos = map[string]pixelart.PixelArt{
 	"starship":      starshipLogo,
 	"powerlevel10k": powerlevel10kLogo,
 	"hyprland":      hyprlandLogo,
+	"hypridle":      hyprlandLogo,
 	"fuzzel":        fuzzelLogo,
 	"waybar":        waybarLogo,
 	"konfi":         konfiLogo,
@@ -179,6 +180,11 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 		Kind: pixelart.AnimFade, Frames: 12, TickMs: 60,
 	},
 	"hyprland": {
+		Kind: pixelart.AnimDrip, Frames: 33, TickMs: 60,
+		DripOrigin: pixelart.Pixel{Row: 0, Col: 7},
+		DripBright: []uint8{255, 195, 153, 111},
+	},
+	"hypridle": {
 		Kind: pixelart.AnimDrip, Frames: 33, TickMs: 60,
 		DripOrigin: pixelart.Pixel{Row: 0, Col: 7},
 		DripBright: []uint8{255, 195, 153, 111},

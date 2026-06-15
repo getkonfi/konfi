@@ -65,6 +65,7 @@ var allKonfables = []konfableEntry{
 	{"Hyprland", func(cfg *KonfConfig) Konfable {
 		return hyprland.New(newFilePersister(pkg.XDGConfigPath("hypr", "hyprland.conf"), cfg))
 	}, false, nil},
+	// hypridle hidden for now — re-add to enable detection
 	{"fuzzel", func(cfg *KonfConfig) Konfable {
 		return fuzzel.New(newFilePersister(fuzzel.DefaultConfigPath(), cfg))
 	}, false, nil},
