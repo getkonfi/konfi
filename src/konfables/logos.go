@@ -105,22 +105,22 @@ var starshipLogo = pixelart.PixelArt{
 	},
 }
 
-// powerlevel10k — prompt chevrons with lightning bolt
+// powerlevel10k — nested double-chevron prompt (❯❯)
 var powerlevel10kLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, pu, pu, __, __, __, __, yl, yl, __, __, __, cy, cy, __},
-		{__, __, __, pu, pu, __, __, yl, yl, __, __, __, cy, cy, __, __},
-		{__, __, __, __, pu, pu, yl, yl, __, __, __, cy, cy, __, __, __},
-		{__, __, __, __, __, pu, yl, yl, yl, yl, cy, cy, __, __, __, __},
-		{__, __, __, __, pu, pu, __, yl, yl, cy, cy, __, __, __, __, __},
-		{__, __, __, pu, pu, __, __, yl, yl, __, cy, cy, __, __, __, __},
-		{__, __, pu, pu, __, __, yl, yl, __, __, __, cy, cy, __, __, __},
-		{__, pu, pu, __, __, yl, yl, __, __, __, __, __, cy, cy, __, __},
-		{__, __, pu, pu, __, __, yl, yl, __, __, __, cy, cy, __, __, __},
-		{__, __, __, pu, pu, __, __, yl, yl, __, cy, cy, __, __, __, __},
-		{__, __, __, __, pu, pu, __, yl, yl, cy, cy, __, __, __, __, __},
-		{__, __, __, __, __, pu, pu, yl, cy, cy, __, __, __, __, __, __},
+		{__, cy, cy, __, __, __, bl, bl, __, __, __, __, __, __, __, __},
+		{__, __, cy, cy, __, __, __, bl, bl, __, __, __, __, __, __, __},
+		{__, __, __, cy, cy, __, __, __, bl, bl, __, __, __, __, __, __},
+		{__, __, __, __, cy, cy, __, __, __, bl, bl, __, __, __, __, __},
+		{__, __, __, __, __, cy, cy, __, __, __, bl, bl, __, __, __, __},
+		{__, __, __, __, __, __, cy, cy, __, __, __, bl, bl, __, __, __},
+		{__, __, __, __, __, __, cy, cy, __, __, __, bl, bl, __, __, __},
+		{__, __, __, __, __, cy, cy, __, __, __, bl, bl, __, __, __, __},
+		{__, __, __, __, cy, cy, __, __, __, bl, bl, __, __, __, __, __},
+		{__, __, __, cy, cy, __, __, __, bl, bl, __, __, __, __, __, __},
+		{__, __, cy, cy, __, __, __, bl, bl, __, __, __, __, __, __, __},
+		{__, cy, cy, __, __, __, bl, bl, __, __, __, __, __, __, __, __},
 	},
 }
 
@@ -171,10 +171,10 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 	},
 	"powerlevel10k": sequenceAnim(
 		18, 70, []uint8{wh, lg},
-		[]int{-1, 0, 0, 1, 1, 2, 2, 1, 1, -1, -1, 1, -1, -1, -1, -1, -1, -1},
-		logoColorPixels(powerlevel10kLogo, pu),
-		logoColorPixels(powerlevel10kLogo, yl),
-		logoColorPixels(powerlevel10kLogo, cy),
+		[]int{-1, 0, 1, 2, -1, 0, 1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
+		logoRectPixels(powerlevel10kLogo, 0, 11, 1, 4, cy, bl),
+		logoRectPixels(powerlevel10kLogo, 0, 11, 5, 8, cy, bl),
+		logoRectPixels(powerlevel10kLogo, 0, 11, 9, 12, cy, bl),
 	),
 	"alacritty": {
 		Kind: pixelart.AnimFade, Frames: 12, TickMs: 60,
@@ -237,28 +237,15 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 	"sshd": sshKeyAnim,
 	"pacman": {
 		Kind: pixelart.AnimChomp, Frames: 25, TickMs: 100,
-		ChompColor: yl,
-		ChompLayers: [][]pixelart.Pixel{
-			// layer 0: col 13 (outermost edge)
-			{{Row: 2, Col: 13}, {Row: 3, Col: 13}, {Row: 4, Col: 13}, {Row: 5, Col: 13}, {Row: 6, Col: 13}, {Row: 7, Col: 13}, {Row: 8, Col: 13}, {Row: 9, Col: 13}},
-			// layer 1: col 12
-			{{Row: 2, Col: 12}, {Row: 3, Col: 12}, {Row: 4, Col: 12}, {Row: 5, Col: 12}, {Row: 6, Col: 12}, {Row: 7, Col: 12}, {Row: 8, Col: 12}, {Row: 9, Col: 12}},
-			// layer 2: col 11
-			{{Row: 3, Col: 11}, {Row: 4, Col: 11}, {Row: 5, Col: 11}, {Row: 6, Col: 11}, {Row: 7, Col: 11}, {Row: 8, Col: 11}},
-			// layer 3: col 10
-			{{Row: 4, Col: 10}, {Row: 5, Col: 10}, {Row: 6, Col: 10}, {Row: 7, Col: 10}},
-			// layer 4: col 9
-			{{Row: 5, Col: 9}, {Row: 6, Col: 9}, {Row: 7, Col: 9}},
-			// layer 5: col 8 (innermost tip)
-			{{Row: 6, Col: 8}},
-		},
-		// open → straight-close → hold → straight-open
+		ChompColor:  yl,
+		ChompLayers: pacmanMouthLayers,
+		// open → swing-shut → hold → swing-open
 		ChompSeq: []int{
-			0, 0, 0, 0, 0,
-			1, 2, 3, 4, 5, 6,
-			6, 6, 6,
-			5, 4, 3, 2, 1, 0,
-			0, 0, 0, 0, 0,
+			0, 0, 0, 0,
+			1, 2, 3, 4,
+			4, 4,
+			3, 2, 1, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		},
 	},
 	"gnome": sequenceAnim(
@@ -338,6 +325,37 @@ var sshKeyAnim = sequenceAnim(
 	logoRectPixels(sshLogo, 7, 7, 7, 10, yl),
 	logoRectPixels(sshLogo, 8, 10, 7, 9, yl),
 )
+
+var pacmanMouthLayers = [][]pixelart.Pixel{
+	{
+		{Row: 2, Col: 11}, {Row: 2, Col: 12},
+		{Row: 3, Col: 10},
+		{Row: 4, Col: 9},
+		{Row: 5, Col: 8},
+		{Row: 6, Col: 8},
+		{Row: 7, Col: 9},
+		{Row: 8, Col: 10},
+		{Row: 9, Col: 11}, {Row: 9, Col: 12},
+	},
+	{
+		{Row: 3, Col: 11}, {Row: 3, Col: 12}, {Row: 3, Col: 13},
+		{Row: 4, Col: 10},
+		{Row: 5, Col: 9},
+		{Row: 6, Col: 9},
+		{Row: 7, Col: 10},
+		{Row: 8, Col: 11}, {Row: 8, Col: 12}, {Row: 8, Col: 13},
+	},
+	{
+		{Row: 4, Col: 11}, {Row: 4, Col: 12}, {Row: 4, Col: 13},
+		{Row: 6, Col: 10},
+		{Row: 6, Col: 11},
+		{Row: 6, Col: 12}, {Row: 6, Col: 13},
+		{Row: 7, Col: 11}, {Row: 7, Col: 12}, {Row: 7, Col: 13},
+	},
+	{
+		{Row: 5, Col: 10}, {Row: 5, Col: 11}, {Row: 5, Col: 12}, {Row: 5, Col: 13},
+	},
+}
 
 func sequenceAnim(frames, tickMs int, bright []uint8, seq []int, groups ...[]pixelart.Pixel) pixelart.AnimConfig {
 	return pixelart.AnimConfig{
@@ -485,14 +503,14 @@ var pacmanLogo = pixelart.PixelArt{
 	Pixels: [][]uint8{
 		{__, __, __, __, __, __, yl, yl, yl, yl, yl, __, __, __, __, __},
 		{__, __, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __},
-		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __},
-		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
-		{__, __, yl, yl, yl, dk, dk, yl, yl, yl, __, __, __, __, __, __},
-		{__, __, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __},
+		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __},
+		{__, __, yl, yl, yl, dk, dk, yl, yl, __, __, __, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __, __},
 		{__, __, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __, __},
 		{__, __, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __, __},
-		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
-		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __},
+		{__, __, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __, __},
+		{__, __, __, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __, __, __},
 		{__, __, __, __, yl, yl, yl, yl, yl, yl, yl, yl, yl, __, __, __},
 		{__, __, __, __, __, __, yl, yl, yl, yl, yl, __, __, __, __, __},
 	},
