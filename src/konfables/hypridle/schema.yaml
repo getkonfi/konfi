@@ -1,6 +1,7 @@
 app: hypridle
 format: hyprland
 schema_version: "0.1.7"
+max_app_version: "0.1.7"
 docs_url: "https://wiki.hypr.land/Hypr-Ecosystem/hypridle/"
 coverage: partial
 upstream:

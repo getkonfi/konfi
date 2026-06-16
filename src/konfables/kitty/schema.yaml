@@ -2,7 +2,7 @@ app: kitty
 format: kitty
 schema_version: 1.0.0
 min_app_version: "0.35.0"
-max_app_version: "0.47.1"
+max_app_version: "0.47.4"
 docs_url: "https://sw.kovidgoyal.net/kitty/conf/"
 upstream:
   kind: github
