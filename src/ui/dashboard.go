@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 // dashboardApp holds summary info for the landing page.

@@ -1,4 +1,4 @@
-module github.com/eminert/konfi
+module github.com/getkonfi/konfi
 
 go 1.26
 

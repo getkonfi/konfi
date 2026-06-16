@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
-	cfgparse "github.com/eminert/konfi/pkg/parser"
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
+	cfgparse "github.com/getkonfi/konfi/pkg/parser"
+	"github.com/getkonfi/konfi/theme"
 )
 
 var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)

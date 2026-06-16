@@ -1,6 +1,6 @@
 package fuzzel
 
-import "github.com/eminert/konfi/pkg"
+import "github.com/getkonfi/konfi/pkg"
 
 func DefaultConfigPath() string {
 	return pkg.XDGConfigPath("fuzzel", "fuzzel.ini")

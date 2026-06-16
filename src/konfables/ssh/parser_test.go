@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 // blocksParser returns a fully-configured parser (palette + engine predicates)

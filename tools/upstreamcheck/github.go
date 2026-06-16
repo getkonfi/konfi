@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 	"golang.org/x/mod/semver"
 )
 

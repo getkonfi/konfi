@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/setup"
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/setup"
+	"github.com/getkonfi/konfi/theme"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"

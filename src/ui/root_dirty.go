@@ -1,6 +1,6 @@
 package ui
 
-import "github.com/eminert/konfi/pkg"
+import "github.com/getkonfi/konfi/pkg"
 
 type dirtyConfigState struct {
 	config     *pkg.ConfigFile

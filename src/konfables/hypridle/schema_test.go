@@ -3,7 +3,7 @@ package hypridle
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSchemaLoads(t *testing.T) {

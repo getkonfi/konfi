@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/eminert/konfi/setup/cst"
+	"github.com/getkonfi/konfi/setup/cst"
 
 	"gopkg.in/yaml.v3"
 )

@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/theme"
 )
 
 // TestRenderInlineDiff asserts the changed-only (tab) value renders as

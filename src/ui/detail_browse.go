@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/theme"
-	"github.com/eminert/konfi/ui/editors"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/theme"
+	"github.com/getkonfi/konfi/ui/editors"
 )
 
 // typeBadgeStyle returns a styled badge for the field type with per-type coloring.

@@ -3,7 +3,7 @@ package pacman
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 const testConfig = `#

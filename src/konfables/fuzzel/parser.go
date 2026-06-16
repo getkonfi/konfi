@@ -3,7 +3,7 @@ package fuzzel
 import (
 	"strings"
 
-	cfgparse "github.com/eminert/konfi/pkg/parser"
+	cfgparse "github.com/getkonfi/konfi/pkg/parser"
 )
 
 type parser struct {

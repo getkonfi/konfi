@@ -3,7 +3,7 @@ package gtk
 import (
 	_ "embed"
 
-	"github.com/eminert/konfi/konfables"
+	"github.com/getkonfi/konfi/konfables"
 )
 
 //go:embed schema.yaml

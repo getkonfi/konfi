@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 const (

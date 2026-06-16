@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 // DefaultConfigPath returns the Ghostty config file konfi should edit.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/theme"
 
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/compat"

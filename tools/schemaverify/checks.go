@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 var validTypes = map[string]bool{

@@ -3,8 +3,8 @@ package editors
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/theme"
 )
 
 // TestStructListEditorInitWithJSONArrayDefault verifies that initializing a

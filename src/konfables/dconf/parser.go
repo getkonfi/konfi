@@ -1,6 +1,6 @@
 package dconf
 
-import "github.com/eminert/konfi/pkg/parser"
+import "github.com/getkonfi/konfi/pkg/parser"
 
 func newParser() *parser.FlatParser {
 	return &parser.FlatParser{Split: parser.SplitSpacedEquals, Format: parser.FormatEquals}

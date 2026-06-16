@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func main() {

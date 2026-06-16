@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/theme"
-	"github.com/eminert/konfi/ui/editors"
-	"github.com/eminert/konfi/ui/widgets"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/theme"
+	"github.com/getkonfi/konfi/ui/editors"
+	"github.com/getkonfi/konfi/ui/widgets"
 )
 
 // field type icons — nerd font glyphs

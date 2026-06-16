@@ -1,6 +1,6 @@
 app: konfi
 format: yaml
-docs_url: https://github.com/eminert/konfi/blob/main/README.md
+docs_url: https://github.com/getkonfi/konfi/blob/main/README.md
 hints:
   - konfi's own settings
   - theme changes apply immediately

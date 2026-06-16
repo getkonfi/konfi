@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/theme"
-	"github.com/eminert/konfi/ui/widgets"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/theme"
+	"github.com/getkonfi/konfi/ui/widgets"
 )
 
 func (d *detail) viewConfigFile(width, height int) string {

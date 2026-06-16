@@ -3,7 +3,7 @@ package konfables
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg/pixelart"
+	"github.com/getkonfi/konfi/pkg/pixelart"
 )
 
 func TestLogoAnimsCoverLogos(t *testing.T) {

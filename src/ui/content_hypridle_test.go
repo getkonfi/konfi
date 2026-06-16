@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
-	cfgparse "github.com/eminert/konfi/pkg/parser"
+	"github.com/getkonfi/konfi/pkg"
+	cfgparse "github.com/getkonfi/konfi/pkg/parser"
 
 	tea "charm.land/bubbletea/v2"
 )

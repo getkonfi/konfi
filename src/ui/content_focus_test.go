@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
-	cfgparse "github.com/eminert/konfi/pkg/parser"
-	"github.com/eminert/konfi/setup"
-	"github.com/eminert/konfi/ui/editors"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
+	cfgparse "github.com/getkonfi/konfi/pkg/parser"
+	"github.com/getkonfi/konfi/setup"
+	"github.com/getkonfi/konfi/ui/editors"
 
 	tea "charm.land/bubbletea/v2"
 )

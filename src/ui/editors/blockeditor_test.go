@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 
 	tea "charm.land/bubbletea/v2"
 )

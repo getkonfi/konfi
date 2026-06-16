@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSchemaLoadsWaybarFields(t *testing.T) {

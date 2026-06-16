@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/pkg/parser"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg/parser"
 )
 
 // a ghostty-style repeated key (keybind) must read and write every occurrence,

@@ -3,7 +3,7 @@ package yazi
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSchema(t *testing.T) {

@@ -3,7 +3,7 @@ package gtk
 import (
 	"strings"
 
-	cfgparse "github.com/eminert/konfi/pkg/parser"
+	cfgparse "github.com/getkonfi/konfi/pkg/parser"
 )
 
 // parser handles GTK settings.ini (GKeyFile format): a [Settings] section with

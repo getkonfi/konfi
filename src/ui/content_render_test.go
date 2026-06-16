@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/theme"
 )
 
 func TestRenderFieldValueBoolUsesTextOnly(t *testing.T) {
@@ -147,4 +147,3 @@ func TestFormatPaletteColorPreservesHyprlandAlpha(t *testing.T) {
 		})
 	}
 }
-

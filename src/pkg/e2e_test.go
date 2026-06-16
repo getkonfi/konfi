@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/eminert/konfi/pkg/parser"
+	"github.com/getkonfi/konfi/pkg/parser"
 )
 
 // e2eConfigSetup creates a temp file with initial content and returns a ConfigFile.

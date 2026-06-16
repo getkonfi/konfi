@@ -3,7 +3,7 @@ package kitty
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSchemaModelsKittyEditorFidelityGaps(t *testing.T) {

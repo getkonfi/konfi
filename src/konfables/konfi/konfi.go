@@ -3,8 +3,8 @@ package konfi
 import (
 	_ "embed"
 
-	"github.com/eminert/konfi/konfables"
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/konfables"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 //go:embed schema.yaml

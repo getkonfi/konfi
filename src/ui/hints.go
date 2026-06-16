@@ -1,6 +1,6 @@
 package ui
 
-import "github.com/eminert/konfi/ui/editors"
+import "github.com/getkonfi/konfi/ui/editors"
 
 func (r *root) updateHints() {
 	// wire mode indicator and undo count into statusbar

@@ -1,6 +1,6 @@
 package alacritty
 
-import "github.com/eminert/konfi/pkg/parser"
+import "github.com/getkonfi/konfi/pkg/parser"
 
 func newParser() *parser.SectionParser {
 	return &parser.SectionParser{SplitKey: parser.SplitKeyLast}

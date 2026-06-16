@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/theme"
 )
 
 var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)

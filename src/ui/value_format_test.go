@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/theme"
 )
 
 func TestSingleLine(t *testing.T) {

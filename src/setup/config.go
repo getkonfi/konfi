@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/setup/cst"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/setup/cst"
 
 	"gopkg.in/yaml.v3"
 )

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/eminert/konfi/konfables/waybar"
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/konfables/waybar"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 const waybarListRefreshConfig = `{

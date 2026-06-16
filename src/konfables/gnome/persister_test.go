@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSplitFlatKey(t *testing.T) {

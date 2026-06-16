@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/eminert/konfi/pkg/parser"
+	"github.com/getkonfi/konfi/pkg/parser"
 
 	"golang.org/x/sync/errgroup"
 )

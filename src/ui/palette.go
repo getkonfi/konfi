@@ -3,7 +3,7 @@ package ui
 import (
 	"strings"
 
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/theme"
 	"github.com/sahilm/fuzzy"
 
 	"charm.land/bubbles/v2/textinput"

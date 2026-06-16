@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 var sampleConfig = []byte(`# server defaults

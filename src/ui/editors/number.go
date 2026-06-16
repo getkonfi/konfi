@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/eminert/konfi/pkg"
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/pkg"
+	"github.com/getkonfi/konfi/theme"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"

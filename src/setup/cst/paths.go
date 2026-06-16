@@ -6,12 +6,13 @@ import (
 )
 
 const (
-	AppName    = "konfi"
-	AppVersion = "0.1.0"
+	AppName = "konfi"
 
 	ConfigFileName = "config.yaml"
 	LogFileName    = "konfi.log"
 )
+
+var AppVersion = "0.1.0"
 
 // ConfigDir returns konfi's platform config directory.
 func ConfigDir() string {

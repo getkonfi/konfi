@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/eminert/konfi/konfables"
+	"github.com/getkonfi/konfi/konfables"
 )
 
 const sampleConfig = `{

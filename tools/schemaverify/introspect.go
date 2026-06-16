@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 const dumpTimeout = 30 * time.Second

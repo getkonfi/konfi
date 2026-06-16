@@ -1,6 +1,6 @@
 package waybar
 
-import "github.com/eminert/konfi/pkg/parser"
+import "github.com/getkonfi/konfi/pkg/parser"
 
 type jsoncParser struct {
 	base parser.JSONParser

@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/eminert/konfi/setup/cst"
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/setup/cst"
+	"github.com/getkonfi/konfi/theme"
 
 	"github.com/rs/zerolog"
 )

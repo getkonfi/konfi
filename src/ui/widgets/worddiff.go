@@ -3,7 +3,7 @@ package widgets
 import (
 	"strings"
 
-	"github.com/eminert/konfi/theme"
+	"github.com/getkonfi/konfi/theme"
 )
 
 // DiffSide selects the removed (old) or added (new) styling for a word diff.

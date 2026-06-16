@@ -3,7 +3,7 @@ package hypridle
 import (
 	"strings"
 
-	hyprparser "github.com/eminert/konfi/pkg/parser"
+	hyprparser "github.com/getkonfi/konfi/pkg/parser"
 )
 
 const (

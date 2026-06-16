@@ -3,7 +3,7 @@ package ui
 import (
 	"strings"
 
-	"github.com/eminert/konfi/ui/editors"
+	"github.com/getkonfi/konfi/ui/editors"
 
 	"charm.land/lipgloss/v2"
 )

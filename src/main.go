@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/eminert/konfi/setup"
-	"github.com/eminert/konfi/ui"
+	"github.com/getkonfi/konfi/setup"
+	"github.com/getkonfi/konfi/ui"
 
 	tea "charm.land/bubbletea/v2"
 )

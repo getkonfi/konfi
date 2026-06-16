@@ -3,7 +3,7 @@ package ssh
 import (
 	"strings"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 const blocksKey = "Blocks"

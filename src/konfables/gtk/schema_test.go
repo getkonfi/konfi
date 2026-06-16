@@ -3,7 +3,7 @@ package gtk
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSchemaKeepsGTKFontNameAsFullPangoString(t *testing.T) {

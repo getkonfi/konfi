@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	parserpkg "github.com/eminert/konfi/pkg/parser"
+	parserpkg "github.com/getkonfi/konfi/pkg/parser"
 )
 
 type yaziParser struct {

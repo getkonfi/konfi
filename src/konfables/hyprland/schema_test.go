@@ -3,7 +3,7 @@ package hyprland
 import (
 	"testing"
 
-	"github.com/eminert/konfi/pkg"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 func TestSchemaModelsTupleGapValues(t *testing.T) {
