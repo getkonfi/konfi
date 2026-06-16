@@ -6,6 +6,17 @@ GORELEASER_VERSION := v2.16.0
 LINTER := $(BIN_DIR)/golangci-lint
 TESTSUM := $(BIN_DIR)/gotestsum
 GORELEASER := $(BIN_DIR)/goreleaser
+KONFI_VERSION_PKG := github.com/getkonfi/konfi/setup/cst
+KONFI_TAG_VERSION := $(shell git tag --sort=-version:refname 2>/dev/null | sed -n '1{s/^v//;p;}')
+KONFI_BASE_VERSION := $(if $(KONFI_TAG_VERSION),$(KONFI_TAG_VERSION),0.0.0)
+KONFI_DEV_SUFFIX := $(shell \
+	if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [ -n "$$(git ls-files --others --exclude-standard)" ]; then \
+			printf '%s' '-dev'; \
+		fi; \
+	fi)
+KONFI_VERSION := $(KONFI_BASE_VERSION)$(KONFI_DEV_SUFFIX)
+KONFI_LDFLAGS := -w -s -X $(KONFI_VERSION_PKG).AppVersion=$(KONFI_VERSION)
 
 UNAME_OS := $(shell uname -s)
 UNAME_ARCH := $(shell uname -m)
@@ -44,10 +55,10 @@ tools: ## install golangci-lint and gotestsum into bin/
 	fi
 
 run: ## run the TUI
-	@cd src && go run .
+	@cd src && go run -ldflags="$(KONFI_LDFLAGS)" .
 
 build: ## build binary
-	@cd src && CGO_ENABLED=0 go build -ldflags="-w -s" -o ../konfi .
+	@cd src && CGO_ENABLED=0 go build -ldflags="$(KONFI_LDFLAGS)" -o ../konfi .
 
 goreleaser-tools: ## install goreleaser into bin/
 	@mkdir -p $(BIN_DIR)

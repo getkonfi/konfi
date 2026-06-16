@@ -126,7 +126,7 @@ nix:
     skip_upload: auto
 
 snapshot:
-  version_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ .Version }}{{ if .IsGitDirty }}-dev{{ end }}"
 
 release:
   github:
