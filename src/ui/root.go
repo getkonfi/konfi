@@ -726,6 +726,7 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		restoredState, restoredDirty := r.takeDirtyConfig(msg.appName, msg.path)
 		if restoredDirty {
 			r.content.config = restoredState.config
+			r.content.configLoadFailed = false
 			if restoredState.fileState != "" {
 				r.content.fileState = restoredState.fileState
 			} else {
@@ -737,10 +738,13 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.status.status = "restored unsaved changes"
 		} else if msg.err == nil && msg.config != nil {
 			r.content.config = msg.config
+			r.content.configLoadFailed = false
 			r.content.config.Path = msg.path
 			if msg.isNew {
 				r.content.fileState = "new"
 			}
+		} else {
+			r.content.configLoadFailed = true
 		}
 		r.content.refreshValues()
 		if restoredDirty {

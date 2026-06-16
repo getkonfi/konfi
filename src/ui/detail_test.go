@@ -98,6 +98,26 @@ func TestDetailBrowseOmitsConfigRuleLabel(t *testing.T) {
 	}
 }
 
+func TestDetailBrowseWithoutFieldHidesConfigPath(t *testing.T) {
+	th := theme.NewTheme(&theme.Catppuccin)
+	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}
+	k := detailTestKonfable{parser: p, info: konfables.AppInfo{Name: "ghostty", Format: "ghostty"}}
+	cf := newDetailTestConfig(t, "font = 12\n")
+	cf.Path = "/tmp/ghostty.conf"
+
+	d := newDetail(th)
+	d.docsURL = "https://example.com/docs"
+	d.sync(nil, cf, k, map[string]string{}, false)
+
+	got := stripANSI(d.viewBrowse(80, 20))
+	if strings.Contains(got, cf.Path) || strings.Contains(got, "ghostty") {
+		t.Fatalf("browse detail without selected field rendered config location:\n%s", got)
+	}
+	if !strings.Contains(got, "open docs") {
+		t.Fatalf("browse detail without selected field should keep app docs action:\n%s", got)
+	}
+}
+
 func TestDetailPreviewLineRescansWhenConfigChanges(t *testing.T) {
 	th := theme.NewTheme(&theme.Catppuccin)
 	p := &cfgparse.FlatParser{Split: cfgparse.SplitEquals, Format: cfgparse.FormatEquals}

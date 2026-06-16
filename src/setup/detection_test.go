@@ -28,3 +28,44 @@ func TestAllKonfablesHaveLogos(t *testing.T) {
 		}
 	}
 }
+
+func TestPlainIconsForNonNerdFontMode(t *testing.T) {
+	want := map[string]string{
+		"alacritty":     "🖥️",
+		"dconf":         "⚙️",
+		"fuzzel":        "🔎",
+		"git":           "🔀",
+		"gtk":           "🎨",
+		"pacman":        "📦",
+		"powerlevel10k": "⚡",
+		"rio":           "💻",
+		"sshd":          "🖥️",
+		"tmux":          "🪟",
+		"waybar":        "📊",
+		"yazi":          "📁",
+	}
+
+	seen := make(map[string]bool, len(want))
+	for _, entry := range AllKonfablesWithInfo() {
+		app, ok := entry.Konfable.(konfables.Konfable)
+		if !ok {
+			t.Errorf("%s does not satisfy full konfable interface", entry.Konfable.Name())
+			continue
+		}
+		info := app.Info()
+		icon, ok := want[info.Name]
+		if !ok {
+			continue
+		}
+		seen[info.Name] = true
+		if info.Icon != icon {
+			t.Errorf("%s plain icon = %q, want %q", info.Name, info.Icon, icon)
+		}
+	}
+
+	for name := range want {
+		if !seen[name] {
+			t.Errorf("missing registered konfable %s", name)
+		}
+	}
+}

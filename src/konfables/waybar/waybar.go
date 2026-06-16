@@ -27,7 +27,7 @@ func (w *Waybar) Info() konfables.AppInfo {
 		Binary:     "waybar",
 		ConfigPath: w.Path,
 		Format:     "json",
-		Icon:       "W",
+		Icon:       "📊",
 		NerdIcon:   "\uf0c9",
 	}
 }

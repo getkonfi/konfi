@@ -128,6 +128,9 @@ func (c *content) renderDashboard(width int) string {
 	var totalDeprecated int
 	for i := range c.dashboardApps {
 		if c.dashboardApps[i].installed {
+			if c.dashboardApps[i].name == "konfi" {
+				continue
+			}
 			installed = append(installed, c.dashboardApps[i])
 			totalDeprecated += c.dashboardApps[i].deprecatedCount
 		} else {
@@ -191,6 +194,10 @@ func (c *content) renderDashboard(width int) string {
 	// build all lines first, then left-align the block at a single offset
 	var lines []string
 	maxW := 0
+	iconW := 1
+	if !c.nerdFont {
+		iconW = 2
+	}
 
 	if len(installed) > 0 {
 		label := "── installed "
@@ -202,7 +209,7 @@ func (c *content) renderDashboard(width int) string {
 		lines = append(lines, hdr)
 		for i := range installed {
 			a := &installed[i]
-			icon := c.theme.Primary.Render(a.icon)
+			icon := c.theme.Primary.Render(iconCell(a.icon, iconW))
 			name := c.theme.Text.Render(" " + padRight(a.name, nameW))
 			ver := strings.Repeat(" ", verW+2)
 			if a.version != "" {
@@ -225,7 +232,7 @@ func (c *content) renderDashboard(width int) string {
 		lines = append(lines, hdr)
 		for i := range notInstalled {
 			a := &notInstalled[i]
-			icon := c.theme.Muted.Faint(true).Render(a.icon)
+			icon := c.theme.Muted.Faint(true).Render(iconCell(a.icon, iconW))
 			name := c.theme.Muted.Faint(true).Render(" " + padRight(a.name, nameW))
 			ver := ""
 			switch {

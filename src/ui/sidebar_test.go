@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
 )
 
 // TestSidebarGroupsNotInstalled verifies refilter orders entries as
@@ -84,4 +86,48 @@ func TestSidebarNotInstalledHeaderIsLowercase(t *testing.T) {
 	if !strings.Contains(got, "alacritty") || !strings.Contains(got, "powerlevel10k") {
 		t.Fatalf("sidebar missing expected uninstalled apps:\n%s", got)
 	}
+}
+
+func TestSidebarSystemHeaderHidden(t *testing.T) {
+	s := newSidebar([]sidebarItem{
+		{name: "home", installed: true, home: true},
+		{name: "ghostty", installed: true},
+		{name: "konfi", installed: true, system: true},
+	}, testTheme())
+	s.width = 32
+	s.height = 12
+	s.focused = true
+
+	got := stripANSI(s.View())
+	if strings.Contains(got, "SYSTEM") {
+		t.Fatalf("sidebar rendered system header:\n%s", got)
+	}
+	if !strings.Contains(got, "konfi") {
+		t.Fatalf("sidebar missing system item:\n%s", got)
+	}
+}
+
+func TestSidebarPlainIconNamesAlign(t *testing.T) {
+	s := newSidebar([]sidebarItem{}, testTheme())
+	s.width = 32
+	s.height = 8
+	s.focused = true
+	s.nerdFont = false
+
+	oneCell := stripANSI(s.renderItem(sidebarItem{name: "dconf", plainIcon: "⚙️", installed: true}, false, 24))
+	twoCell := stripANSI(s.renderItem(sidebarItem{name: "pacman", plainIcon: "📦", installed: true}, false, 24))
+
+	got := prefixWidthBefore(oneCell, "dconf")
+	want := prefixWidthBefore(twoCell, "pacman")
+	if got != want {
+		t.Fatalf("plain icon name prefix widths = %d and %d; lines:\n%q\n%q", got, want, oneCell, twoCell)
+	}
+}
+
+func prefixWidthBefore(line, marker string) int {
+	idx := strings.Index(line, marker)
+	if idx < 0 {
+		return -1
+	}
+	return lipgloss.Width(line[:idx])
 }

@@ -27,7 +27,7 @@ func (y *Yazi) Info() konfables.AppInfo {
 		Binary:     "yazi",
 		ConfigPath: y.Path,
 		Format:     "toml",
-		Icon:       "Y",
+		Icon:       "📁",
 		NerdIcon:   "\uf07b", // nf-fa-folder
 	}
 }

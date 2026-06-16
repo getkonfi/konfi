@@ -27,7 +27,7 @@ func (r *Rio) Info() konfables.AppInfo {
 		Binary:     "rio",
 		ConfigPath: r.Path,
 		Format:     "toml",
-		Icon:       "R",
+		Icon:       "💻",
 		NerdIcon:   "\ue795", // terminal
 		AutoReload: true,
 	}

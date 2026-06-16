@@ -45,12 +45,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	var b strings.Builder
 
 	if f == nil {
-		pathDisplay := d.config.Path
-		if pathDisplay == "" && d.konfable != nil {
-			pathDisplay = d.konfable.Info().Name
-		}
-		b.WriteString(d.theme.Subtext.Render(pathDisplay))
-		b.WriteByte('\n')
 		if d.docsURL != "" {
 			link := d.theme.FieldDocLink.Hyperlink(d.docsURL).Render("open docs")
 			key := d.theme.Badge.Render(" o ")

@@ -25,7 +25,7 @@ func (g *GTK) Info() konfables.AppInfo {
 		Binary:     "gtk-launch",
 		ConfigPath: g.Path,
 		Format:     "ini",
-		Icon:       "",
+		Icon:       "🎨",
 		NerdIcon:   "", // nf-fa-paint_brush
 		// no ReloadCmd / AutoReload: gtk reads settings at app start
 	}

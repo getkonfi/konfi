@@ -27,7 +27,7 @@ func (p *Powerlevel10k) Info() konfables.AppInfo {
 		Binary:     "zsh",
 		ConfigPath: p.Path,
 		Format:     "zsh",
-		Icon:       ">",
+		Icon:       "⚡",
 		NerdIcon:   "\uf0e7", // nf-fa-bolt
 	}
 }

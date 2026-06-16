@@ -67,6 +67,56 @@ func TestSplitWidthsGivesDetailMoreContentArea(t *testing.T) {
 	}
 }
 
+func TestRenderBodySelectedFieldDoesNotShowDocsArrow(t *testing.T) {
+	c := newContent(testTheme())
+	c.focused = true
+	c.schema = &pkg.Schema{Sections: []pkg.Section{{
+		Name: "general",
+		Fields: []pkg.Field{{
+			Key:     "font",
+			Label:   "Font",
+			Type:    "string",
+			Default: "monospace",
+			DocURL:  "https://example.com/font",
+		}},
+	}}}
+	c.buildFieldList()
+	c.cursor = 1
+
+	got := stripANSI(c.renderBody(60))
+	if strings.Contains(got, "↗") {
+		t.Fatalf("selected field rendered docs arrow:\n%s", got)
+	}
+	if !strings.Contains(got, "Font") {
+		t.Fatalf("selected field missing label:\n%s", got)
+	}
+}
+
+func TestCurrentDocURLUsesAppDocsWhenNoFieldSelected(t *testing.T) {
+	c := newContent(testTheme())
+	c.detail.docsURL = "https://example.com/app"
+	c.schema = &pkg.Schema{Sections: []pkg.Section{{
+		Name: "general",
+		Fields: []pkg.Field{{
+			Key:    "font",
+			Label:  "Font",
+			Type:   "string",
+			DocURL: "https://example.com/field",
+		}},
+	}}}
+	c.buildFieldList()
+
+	c.cursor = 0
+	if got := c.currentDocURL(); got != "https://example.com/app" {
+		t.Fatalf("currentDocURL() on section row = %q, want app docs", got)
+	}
+
+	c.cursor = 1
+	if got := c.currentDocURL(); got != "https://example.com/field" {
+		t.Fatalf("currentDocURL() on field row = %q, want field docs", got)
+	}
+}
+
 func TestRenderFieldValueColorShowsHexWithoutMarker(t *testing.T) {
 	c := &content{theme: testTheme()}
 	f := pkg.Field{Type: "color"}

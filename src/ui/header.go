@@ -26,9 +26,14 @@ func (c *content) headerLeftLines() []string {
 			path = c.konfable.Info().Name
 		}
 	} else if c.konfable != nil {
-		// config is nil only when the persister load actually failed —
-		// missing files now load as empty.
-		path = "load failed — browse only"
+		if c.configLoadFailed {
+			path = "load failed — browse only"
+		} else {
+			path = c.konfable.ConfigPath()
+			if path == "" {
+				path = c.konfable.Info().Name
+			}
+		}
 	}
 	if c.fileState != "" {
 		path += " [" + c.fileState + "]"

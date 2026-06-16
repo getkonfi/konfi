@@ -245,11 +245,6 @@ func (c *content) renderBody(width int) string {
 			prefix = "  " + iconStyle.Faint(true).Render(icon) + " "
 		}
 		label = c.fieldLabelStyle(isCursor, isChanged, isDeprecated).Render(paddedLabel)
-		if isCursor {
-			if docURL := c.fieldDocURL(f); docURL != "" {
-				label += " " + c.theme.FieldDocLink.Hyperlink(docURL).Render("↗")
-			}
-		}
 		if isBookmarked {
 			label = c.theme.Warning.Render("★") + label
 		}
@@ -461,16 +456,6 @@ func (c *content) fieldChanged(f *pkg.Field) bool {
 	oldVal, hadOld := c.origValues[f.Key]
 	newVal, hasNew := c.values[f.Key]
 	return hadOld != hasNew || oldVal != newVal
-}
-
-func (c *content) fieldDocURL(f *pkg.Field) string {
-	if f == nil {
-		return ""
-	}
-	if f.DocURL != "" {
-		return f.DocURL
-	}
-	return c.detail.docsURL
 }
 
 func (c *content) fieldStateDot(configured, changed, deprecated bool) string {

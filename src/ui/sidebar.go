@@ -430,8 +430,7 @@ func (s *sidebar) viewExpanded() string {
 	botStr := bot.String()
 	if botStr != "" {
 		sep := s.theme.Muted.Render(strings.Repeat("─", innerW))
-		title := s.theme.Muted.Bold(true).Render("SYSTEM")
-		botStr = sep + "\n" + title + "\n" + botStr
+		botStr = sep + "\n" + botStr
 		botLines := strings.Count(botStr, "\n") + 1
 		gap := innerH - topLines - botLines
 		if gap < 1 {
@@ -452,8 +451,13 @@ func (s *sidebar) renderItem(item sidebarItem, isCursor bool, width int) string 
 		dirty = " " + s.theme.Warning.Render("●")
 	}
 
+	iconW := 1
+	if !s.nerdFont {
+		iconW = 2
+	}
+
 	// icon glyph (shown before name)
-	icon := s.itemIcon(item) + " "
+	icon := iconCell(s.itemIcon(item), iconW) + " "
 
 	clipStyle := s.itemClipStyle.Width(width).MaxWidth(width)
 

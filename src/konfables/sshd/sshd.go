@@ -48,7 +48,7 @@ func (s *SSHD) Info() konfables.AppInfo {
 		Binary:     "sshd",
 		ConfigPath: s.Path,
 		Format:     "sshd",
-		Icon:       "\U0001F5A5",
+		Icon:       "🖥️",
 		NerdIcon:   "\uf233", // nf-fa-server
 	}
 }

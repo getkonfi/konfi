@@ -27,7 +27,7 @@ func (f *Fuzzel) Info() konfables.AppInfo {
 		Binary:     "fuzzel",
 		ConfigPath: f.Path,
 		Format:     "ini",
-		Icon:       "F",
+		Icon:       "🔎",
 		NerdIcon:   "\uf002",
 	}
 }

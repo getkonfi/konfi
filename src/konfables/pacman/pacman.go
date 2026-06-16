@@ -27,7 +27,7 @@ func (p *Pacman) Info() konfables.AppInfo {
 		Binary:     "pacman",
 		ConfigPath: p.Path,
 		Format:     "ini",
-		Icon:       "",
+		Icon:       "📦",
 		NerdIcon:   "\uf303", // nf-linux-archlinux
 	}
 }

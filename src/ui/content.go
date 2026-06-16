@@ -72,7 +72,8 @@ type content struct {
 	origValues map[string]string
 
 	// file state indicator ("", "unsaved", "saved", "reloaded", "new")
-	fileState string
+	fileState        string
+	configLoadFailed bool
 
 	// keyboard hints (set by root.updateHints)
 	hints []keyHint
@@ -790,6 +791,7 @@ func (c *content) showDashboard() {
 	c.konfable = nil
 	c.title = "konfi"
 	c.config = nil
+	c.configLoadFailed = false
 	c.schema = nil
 	c.fields = nil
 	c.fieldSection = nil
@@ -858,6 +860,7 @@ func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	c.origValues = make(map[string]string)
 	c.cachedChangesDirty = true
 	c.config = nil
+	c.configLoadFailed = false
 	c.schema = nil
 	c.detail.editor = nil
 	c.detail.reset()
@@ -990,11 +993,11 @@ func (c *content) detailPageSize() int {
 }
 
 // currentDocURL returns the best doc URL for the cursor position:
-// field-specific doc_url, then app-level docsURL, or empty on section header.
+// field-specific doc_url, then app-level docsURL.
 func (c content) currentDocURL() string {
 	f := c.currentField()
 	if f == nil {
-		return ""
+		return c.detail.docsURL
 	}
 	if f.DocURL != "" {
 		return f.DocURL

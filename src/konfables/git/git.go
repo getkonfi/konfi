@@ -29,7 +29,7 @@ func (g *Git) Info() konfables.AppInfo {
 		Binary:     "git",
 		ConfigPath: g.Path,
 		Format:     "ini",
-		Icon:       "",
+		Icon:       "🔀",
 		NerdIcon:   "\ue702", // nf-dev-git
 	}
 }
