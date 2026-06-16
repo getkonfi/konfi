@@ -1,24 +1,138 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
+project_name: konfi
+
 builds:
-  - main: ./src
+  - id: konfi
+    main: ./src
     binary: konfi
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     goos:
       - linux
       - darwin
     goarch:
       - amd64
       - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
-      - -w -s
+      - -w -s -X github.com/getkonfi/konfi/setup/cst.AppVersion={{ .Version }}
 
 archives:
-  - format: tar.gz
+  - id: binary
+    ids:
+      - konfi
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+
+nfpms:
+  - id: linux-packages
+    ids:
+      - konfi
+    package_name: konfi
+    file_name_template: "{{ .ConventionalFileName }}"
+    homepage: https://github.com/getkonfi/konfi
+    description: TUI for editing dotfiles with cross-app theme sync.
+    maintainer: getkonfi <getkonfi@gmail.com>
+    license: MIT
+    section: utils
+    priority: optional
+    bindir: /usr/bin
+    contents:
+      - src: LICENSE
+        dst: /usr/share/licenses/konfi/LICENSE
+    formats:
+      - deb
+      - rpm
+      - apk
+      - archlinux
 
 checksum:
   name_template: checksums.txt
+
+homebrew_casks:
+  - name: konfi
+    ids:
+      - binary
+    binaries:
+      - konfi
+    homepage: https://github.com/getkonfi/konfi
+    description: TUI for editing dotfiles with cross-app theme sync.
+    license: MIT
+    url:
+      template: "https://github.com/getkonfi/konfi/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+      verified: github.com/getkonfi/konfi/
+    repository:
+      owner: getkonfi
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: getkonfi@gmail.com
+    commit_msg_template: "cask: update konfi to {{ .Tag }}"
+    skip_upload: auto
+
+aurs:
+  - name: konfi-bin
+    ids:
+      - binary
+    homepage: https://github.com/getkonfi/konfi
+    description: TUI for editing dotfiles with cross-app theme sync.
+    maintainers:
+      - "getkonfi <getkonfi at gmail dot com>"
+    license: MIT
+    private_key: "{{ .Env.AUR_KEY }}"
+    git_url: ssh://aur@aur.archlinux.org/konfi-bin.git
+    url_template: "https://github.com/getkonfi/konfi/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    provides:
+      - konfi
+    conflicts:
+      - konfi
+    package: |-
+      install -Dm755 "./konfi" "${pkgdir}/usr/bin/konfi"
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    commit_author:
+      name: getkonfi
+      email: getkonfi@gmail.com
+    skip_upload: true
+
+nix:
+  - name: konfi
+    ids:
+      - binary
+    goamd64: v1
+    url_template: "https://github.com/getkonfi/konfi/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    path: pkgs/konfi/default.nix
+    homepage: https://github.com/getkonfi/konfi
+    description: TUI for editing dotfiles with cross-app theme sync.
+    license: mit
+    main_program: konfi
+    repository:
+      owner: getkonfi
+      name: nur-packages
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: getkonfi@gmail.com
+    commit_msg_template: "konfi: update to {{ .Tag }}"
+    skip_upload: auto
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+release:
+  github:
+    owner: getkonfi
+    name: konfi
+  prerelease: auto
 
 changelog:
   sort: asc

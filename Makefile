@@ -1,9 +1,11 @@
 BIN_DIR := bin
 GOLANGCI_VERSION := 2.10.1
 GOTESTSUM_VERSION := v1.13.0
+GORELEASER_VERSION := v2.16.0
 
 LINTER := $(BIN_DIR)/golangci-lint
 TESTSUM := $(BIN_DIR)/gotestsum
+GORELEASER := $(BIN_DIR)/goreleaser
 
 UNAME_OS := $(shell uname -s)
 UNAME_ARCH := $(shell uname -m)
@@ -47,6 +49,22 @@ run: ## run the TUI
 build: ## build binary
 	@cd src && CGO_ENABLED=0 go build -ldflags="-w -s" -o ../konfi .
 
+release-tools: ## install goreleaser into bin/
+	@mkdir -p $(BIN_DIR)
+	@if [ -f $(GORELEASER) ] && $(GORELEASER) --version | grep -q "$(GORELEASER_VERSION)"; then \
+		printf "✅ "; \
+		$(GORELEASER) --version; \
+	else \
+		echo "Installing goreleaser $(GORELEASER_VERSION)..."; \
+		GOBIN=$(PWD)/$(BIN_DIR) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION); \
+	fi
+
+release-check: release-tools ## validate goreleaser config
+	@$(GORELEASER) check
+
+release-snapshot: release-tools ## build local release artifacts into dist/
+	@$(GORELEASER) release --snapshot --clean
+
 test: ## clean cache and run all tests with gotestsum
 	@cd src && go clean -testcache
 	@cd tools/schemaverify && go clean -testcache
@@ -73,6 +91,7 @@ e2e: ## run Arch container parser/editing e2e suite
 	@e2e/arch-container/run.sh
 
 clean: ## remove build artifacts
+	rm -rf dist
 	rm -f konfi
 
-.PHONY: help tools run build test lint clean schema-verify schema-check upstream-check e2e
+.PHONY: help tools run build release-tools release-check release-snapshot test lint clean schema-verify schema-check upstream-check e2e

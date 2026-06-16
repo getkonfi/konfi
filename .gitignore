@@ -1,5 +1,7 @@
 # build output
 bin/
+dist/
+/konfi
 
 # IDE
 .idea/
