@@ -43,6 +43,8 @@ konfables/logos → pkg/pixelart
 - `make lint` — golangci-lint
 - `make schema-verify` — full schema verification (network + introspection)
 - `make schema-check` — quick schema check (offline, no exec, strict)
+- `make release-check` — check schema support against latest app releases
+- `make release-field-check` — check whether newer app releases add config fields
 
 ## conventions
 - comments in lower case, be cheap on comments

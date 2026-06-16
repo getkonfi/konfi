@@ -16,7 +16,7 @@ import (
 const (
 	defaultURLConcurrency = 10
 	urlRequestTimeout     = 10 * time.Second
-	urlUserAgent          = "Mozilla/5.0 (compatible; konfi-schemaverify/1.0)"
+	urlUserAgent          = "Mozilla/5.0 (compatible; konfi-schema-verify/1.0)"
 )
 
 type urlResult struct {

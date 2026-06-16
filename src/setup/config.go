@@ -21,8 +21,8 @@ type KonfConfig struct {
 	Upstream       *UpstreamSettings `yaml:"upstream,omitempty"`
 }
 
-// UpstreamSettings controls the upstream-check maintainer tool.
-// optional: unused by the tui, consumed by tools/upstreamcheck.
+// UpstreamSettings controls release_check maintainer API access.
+// optional: unused by the tui, consumed by tools/release_check.
 type UpstreamSettings struct {
 	GitHub *GitHubSettings `yaml:"github,omitempty"`
 	GitLab *GitLabSettings `yaml:"gitlab,omitempty"`

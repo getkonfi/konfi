@@ -1,4 +1,4 @@
-module github.com/getkonfi/konfi/tools/schemaverify
+module github.com/getkonfi/konfi/tools/schema_verify
 
 go 1.26
 

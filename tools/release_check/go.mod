@@ -1,4 +1,4 @@
-module github.com/getkonfi/konfi/tools/upstreamcheck
+module github.com/getkonfi/konfi/tools/release_check
 
 go 1.26
 

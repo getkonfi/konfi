@@ -22,16 +22,18 @@ const (
 
 func main() {
 	var (
-		app     string
-		asJSON  bool
-		verbose bool
-		timeout time.Duration
-		quiet   bool
+		app        string
+		asJSON     bool
+		verbose    bool
+		fieldCheck bool
+		timeout    time.Duration
+		quiet      bool
 	)
 
 	flag.StringVar(&app, "app", "", "check only this app")
 	flag.BoolVar(&asJSON, "json", false, "json output")
 	flag.BoolVar(&verbose, "v", false, "verbose: include skipped apps in text output")
+	flag.BoolVar(&fieldCheck, "fields", false, "check whether behind releases add config fields")
 	flag.BoolVar(&quiet, "quiet", false, "suppress config-source log")
 	flag.DurationVar(&timeout, "timeout", defaultTimeout, "per-request timeout")
 	flag.Parse()
@@ -62,6 +64,25 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Duration(len(schemas)))
 
 	client := &http.Client{Timeout: timeout}
+	if fieldCheck {
+		report := runFieldChecks(ctx, client, cfg, schemas, verbose)
+		cancel()
+
+		if asJSON {
+			if err := report.WriteJSON(os.Stdout); err != nil {
+				fmt.Fprintf(os.Stderr, "json: %v\n", err)
+				os.Exit(2)
+			}
+		} else {
+			report.WriteText(os.Stdout)
+		}
+
+		if report.HasProblem() {
+			os.Exit(1)
+		}
+		return
+	}
+
 	report := runChecks(ctx, client, cfg, schemas, verbose)
 	cancel()
 

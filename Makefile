@@ -49,7 +49,7 @@ run: ## run the TUI
 build: ## build binary
 	@cd src && CGO_ENABLED=0 go build -ldflags="-w -s" -o ../konfi .
 
-release-tools: ## install goreleaser into bin/
+goreleaser-tools: ## install goreleaser into bin/
 	@mkdir -p $(BIN_DIR)
 	@if [ -f $(GORELEASER) ] && $(GORELEASER) --version | grep -q "$(GORELEASER_VERSION)"; then \
 		printf "✅ "; \
@@ -59,33 +59,36 @@ release-tools: ## install goreleaser into bin/
 		GOBIN=$(PWD)/$(BIN_DIR) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION); \
 	fi
 
-release-check: release-tools ## validate goreleaser config
+goreleaser-check: goreleaser-tools ## validate goreleaser config
 	@$(GORELEASER) check
 
-release-snapshot: release-tools ## build local release artifacts into dist/
+release-snapshot: goreleaser-tools ## build local release artifacts into dist/
 	@$(GORELEASER) release --snapshot --clean
 
 test: ## clean cache and run all tests with gotestsum
 	@cd src && go clean -testcache
-	@cd tools/schemaverify && go clean -testcache
-	@cd tools/upstreamcheck && go clean -testcache
+	@cd tools/schema_verify && go clean -testcache
+	@cd tools/release_check && go clean -testcache
 	@cd src && ../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
-	@cd tools/schemaverify && ../../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
-	@cd tools/upstreamcheck && ../../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
+	@cd tools/schema_verify && ../../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
+	@cd tools/release_check && ../../$(TESTSUM) --format pkgname --format-hide-empty-pkg --no-summary=skipped -- -race -v -timeout 20s ./...
 
 lint: ## run golangci-lint
 	@cd src && ../$(LINTER) run ./...
-	@cd tools/schemaverify && ../../$(LINTER) run ./...
-	@cd tools/upstreamcheck && ../../$(LINTER) run ./...
+	@cd tools/schema_verify && ../../$(LINTER) run ./...
+	@cd tools/release_check && ../../$(LINTER) run ./...
 
 schema-verify: ## full schema verification (network + introspection)
-	@cd tools/schemaverify && go run .
+	@cd tools/schema_verify && go run .
 
 schema-check: ## quick schema check (offline, no exec)
-	@cd tools/schemaverify && go run . --offline --no-exec --strict
+	@cd tools/schema_verify && go run . --offline --no-exec --strict
 
-upstream-check: ## check supported app versions against upstream releases
-	@cd tools/upstreamcheck && go run .
+release-check: ## check schema support against latest app releases
+	@cd tools/release_check && go run .
+
+release-field-check: ## check whether newer app releases add config fields
+	@cd tools/release_check && go run . -fields
 
 e2e: ## run Arch container parser/editing e2e suite
 	@e2e/arch-container/run.sh
@@ -94,4 +97,4 @@ clean: ## remove build artifacts
 	rm -rf dist
 	rm -f konfi
 
-.PHONY: help tools run build release-tools release-check release-snapshot test lint clean schema-verify schema-check upstream-check e2e
+.PHONY: help tools run build goreleaser-tools goreleaser-check release-snapshot test lint clean schema-verify schema-check release-check release-field-check e2e

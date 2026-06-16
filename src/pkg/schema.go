@@ -30,7 +30,7 @@ type Schema struct {
 }
 
 // Upstream declares where to check for new releases of the app.
-// consumed by tools/upstreamcheck; unused at runtime.
+// consumed by tools/release_check; unused at runtime.
 // kind: github | gitlab | none. host is required for gitlab (self-hosted varies).
 // tag_prefix is stripped when comparing tags to max_app_version (e.g. "v1.2.3" -> "1.2.3").
 type Upstream struct {

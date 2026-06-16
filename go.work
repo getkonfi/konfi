@@ -2,6 +2,6 @@ go 1.26
 
 use (
 	./src
-	./tools/schemaverify
-	./tools/upstreamcheck
+	./tools/schema_verify
+	./tools/release_check
 )
