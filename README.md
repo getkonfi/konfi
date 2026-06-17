@@ -1,7 +1,9 @@
 # konfi
 
-Eye-candy TUI for our everyday tools configs.
-Built on the shoulders of [bubbletea](https://github.com/charmbracelet/bubbletea) and [lipgloss](https://github.com/charmbracelet/lipgloss).
+A TUI for our everyday tools' configs. Built on the shoulders of [bubbletea](https://github.com/charmbracelet/bubbletea) and [lipgloss](https://github.com/charmbracelet/lipgloss).
+
+Explore and edit configs for tools like ghostty, starship, alacritty, hyprland, ssh, tmux, and more from one TUI.\
+Editing is schema-aware, with typed field editors, inline docs, and full-text search across keys, values, and descriptions.
 
 ![konfi usage demo](assets/konfi-usage.webp)
 
