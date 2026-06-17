@@ -41,7 +41,6 @@ type GitLabSettings struct {
 func defaultConfig() *KonfConfig {
 	return &KonfConfig{
 		Theme:       "rose pine",
-		NerdFont:    true,
 		BackupLimit: pkg.DefaultBackupLimit,
 	}
 }

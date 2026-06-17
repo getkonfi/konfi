@@ -27,7 +27,7 @@ sections:
       - key: nerd_font
         label: Nerd Font
         type: bool
-        default: "true"
+        default: "false"
         description: use Nerd Font glyphs for icons (disable for plain ASCII fallback)
   - name: Navigation
     key: ""
