@@ -5,10 +5,73 @@ repo="${KONFI_REPO:-getkonfi/konfi}"
 bin="${KONFI_BIN:-konfi}"
 version="${KONFI_VERSION:-}"
 tmpdir=""
+color_enabled=0
+c_reset=""
+c_dim=""
+c_blue=""
+c_green=""
+c_yellow=""
+c_red=""
 
-die() {
-  printf 'install.sh: %s\n' "$*" >&2
-  exit 1
+setup_color() {
+  case "${KONFI_COLOR:-auto}" in
+    always|1|true|yes)
+      color_enabled=1
+      ;;
+    never|0|false|no)
+      color_enabled=0
+      ;;
+    *)
+      if [ -t 2 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
+        color_enabled=1
+      fi
+      ;;
+  esac
+
+  if [ "$color_enabled" -eq 1 ]; then
+    c_reset=$(printf '\033[0m')
+    c_dim=$(printf '\033[2m')
+    c_blue=$(printf '\033[34m')
+    c_green=$(printf '\033[32m')
+    c_yellow=$(printf '\033[33m')
+    c_red=$(printf '\033[31m')
+  fi
+}
+
+log_line() {
+  color=$1
+  label=$2
+  shift 2
+
+  if [ "$color_enabled" -eq 1 ]; then
+    printf '%b%-7s%b %s\n' "$color" "$label" "$c_reset" "$*" >&2
+  else
+    printf '%-7s %s\n' "$label" "$*" >&2
+  fi
+}
+
+detail() {
+  if [ "$color_enabled" -eq 1 ]; then
+    printf '        %b%s%b\n' "$c_dim" "$*" "$c_reset" >&2
+  else
+    printf '        %s\n' "$*" >&2
+  fi
+}
+
+step() {
+  log_line "$c_blue" "info" "$*"
+}
+
+success() {
+  log_line "$c_green" "ok" "$*"
+}
+
+warn() {
+  log_line "$c_yellow" "warn" "$*"
+}
+
+error() {
+  log_line "$c_red" "error" "$*"
 }
 
 usage() {
@@ -21,7 +84,14 @@ options:
 environment:
   KONFI_VERSION      release version or tag, defaults to latest
   KONFI_REPO         GitHub repo, defaults to getkonfi/konfi
+  KONFI_COLOR        auto, always, or never
+  KONFI_SKIP_CHECKSUM  set to 1 to install without checksum verification
 EOF
+}
+
+die() {
+  error "$*"
+  exit 1
 }
 
 http_get() {
@@ -98,6 +168,51 @@ latest_tag() {
     | head -n 1
 }
 
+release_asset_names() {
+  release_tag=$1
+  release_json=$(http_get "https://api.github.com/repos/${repo}/releases/tags/${release_tag}") || return 1
+
+  printf '%s\n' "$release_json" \
+    | sed -n 's|.*"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*/\([^/"]*\)".*|\1|p'
+}
+
+confirm_skip_checksum() {
+  reason=$1
+
+  warn "$reason"
+  case "${KONFI_SKIP_CHECKSUM:-}" in
+    1|true|TRUE|yes|YES)
+      warn "continuing without checksum verification"
+      return
+      ;;
+    0|false|FALSE|no|NO)
+      die "checksum verification was not completed"
+      ;;
+  esac
+
+  if [ ! -r /dev/tty ] || [ ! -w /dev/tty ]; then
+    detail "set KONFI_SKIP_CHECKSUM=1 to install without checksum verification"
+    die "checksum verification was not completed"
+  fi
+
+  if [ "$color_enabled" -eq 1 ]; then
+    printf '%b%-7s%b continue without checksum verification? [y/N] ' "$c_yellow" "confirm" "$c_reset" >/dev/tty
+  else
+    printf '%-7s continue without checksum verification? [y/N] ' "confirm" >/dev/tty
+  fi
+
+  answer=""
+  IFS= read -r answer </dev/tty || die "could not read confirmation"
+  case "$answer" in
+    y|Y|yes|YES)
+      warn "continuing without checksum verification"
+      ;;
+    *)
+      die "checksum verification was not completed"
+      ;;
+  esac
+}
+
 resolve_tag() {
   if [ -z "$version" ]; then
     tag=$(latest_tag)
@@ -121,13 +236,13 @@ verify_checksum() {
   checksum_file=$2
 
   if ! command -v awk >/dev/null 2>&1; then
-    printf 'install.sh: warning: awk not found, skipping checksum verification\n' >&2
+    confirm_skip_checksum "awk not found; checksum verification cannot run"
     return
   fi
 
   expected=$(awk -v file="$archive" '$2 == file { print $1 }' "$checksum_file" | head -n 1)
   if [ -z "$expected" ]; then
-    printf 'install.sh: warning: checksum for %s not found, skipping verification\n' "$archive" >&2
+    confirm_skip_checksum "checksum for ${archive} not found"
     return
   fi
 
@@ -136,11 +251,12 @@ verify_checksum() {
   elif command -v shasum >/dev/null 2>&1; then
     actual=$(shasum -a 256 "${tmpdir}/${archive}" | awk '{ print $1 }')
   else
-    printf 'install.sh: warning: sha256sum or shasum not found, skipping checksum verification\n' >&2
+    confirm_skip_checksum "sha256sum or shasum not found; checksum verification cannot run"
     return
   fi
 
   [ "$expected" = "$actual" ] || die "checksum mismatch for ${archive}"
+  success "verified checksum"
 }
 
 copy_binary() {
@@ -191,6 +307,9 @@ install_binary() {
   dir=$(default_install_dir)
   target="${dir}/${bin}"
 
+  step "installing ${bin}"
+  detail "$target"
+
   if mkdir -p "$dir" 2>/dev/null && [ -w "$dir" ]; then
     copy_binary "$src" "$target"
   else
@@ -199,11 +318,11 @@ install_binary() {
     sudo_copy_binary "$src" "$target"
   fi
 
-  printf 'installed %s to %s\n' "$bin" "$target"
+  success "installed ${bin}"
 
   case ":${PATH:-}:" in
     *":${dir}:"*) ;;
-    *) printf 'note: %s is not on PATH\n' "$dir" ;;
+    *) warn "${dir} is not on PATH" ;;
   esac
 }
 
@@ -225,9 +344,22 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+setup_color
+
+step "detecting platform"
 need_os=$(detect_os)
 need_arch=$(detect_arch)
+detail "${need_os}/${need_arch}"
+
+if [ -z "$version" ]; then
+  step "resolving latest release"
+else
+  step "using requested release"
+  detail "$version"
+fi
 tag=$(resolve_tag)
+success "selected ${tag}"
+
 artifact_version=${tag#v}
 archive="${bin}_${artifact_version}_${need_os}_${need_arch}.tar.gz"
 base_url="https://github.com/${repo}/releases/download/${tag}"
@@ -235,16 +367,44 @@ base_url="https://github.com/${repo}/releases/download/${tag}"
 tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/konfi-install.XXXXXX")
 trap cleanup EXIT INT TERM
 
-printf 'downloading %s\n' "$archive"
-http_download "${base_url}/${archive}" "${tmpdir}/${archive}"
-
-if http_download "${base_url}/checksums.txt" "${tmpdir}/checksums.txt"; then
-  verify_checksum "$archive" "${tmpdir}/checksums.txt"
+step "checking release assets"
+if assets=$(release_asset_names "$tag"); then
+  if ! printf '%s\n' "$assets" | grep -qx "$archive"; then
+    if [ -z "$assets" ]; then
+      error "release ${tag} has no downloadable assets"
+    else
+      error "release ${tag} does not contain ${archive}"
+      detail "available assets:"
+      printf '%s\n' "$assets" | sed 's/^/        /' >&2
+    fi
+    detail "expected ${archive}"
+    detail "release https://github.com/${repo}/releases/tag/${tag}"
+    die "release artifacts are missing; rerun the release upload or try again after it finishes"
+  fi
+  success "found ${archive}"
 else
-  printf 'install.sh: warning: could not download checksums.txt, skipping checksum verification\n' >&2
+  warn "could not inspect release assets; trying direct download"
 fi
 
+step "downloading ${archive}"
+detail "${base_url}/${archive}"
+if http_download "${base_url}/${archive}" "${tmpdir}/${archive}"; then
+  success "downloaded ${archive}"
+else
+  die "download failed for ${archive}"
+fi
+
+step "downloading checksums.txt"
+if http_download "${base_url}/checksums.txt" "${tmpdir}/checksums.txt"; then
+  step "verifying checksum"
+  verify_checksum "$archive" "${tmpdir}/checksums.txt"
+else
+  confirm_skip_checksum "could not download checksums.txt"
+fi
+
+step "extracting ${archive}"
 tar -xzf "${tmpdir}/${archive}" -C "$tmpdir"
 [ -f "${tmpdir}/${bin}" ] || die "${bin} not found in ${archive}"
+success "extracted ${bin}"
 
 install_binary "${tmpdir}/${bin}"
