@@ -77,7 +77,7 @@ homebrew_casks:
       name: goreleaserbot
       email: getkonfi@gmail.com
     commit_msg_template: "cask: update konfi to {{ .Tag }}"
-    skip_upload: auto
+    skip_upload: true
 
 aurs:
   - name: konfi-bin
@@ -123,7 +123,7 @@ nix:
       name: goreleaserbot
       email: getkonfi@gmail.com
     commit_msg_template: "konfi: update to {{ .Tag }}"
-    skip_upload: auto
+    skip_upload: true
 
 snapshot:
   version_template: "{{ .Version }}{{ if .IsGitDirty }}-dev{{ end }}"
