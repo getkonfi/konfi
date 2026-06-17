@@ -5,11 +5,11 @@ go 1.26
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.7
-	charm.land/lipgloss/v2 v2.0.3
+	charm.land/lipgloss/v2 v2.0.4
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/rs/zerolog v1.35.1
-	github.com/sahilm/fuzzy v0.1.2
+	github.com/sahilm/fuzzy v0.1.3
 	github.com/yuin/goldmark v1.8.2
 	golang.org/x/mod v0.37.0
 	golang.org/x/sync v0.21.0
@@ -18,7 +18,7 @@ require (
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/charmbracelet/ultraviolet v0.0.0-20260608091853-35bcb7319efa // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20260615092913-2399af76d5b1 // indirect
 	github.com/charmbracelet/x/ansi v0.11.7 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
