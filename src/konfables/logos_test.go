@@ -65,7 +65,7 @@ func TestLogoAnimConfigsAreSane(t *testing.T) {
 			if len(cfg.DripBright) == 0 {
 				t.Errorf("%s drip animation has no bright colors", name)
 			}
-			validatePixelInBounds(t, name, logo, cfg.DripOrigin)
+			validateVisiblePixel(t, name, logo, cfg.DripOrigin)
 		case pixelart.AnimSequence:
 			validateSequenceAnim(t, name, logo, cfg)
 		default:
@@ -98,6 +98,100 @@ func TestExistingLogoAnimsRemainStable(t *testing.T) {
 		if cfg.Kind != want.kind || cfg.Frames != want.frames || cfg.TickMs != want.tickMs {
 			t.Errorf("%s animation = kind %d frames %d tick %d, want kind %d frames %d tick %d",
 				name, cfg.Kind, cfg.Frames, cfg.TickMs, want.kind, want.frames, want.tickMs)
+		}
+	}
+}
+
+func TestPacmanChompClosesWithRadialMouthEdges(t *testing.T) {
+	logo := Logos["pacman"]
+	cfg := LogoAnims["pacman"]
+	state := pixelart.NewAnimState(logo, cfg)
+	for range 4 {
+		state.Tick()
+	}
+
+	frame := state.CurrentFrame()
+	for _, p := range []pixelart.Pixel{
+		{Row: 2, Col: 11},
+		{Row: 3, Col: 10},
+		{Row: 4, Col: 9},
+		{Row: 5, Col: 8},
+		{Row: 6, Col: 8},
+		{Row: 7, Col: 9},
+		{Row: 8, Col: 10},
+		{Row: 9, Col: 11},
+	} {
+		if got := frame.Pixels[p.Row][p.Col]; got != cfg.ChompColor {
+			t.Fatalf("first radial-close frame pixel row %d col %d = %d, want %d", p.Row, p.Col, got, cfg.ChompColor)
+		}
+	}
+	for _, p := range []pixelart.Pixel{
+		{Row: 5, Col: 9},
+		{Row: 6, Col: 9},
+	} {
+		if got := frame.Pixels[p.Row][p.Col]; got != 0 {
+			t.Fatalf("first radial-close frame filled interior row %d col %d = %d, want transparent", p.Row, p.Col, got)
+		}
+	}
+
+	for !state.Done && state.Frame < 7 {
+		state.Tick()
+	}
+	frame = state.CurrentFrame()
+	for _, p := range []pixelart.Pixel{
+		{Row: 5, Col: 13},
+		{Row: 6, Col: 13},
+	} {
+		if got := frame.Pixels[p.Row][p.Col]; got != cfg.ChompColor {
+			t.Fatalf("closed jaw pixel row %d col %d = %d, want %d", p.Row, p.Col, got, cfg.ChompColor)
+		}
+	}
+}
+
+func TestHyprlandAnimationDoesNotMoveLogoPixels(t *testing.T) {
+	logo := Logos["hyprland"]
+	cfg := LogoAnims["hyprland"]
+	if cfg.Kind != pixelart.AnimSequence {
+		t.Fatalf("hyprland animation kind = %d, want AnimSequence", cfg.Kind)
+	}
+
+	state := pixelart.NewAnimState(logo, cfg)
+	for frameIdx := 0; frameIdx < cfg.Frames; frameIdx++ {
+		state.Frame = frameIdx
+		frame := state.CurrentFrame()
+		for row := 0; row < logo.Height; row++ {
+			for col := 0; col < logo.Width; col++ {
+				baseVisible := logo.Pixels[row][col] != 0
+				frameVisible := frame.Pixels[row][col] != 0
+				if frameVisible != baseVisible {
+					t.Fatalf("frame %d changed hyprland mask at row %d col %d: visible=%t, want %t",
+						frameIdx, row, col, frameVisible, baseVisible)
+				}
+			}
+		}
+	}
+}
+
+func TestGnomeLogoFootOrientation(t *testing.T) {
+	logo := Logos["gnome"]
+	for _, p := range []pixelart.Pixel{
+		{Row: 0, Col: 10},
+		{Row: 3, Col: 2},
+		{Row: 6, Col: 1},
+		{Row: 8, Col: 11},
+		{Row: 11, Col: 7},
+	} {
+		if got := logo.Pixels[p.Row][p.Col]; got == 0 {
+			t.Fatalf("gnome logo expected visible pixel at row %d col %d", p.Row, p.Col)
+		}
+	}
+	for _, p := range []pixelart.Pixel{
+		{Row: 0, Col: 7},
+		{Row: 8, Col: 9},
+		{Row: 11, Col: 13},
+	} {
+		if got := logo.Pixels[p.Row][p.Col]; got != 0 {
+			t.Fatalf("gnome logo expected transparent pixel at row %d col %d, got %d", p.Row, p.Col, got)
 		}
 	}
 }

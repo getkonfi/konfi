@@ -46,6 +46,12 @@ const (
 	br uint8 = 130 // brown (kitty)
 	pu uint8 = 99  // purple (helix)
 	pk uint8 = 199 // pink (rio)
+
+	// chill muted palette (konfi)
+	pv uint8 = 110 // soft periwinkle
+	ms uint8 = 175 // muted rose
+	g1 uint8 = 240 // dim gray
+	g2 uint8 = 248 // light gray
 )
 
 // ghostty — ghost silhouette with eyes, wavy bottom
@@ -124,22 +130,23 @@ var powerlevel10kLogo = pixelart.PixelArt{
 	},
 }
 
-// konfi — gear/cog icon
+// konfi — tui window with two config lines and a blinking bar cursor.
+// title bar carries two window-control dots; muted "chill" palette
 var konfiLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, __, lg, lg, __, __, lg, lg, __, __, __, __, __},
-		{__, __, __, __, lg, lg, lg, lg, lg, lg, lg, lg, __, __, __, __},
-		{__, __, __, __, lg, lg, dk, dk, dk, dk, lg, lg, __, __, __, __},
-		{__, __, lg, lg, lg, dk, dk, __, __, dk, dk, lg, lg, lg, __, __},
-		{__, lg, lg, lg, dk, dk, __, __, __, __, dk, dk, lg, lg, lg, __},
-		{__, lg, lg, lg, dk, __, __, __, __, __, __, dk, lg, lg, lg, __},
-		{__, lg, lg, lg, dk, __, __, __, __, __, __, dk, lg, lg, lg, __},
-		{__, lg, lg, lg, dk, dk, __, __, __, __, dk, dk, lg, lg, lg, __},
-		{__, __, lg, lg, lg, dk, dk, __, __, dk, dk, lg, lg, lg, __, __},
-		{__, __, __, __, lg, lg, dk, dk, dk, dk, lg, lg, __, __, __, __},
-		{__, __, __, __, lg, lg, lg, lg, lg, lg, lg, lg, __, __, __, __},
-		{__, __, __, __, __, lg, lg, __, __, lg, lg, __, __, __, __, __},
+		{__, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, __},
+		{__, pv, pv, g1, pv, g1, pv, pv, pv, pv, pv, pv, pv, pv, pv, __},
+		{__, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, __},
+		{__, pv, __, __, __, __, __, __, __, __, __, __, __, __, pv, __},
+		{__, pv, __, g2, g2, g2, g2, g2, __, __, __, __, __, __, pv, __},
+		{__, pv, __, __, __, __, __, __, __, __, __, __, __, __, pv, __},
+		{__, pv, __, g2, g2, g2, g2, __, __, __, __, __, __, __, pv, __},
+		{__, pv, __, __, __, __, __, __, __, __, __, __, __, __, pv, __},
+		{__, pv, __, ms, __, __, __, __, __, __, __, __, __, __, pv, __},
+		{__, pv, __, ms, __, __, __, __, __, __, __, __, __, __, pv, __},
+		{__, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, pv, __},
+		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
 	},
 }
 
@@ -200,15 +207,21 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 		logoRectPixels(waybarLogo, 5, 10, 7, 8, gn),
 		logoRectPixels(waybarLogo, 5, 10, 9, 14, yl),
 	),
-	"konfi": sequenceAnim(
-		20, 70, []uint8{wh, lg},
-		[]int{-1, 0, 1, 2, 3, 4, 4, 3, 2, 1, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		logoRectPixels(konfiLogo, 0, 2, 4, 11, lg),
-		logoRectPixels(konfiLogo, 3, 8, 10, 14, lg),
-		logoRectPixels(konfiLogo, 9, 11, 4, 11, lg),
-		logoRectPixels(konfiLogo, 3, 8, 1, 5, lg),
-		logoRectPixels(konfiLogo, 2, 9, 5, 10, dk),
-	),
+	"konfi": {
+		Kind: pixelart.AnimBlink, Frames: 20, TickMs: 90,
+		Loop: true, // cursor blinks continuously
+		BlinkPixels: []pixelart.Pixel{
+			{Row: 8, Col: 3}, {Row: 9, Col: 3},
+		},
+		// cursor vanishes on "off" frames
+		BlinkColor: __,
+		BlinkSeq: []bool{
+			true, true, true, true, true, true,
+			false, false, false, false,
+			true, true, true, true, true, true,
+			false, false, false, false,
+		},
+	},
 	"git": sequenceAnim(
 		20, 65, []uint8{wh, yl},
 		[]int{-1, 0, 1, 2, 3, 4, 3, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -231,7 +244,7 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 		Kind: pixelart.AnimChomp, Frames: 25, TickMs: 100,
 		ChompColor:  yl,
 		ChompLayers: pacmanMouthLayers,
-		// open → swing-shut → hold → swing-open
+		// open → radial close → hold → radial open
 		ChompSeq: []int{
 			0, 0, 0, 0,
 			1, 2, 3, 4,
@@ -243,11 +256,11 @@ var LogoAnims = map[string]pixelart.AnimConfig{
 	"gnome": sequenceAnim(
 		20, 75, []uint8{wh, lg},
 		[]int{-1, 0, 1, 2, 3, 4, 4, -1, 4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
-		logoRectPixels(gnomeLogo, 0, 1, 4, 5, wh),
-		logoRectPixels(gnomeLogo, 0, 1, 8, 9, wh),
-		logoRectPixels(gnomeLogo, 0, 1, 11, 12, wh),
-		logoRectPixels(gnomeLogo, 2, 3, 5, 11, wh),
-		logoRectPixels(gnomeLogo, 4, 10, 3, 11, wh),
+		logoRectPixels(gnomeLogo, 2, 3, 2, 5, wh),
+		logoRectPixels(gnomeLogo, 1, 3, 6, 8, wh),
+		logoRectPixels(gnomeLogo, 0, 3, 9, 13, wh),
+		logoRectPixels(gnomeLogo, 4, 7, 1, 12, wh),
+		logoRectPixels(gnomeLogo, 8, 11, 1, 13, wh),
 	),
 	"dconf": sequenceAnim(
 		22, 65, []uint8{wh, lg},
@@ -338,20 +351,18 @@ var pacmanMouthLayers = [][]pixelart.Pixel{
 	{
 		{Row: 3, Col: 11}, {Row: 3, Col: 12}, {Row: 3, Col: 13},
 		{Row: 4, Col: 10},
-		{Row: 5, Col: 9},
-		{Row: 6, Col: 9},
 		{Row: 7, Col: 10},
 		{Row: 8, Col: 11}, {Row: 8, Col: 12}, {Row: 8, Col: 13},
 	},
 	{
 		{Row: 4, Col: 11}, {Row: 4, Col: 12}, {Row: 4, Col: 13},
-		{Row: 6, Col: 10},
-		{Row: 6, Col: 11},
-		{Row: 6, Col: 12}, {Row: 6, Col: 13},
+		{Row: 5, Col: 9},
+		{Row: 6, Col: 9},
 		{Row: 7, Col: 11}, {Row: 7, Col: 12}, {Row: 7, Col: 13},
 	},
 	{
 		{Row: 5, Col: 10}, {Row: 5, Col: 11}, {Row: 5, Col: 12}, {Row: 5, Col: 13},
+		{Row: 6, Col: 10}, {Row: 6, Col: 11}, {Row: 6, Col: 12}, {Row: 6, Col: 13},
 	},
 }
 
@@ -537,18 +548,18 @@ var sshLogo = pixelart.PixelArt{
 var gnomeLogo = pixelart.PixelArt{
 	Width: 16, Height: 12,
 	Pixels: [][]uint8{
-		{__, __, __, __, __, __, __, wh, wh, wh, __, __, __, __, __, __},
-		{__, __, __, __, wh, wh, __, wh, wh, wh, wh, __, wh, wh, __, __},
-		{__, __, wh, wh, __, wh, wh, __, wh, wh, wh, __, wh, wh, __, __},
-		{__, __, wh, wh, __, wh, wh, __, __, wh, wh, wh, __, __, __, __},
-		{__, __, __, wh, wh, wh, __, __, __, wh, wh, wh, wh, __, __, __},
-		{__, __, __, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __},
-		{__, __, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __},
-		{__, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __, __},
-		{__, __, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __, __, __},
-		{__, __, __, wh, wh, wh, wh, wh, wh, __, __, __, __, __, __, __},
-		{__, __, __, __, wh, wh, wh, wh, __, __, __, __, __, __, __, __},
-		{__, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __},
+		{__, __, __, __, __, __, __, __, __, __, wh, wh, wh, __, __, __},
+		{__, __, __, __, __, __, wh, wh, __, wh, wh, wh, wh, __, __, __},
+		{__, __, __, wh, wh, __, wh, wh, __, wh, wh, wh, wh, __, __, __},
+		{__, __, wh, wh, __, wh, wh, __, __, __, wh, wh, __, __, __, __},
+		{__, __, __, __, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __},
+		{__, __, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __},
+		{__, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __},
+		{__, wh, wh, wh, wh, wh, wh, wh, wh, wh, __, __, __, __, __, __},
+		{__, wh, wh, wh, wh, wh, wh, wh, __, __, __, wh, wh, __, __, __},
+		{__, __, wh, wh, wh, wh, wh, __, __, __, wh, wh, wh, __, __, __},
+		{__, __, __, wh, wh, wh, wh, wh, __, wh, wh, wh, __, __, __, __},
+		{__, __, __, __, wh, wh, wh, wh, wh, wh, __, __, __, __, __, __},
 	},
 }
 
