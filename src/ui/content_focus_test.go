@@ -186,7 +186,7 @@ func TestRootDotTogglesConfiguredOnly(t *testing.T) {
 
 func TestRootTabTogglesChangedOnly(t *testing.T) {
 	c := newContentFocusTestModel(t)
-	c.applyFieldByKey("line12", "99")
+	c.applyFieldValue("line12", "99", true)
 	r := &root{content: c, focus: paneContent}
 
 	_, _ = r.Update(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -225,7 +225,7 @@ func TestRootTabWithNoChangesShowsFeedback(t *testing.T) {
 
 func TestRootCtrlSShowsDiffPreview(t *testing.T) {
 	c := newContentFocusTestModel(t)
-	c.applyFieldByKey("line12", "99")
+	c.applyFieldValue("line12", "99", true)
 	r := &root{content: c, focus: paneContent}
 
 	_, cmd := r.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
@@ -243,7 +243,7 @@ func TestRootCtrlSShowsDiffPreview(t *testing.T) {
 
 func TestSaveResultKeepsSavedStatusThenClears(t *testing.T) {
 	c := newContentFocusTestModel(t)
-	c.applyFieldByKey("line12", "99")
+	c.applyFieldValue("line12", "99", true)
 	if err := c.config.Save(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestSaveResultKeepsSavedStatusThenClears(t *testing.T) {
 func TestSwitchingAppsKeepsUnsavedConfigInSession(t *testing.T) {
 	c := newContentFocusTestModel(t)
 	c.schemaCache = map[string]*pkg.Schema{"test": c.schema}
-	c.applyFieldByKey("line12", "99")
+	c.applyFieldValue("line12", "99", true)
 	if c.config == nil || !c.config.Dirty() {
 		t.Fatal("test setup did not create a dirty config")
 	}
@@ -467,7 +467,7 @@ func TestNumberKeysDoNotJumpApps(t *testing.T) {
 
 func TestReviewShortcutRemovedForDirtyConfig(t *testing.T) {
 	c := newContentFocusTestModel(t)
-	c.applyFieldByKey("line12", "99")
+	c.applyFieldValue("line12", "99", true)
 	r := &root{
 		content:      c,
 		focus:        paneContent,

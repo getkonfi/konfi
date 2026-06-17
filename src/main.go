@@ -50,7 +50,7 @@ func main() {
 	app.Shutdown()
 }
 
-func runCommand(ctx context.Context, args []string) (bool, int) {
+func runCommand(ctx context.Context, args []string) (handled bool, code int) {
 	if len(args) == 0 || args[0] != "update" {
 		return false, 0
 	}

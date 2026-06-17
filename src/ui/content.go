@@ -707,11 +707,6 @@ func (c *content) deleteField(f pkg.Field) {
 	c.refreshValues()
 }
 
-// applyFieldByKey writes a value to a field identified by key.
-func (c *content) applyFieldByKey(key, value string) {
-	c.applyFieldValue(key, value, value != "")
-}
-
 func (c *content) applyFieldValue(key, value string, present bool) {
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return

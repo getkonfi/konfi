@@ -218,7 +218,7 @@ func (e *fontEditor) withCurrentFontConfigSuffix(value string) string {
 	return value
 }
 
-func splitFontConfigValue(value string) (string, string) {
+func splitFontConfigValue(value string) (family, suffix string) {
 	value = strings.TrimSpace(value)
 	family, rest, ok := strings.Cut(value, ":")
 	if !ok || !strings.Contains(rest, "=") {

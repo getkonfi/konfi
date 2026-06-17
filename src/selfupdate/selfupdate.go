@@ -148,7 +148,7 @@ func resolveTarget(ctx context.Context, opts Options) (*releaseInfo, error) {
 		return &releaseInfo{TagName: normalizeTag(opts.Version)}, nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", opts.Repo), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", opts.Repo), http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func resolveTarget(ctx context.Context, opts Options) (*releaseInfo, error) {
 // download streams url to dst. when label is non-empty it reports progress:
 // a live bar on interactive terminals, otherwise a single line.
 func download(ctx context.Context, client *http.Client, url, dst string, s styler, label string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -355,16 +355,16 @@ func replaceExecutable(src, dst string) error {
 	return nil
 }
 
-func executablePaths() (string, []string, error) {
-	exe, err := os.Executable()
+func executablePaths() (exe string, paths []string, err error) {
+	exe, err = os.Executable()
 	if err != nil {
 		return "", nil, fmt.Errorf("resolve current executable: %w", err)
 	}
 
-	paths := []string{exe}
-	if real, err := filepath.EvalSymlinks(exe); err == nil && real != exe {
-		paths = append(paths, real)
-		exe = real
+	paths = []string{exe}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil && resolved != exe {
+		paths = append(paths, resolved)
+		exe = resolved
 	}
 	return exe, paths, nil
 }

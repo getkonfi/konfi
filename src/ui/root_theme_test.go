@@ -47,13 +47,13 @@ func TestThemeSettingChangeReloadsActiveKonfiConfigWithoutBackup(t *testing.T) {
 	assertKonfiThemeSavedWithoutBackup(t, r, path)
 }
 
-func newKonfiThemeTestRoot(t *testing.T) (*root, string) {
+func newKonfiThemeTestRoot(t *testing.T) (r *root, path string) {
 	t.Helper()
 
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("HOME", t.TempDir())
 
-	path := cst.ConfigFilePath()
+	path = cst.ConfigFilePath()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func newKonfiThemeTestRoot(t *testing.T) (*root, string) {
 	c.refreshValues()
 	c.snapshotOrigValues()
 
-	r := &root{
+	r = &root{
 		app: &setup.App{
 			Config: &setup.KonfConfig{Theme: "rose pine", BackupLimit: 5},
 			Theme:  th,
