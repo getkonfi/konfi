@@ -9,23 +9,72 @@ state_dir="$demo/state"
 bin_dir="$demo/bin"
 
 rm -rf "$demo"
-mkdir -p "$home_dir" "$config_dir/konfi" "$config_dir/kitty" "$state_dir" "$bin_dir"
+mkdir -p "$home_dir/.ssh" "$config_dir/konfi" "$config_dir/ghostty" "$config_dir/hypr" "$config_dir/fuzzel" "$state_dir" "$bin_dir"
 
 cat >"$config_dir/konfi/config.yaml" <<'YAML'
 theme: catppuccin
 log_level: info
-nerd_font: false
+nerd_font: true
 browse_loads_app: false
 backup_limit: 5
 YAML
 
-cat >"$config_dir/kitty/kitty.conf" <<'CONF'
-font_family monospace
-font_size 11.0
-cursor_shape block
-scrollback_lines 2000
-tab_bar_style fade
+cat >"$config_dir/ghostty/config.ghostty" <<'CONF'
+font-family = Fira Code
+font-size = 12
+theme = catppuccin-mocha
+window-padding-x = 8
+window-padding-y = 8
 CONF
+
+cat >"$config_dir/hypr/hyprland.conf" <<'CONF'
+# demo hyprland config
+general {
+    border_size = 2
+    gaps_in = 5
+    gaps_out = 18
+    layout = dwindle
+}
+
+decoration {
+    rounding = 8
+    active_opacity = 1.0
+    inactive_opacity = 0.92
+}
+
+input {
+    kb_layout = us
+}
+CONF
+
+cat >"$config_dir/fuzzel/fuzzel.ini" <<'CONF'
+font=Fira Code:size=12
+dpi-aware=auto
+terminal=foot -e
+prompt=>
+width=42
+tabs=8
+
+[colors]
+background=1e1e2eff
+text=cdd6f4ff
+selection=313244ff
+border=89b4faff
+CONF
+
+cat >"$home_dir/.ssh/config" <<'CONF'
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/github_ed25519
+
+Host *
+    ServerAliveInterval 30
+    AddKeysToAgent no
+CONF
+
+: >"$home_dir/.ssh/id_ed25519-cert.pub"
+: >"$home_dir/.ssh/id_ed25519-sk-cert.pub"
 
 cat >"$bin_dir/fake-version" <<'SH'
 #!/bin/sh
@@ -36,6 +85,7 @@ case "$name" in
 		printf '%s\n' \
 			'Fira Code' \
 			'Inter' \
+			'JetBrainsMono Nerd Font' \
 			'JetBrains Mono' \
 			'Monaspace Neon' \
 			'Source Code Pro' \

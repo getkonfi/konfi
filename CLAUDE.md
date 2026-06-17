@@ -1,10 +1,12 @@
 # konfi
 
-go TUI for editing dotfiles (ghostty, starship, alacritty, hyprland) with ASCII box-drawing aesthetic and cross-app theme sync.
+go TUI for exploring and editing dotfiles (ghostty, starship, alacritty, hyprland, and more) with an ASCII box-drawing aesthetic.
 
 ## stack
-- go, bubbletea v1, lipgloss v1, bubbles v1, huh v0
-- zerolog (file-only — TUI owns stdout), yaml.v3, go-toml/v2, fsnotify
+- go 1.26
+- charm v2 stack (charm.land namespace): bubbletea/v2, bubbles/v2, lipgloss/v2
+- zerolog (file-only — TUI owns stdout), yaml.v3, fsnotify
+- goldmark (markdown), sahilm/fuzzy (search); TOML/INI/flat parsing is hand-rolled in pkg/parser
 
 ## structure
 follows gomono single-app conventions: app code under `src/`, maintenance tools under `tools/`, flat domain packages, setup units for DI, no `internal/`.
@@ -16,7 +18,7 @@ src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
 - `setup/` — unit pattern: sequential init with measurement, reverse shutdown
 - `ui/` — bubble tea model tree. thin glue layer
   - `ui/editors/` — field editor implementations (color, enum, font, …); depends only on `pkg`, `theme`
-  - `ui/widgets/` — stateless leaf renderers (worddiff, markdown, diffview); depends only on `pkg`, `theme`
+  - `ui/widgets/` — stateless leaf renderers (worddiff, markdown, diffview); depends only on `theme`
 - `theme/` — palette definitions, semantic lipgloss styles
 - `konfables/` — feature-first domains. each app owns parser, schema, editor
 - `pkg/` — shared foundation: config file, schema types, search, file utils
@@ -26,15 +28,16 @@ src/main.go → setup.InitApp(ctx, units) → ui.NewRoot(app) → tea.NewProgram
 
 ## import flow (no cycles)
 ```
-main → setup → ui → theme → pkg
-              │ └→ konfables/*
-              │         └────→ pkg, pkg/parser
-              └──────────────→ pkg
-ui → ui/editors → pkg, theme
-ui → ui/widgets → pkg, theme
-ui → pkg/pixelart, pkg (search, schema, config)
+main → setup, ui
+ui   → setup, konfables/*, theme, pkg, pkg/pixelart
+ui   → ui/editors → pkg, theme
+ui   → ui/widgets → theme
+setup → konfables/*, theme, pkg
+konfables/*    → pkg, pkg/parser
 konfables/logos → pkg/pixelart
+pkg  → pkg/parser
 ```
+theme imports nothing internal (lipgloss only) — it's a leaf.
 
 ## commands
 - `make run` — run the TUI

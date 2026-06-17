@@ -1,12 +1,11 @@
-Output assets/konfi-usage.gif
+Output assets/konfi-usage.webp
 
-# generic konfi usage demo. keep app-specific showcases as separate blocks so
-# a hyprland segment can be added later without changing the base flow.
+# focused konfi usage demo across hyprland, fuzzel, and ssh.
 Require bash
 Require ./konfi
 
 Set Shell "bash"
-Set FontFamily "JetBrains Mono"
+Set FontFamily "JetBrainsMono Nerd Font"
 Set FontSize 30
 Set Width 2560
 Set Height 1440
@@ -31,56 +30,137 @@ Show
 # dashboard: detected apps, versions, and supported-but-missing apps.
 Sleep 1800ms
 
-# open kitty through sidebar search.
+# open hyprland through sidebar search.
 Type "/"
-Type "kitty"
+Type "hy"
 Sleep 900ms
 Enter
 Sleep 1800ms
 
-# inspect font family, then change it through the font picker.
-Down
-Sleep 900ms
-Right
-Sleep 1200ms
-Left
+# change a hyprland enum from its option list.
+Down@450ms 4
 Sleep 700ms
 Enter
-Sleep 1000ms
-Type "Jet"
-Sleep 1000ms
+Sleep 700ms
+Down
+Sleep 600ms
 Enter
-Sleep 1100ms
+Sleep 1200ms
 
-# change a numeric field.
-Down@650ms 4
-Sleep 800ms
+# change a hyprland number using arrow-key stepping.
+Up@350ms 3
+Sleep 700ms
 Enter
-Sleep 800ms
-Backspace@180ms 4
-Sleep 400ms
-Type "14.0"
-Sleep 900ms
+Sleep 600ms
+Up@450ms 3
+Sleep 700ms
 Enter
-Sleep 1100ms
+Sleep 1200ms
 
-# jump to a larger enum and change it.
+# save the hyprland changes and run the configured reload command.
+Ctrl+S
+Sleep 1600ms
+Enter
+Sleep 1800ms
+
+# open ghostty and change its font family through the font picker.
+Escape
+Sleep 300ms
+Escape
+Sleep 500ms
 Type "/"
-Type "powerline"
-Sleep 1000ms
+Type "gh"
+Sleep 700ms
+Enter
+Sleep 1600ms
+Down
+Sleep 700ms
+Enter
+Sleep 1500ms
+Type "Jet"
+Sleep 900ms
+Down
+Sleep 500ms
+Enter
+Sleep 1200ms
+
+# save the font change.
+Ctrl+S
+Sleep 1500ms
+Enter
+Sleep 1200ms
+
+# open ssh and select a certificate file path.
+Escape
+Sleep 300ms
+Escape
+Sleep 500ms
+Type "/"
+Type "ss"
+Sleep 700ms
+Up@40ms 20
+Enter
+Sleep 1600ms
+Type "/"
+Type "cer"
+Sleep 900ms
+Down
+Sleep 500ms
+Enter
+Sleep 500ms
+Enter
+Sleep 700ms
+Type "~/.ssh/id"
+Sleep 500ms
+Tab
+Sleep 1400ms
 Enter
 Sleep 700ms
 Enter
 Sleep 1300ms
-Down@650ms 3
+Escape
+Sleep 500ms
+
+# add a new ssh host group and set its user.
+Enter
+Sleep 900ms
+Type "a"
+Sleep 600ms
+Enter
+Sleep 500ms
+Type "konfi.local"
 Sleep 900ms
 Enter
-Sleep 1200ms
-
-# show all pending changes without saving.
-Ctrl+S
-Sleep 2200ms
+Sleep 1600ms
+Enter
+Sleep 700ms
+Type "a"
+Sleep 500ms
+Down
+Sleep 400ms
+Enter
+Sleep 600ms
+Type "deploy"
+Sleep 700ms
+Enter
+Sleep 1000ms
 Escape
+Sleep 600ms
+Escape
+Sleep 1000ms
+
+# save the ssh file selection and host edits.
+Ctrl+S
+Sleep 1800ms
+Enter
+Sleep 1700ms
+
+# cycle themes as the final step.
+Type "t"
 Sleep 900ms
+Type "t"
+Sleep 900ms
+Type "t"
+Sleep 1200ms
 Ctrl+C
 Sleep 500ms
