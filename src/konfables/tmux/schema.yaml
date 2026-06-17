@@ -1,7 +1,11 @@
 app: tmux
 format: tmux
 schema_version: 1.0.0
+max_app_version: "3.6b"
 docs_url: "https://man7.org/linux/man-pages/man1/tmux.1.html"
+upstream:
+  kind: github
+  repo: tmux/tmux
 coverage: partial
 hints:
   - "`tmux show -g <option>` to read a global option"

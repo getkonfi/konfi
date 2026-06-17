@@ -568,6 +568,34 @@ func TestCompatibleWith_InvalidSemver(t *testing.T) {
 	}
 }
 
+func TestCompatibleWith_LooseAppVersionBounds(t *testing.T) {
+	s := &Schema{App: "tmux", MaxAppVersion: "3.6b"}
+	for _, version := range []string{"3.6", "3.6a", "3.6b"} {
+		if reason, ok := s.CompatibleWith(version); !ok {
+			t.Errorf("%s should be compatible, got: %s", version, reason)
+		}
+	}
+	if _, ok := s.CompatibleWith("3.7-rc"); ok {
+		t.Error("3.7-rc should be above max")
+	}
+	if _, ok := s.CompatibleWith("3.7"); ok {
+		t.Error("3.7 should be above max")
+	}
+}
+
+func TestValidAppVersion(t *testing.T) {
+	for _, version := range []string{"1.2.3", "v26.5.6", "3.6b", "3.7-rc"} {
+		if !ValidAppVersion(version) {
+			t.Errorf("%q should be a valid app version", version)
+		}
+	}
+	for _, version := range []string{"", "not-valid"} {
+		if ValidAppVersion(version) {
+			t.Errorf("%q should not be a valid app version", version)
+		}
+	}
+}
+
 func TestCompatibleWith_YAMLRoundTrip(t *testing.T) {
 	raw := `
 app: test

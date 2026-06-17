@@ -1,7 +1,10 @@
 package gnome
 
 import (
+	"context"
 	_ "embed"
+	"os/exec"
+	"strings"
 
 	"github.com/getkonfi/konfi/konfables"
 	"github.com/getkonfi/konfi/pkg"
@@ -32,3 +35,15 @@ func (g *GNOME) Name() string             { return "gnome" }
 func (g *GNOME) ConfigPath() string       { return "" }
 func (g *GNOME) Parser() konfables.Parser { return newParser() }
 func (g *GNOME) Schema() ([]byte, error)  { return schemaData, nil }
+
+func (g *GNOME) Version(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "pkg-config", "--modversion", "gsettings-desktop-schemas").Output()
+	if err != nil {
+		return "", err
+	}
+	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
+	if v := pkg.ExtractSemver(line); v != "" {
+		return v, nil
+	}
+	return line, nil
+}

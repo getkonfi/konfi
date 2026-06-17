@@ -1,7 +1,12 @@
 app: gnome
 format: gnome
+max_app_version: "50.1"
 docs_url: https://help.gnome.org/system-admin-guide/appearance.html
 coverage: partial
+upstream:
+  kind: gitlab
+  host: gitlab.gnome.org
+  repo: GNOME/gsettings-desktop-schemas
 hints:
   - settings are applied live via gsettings
   - changes take effect immediately without restart

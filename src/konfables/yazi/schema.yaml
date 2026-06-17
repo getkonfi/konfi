@@ -1,8 +1,13 @@
 app: yazi
 format: toml
 schema_version: 1.0.0
+max_app_version: "26.5.6"
 coverage: partial
 docs_url: "https://yazi-rs.github.io/docs/configuration/yazi/"
+upstream:
+  kind: github
+  repo: sxyazi/yazi
+  tag_prefix: v
 hints:
   - "TOML config at $XDG_CONFIG_HOME/yazi/yazi.toml"
   - "manager settings are stored in the [mgr] table"

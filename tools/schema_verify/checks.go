@@ -64,7 +64,7 @@ func checkStructural(path string) AppReport {
 	if len(schema.Sections) == 0 {
 		report.Findings = append(report.Findings, Finding{Fail, "structural", "no sections defined"})
 	}
-	// goal-1 quality bar: every schema should point at upstream docs.
+	// quality bar: every schema should point at upstream docs.
 	// warn-level (passes by default; --strict turns it into a failure).
 	if schema.DocsURL == "" {
 		report.Findings = append(report.Findings, Finding{
@@ -75,13 +75,21 @@ func checkStructural(path string) AppReport {
 	// validate semver fields
 	for _, pair := range []struct{ name, val string }{
 		{"schema_version", schema.SchemaVersion},
-		{"min_app_version", schema.MinAppVersion},
-		{"max_app_version", schema.MaxAppVersion},
 		{"format_since", schema.FormatSince},
 	} {
 		if pair.val != "" && pkg.NormalizeSemver(pair.val) == "" {
 			report.Findings = append(report.Findings, Finding{
 				Fail, "structural", fmt.Sprintf("invalid semver in %s: %q", pair.name, pair.val),
+			})
+		}
+	}
+	for _, pair := range []struct{ name, val string }{
+		{"min_app_version", schema.MinAppVersion},
+		{"max_app_version", schema.MaxAppVersion},
+	} {
+		if pair.val != "" && !pkg.ValidAppVersion(pair.val) {
+			report.Findings = append(report.Findings, Finding{
+				Fail, "structural", fmt.Sprintf("invalid app version in %s: %q", pair.name, pair.val),
 			})
 		}
 	}
@@ -134,7 +142,7 @@ func checkStructural(path string) AppReport {
 				})
 			}
 
-			// goal-1 quality bar: every field must explain itself.
+			// quality bar: every field must explain itself.
 			// warn-level (passes by default; --strict turns it into a failure).
 			if f.Description == "" {
 				report.Findings = append(report.Findings, Finding{

@@ -1,7 +1,12 @@
 app: dconf
 format: dconf
+max_app_version: "50.1"
 docs_url: https://help.gnome.org/admin/system-admin-guide/stable/
 coverage: partial
+upstream:
+  kind: gitlab
+  host: gitlab.gnome.org
+  repo: GNOME/gsettings-desktop-schemas
 hints:
   - settings are applied live via dconf
   - changes take effect immediately without restart

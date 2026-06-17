@@ -232,6 +232,28 @@ sections:
 	}
 }
 
+func TestLooseTopLevelAppVersion(t *testing.T) {
+	path := writeTempSchema(t, `
+app: tmux
+format: tmux
+max_app_version: "3.6b"
+docs_url: https://man7.org/linux/man-pages/man1/tmux.1.html
+sections:
+  - name: General
+    fields:
+      - key: mouse
+        label: Mouse
+        type: enum
+        default: "off"
+        description: mouse support
+        options: ["on", "off"]
+`)
+	r := checkStructural(path)
+	if fails := findSeverity(r.Findings, Fail); len(fails) > 0 {
+		t.Errorf("loose top-level app version should pass: %+v", fails)
+	}
+}
+
 func TestEmptySectionName(t *testing.T) {
 	path := writeTempSchema(t, `
 app: testapp

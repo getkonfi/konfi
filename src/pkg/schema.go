@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
+	"strings"
 
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
@@ -130,17 +132,16 @@ func (s *Schema) FilterByVersion(v string) *Schema {
 // returns ("", true) when compatible or when bounds are unset.
 // returns (reason, false) when the version is outside the declared range.
 func (s *Schema) CompatibleWith(appVersion string) (string, bool) {
-	nv := NormalizeSemver(appVersion)
-	if nv == "" {
+	if appVersion == "" {
 		return "", true
 	}
-	if minVer := NormalizeSemver(s.MinAppVersion); minVer != "" {
-		if semver.Compare(nv, minVer) < 0 {
+	if s.MinAppVersion != "" {
+		if cmp, ok := CompareAppVersions(appVersion, s.MinAppVersion); ok && cmp < 0 {
 			return fmt.Sprintf("schema requires %s %s+, detected %s", s.App, s.MinAppVersion, appVersion), false
 		}
 	}
-	if maxVer := NormalizeSemver(s.MaxAppVersion); maxVer != "" {
-		if semver.Compare(nv, maxVer) > 0 {
+	if s.MaxAppVersion != "" {
+		if cmp, ok := CompareAppVersions(appVersion, s.MaxAppVersion); ok && cmp > 0 {
 			return fmt.Sprintf("schema covers %s up to %s, detected %s", s.App, s.MaxAppVersion, appVersion), false
 		}
 	}
@@ -268,4 +269,102 @@ func NormalizeSemver(v string) string {
 		return ""
 	}
 	return v
+}
+
+// ValidAppVersion reports whether v is valid for top-level app version bounds.
+func ValidAppVersion(v string) bool {
+	if NormalizeSemver(v) != "" {
+		return true
+	}
+	_, ok := parseLooseAppVersion(v)
+	return ok
+}
+
+// CompareAppVersions compares app release versions. semver wins; otherwise it
+// accepts tag shapes such as tmux "3.6b".
+func CompareAppVersions(a, b string) (int, bool) {
+	na := NormalizeSemver(a)
+	nb := NormalizeSemver(b)
+	if na != "" && nb != "" {
+		return semver.Compare(na, nb), true
+	}
+
+	la, okA := parseLooseAppVersion(a)
+	lb, okB := parseLooseAppVersion(b)
+	if !okA || !okB {
+		return 0, false
+	}
+	return la.compare(lb), true
+}
+
+type looseAppVersion struct {
+	nums   []int
+	suffix string
+	pre    string
+	hasPre bool
+}
+
+var looseAppVersionPattern = regexp.MustCompile(`^v?([0-9]+(?:\.[0-9]+)*)([A-Za-z]*)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$`)
+
+func parseLooseAppVersion(v string) (looseAppVersion, bool) {
+	match := looseAppVersionPattern.FindStringSubmatch(strings.TrimSpace(v))
+	if len(match) == 0 {
+		return looseAppVersion{}, false
+	}
+
+	parts := strings.Split(match[1], ".")
+	nums := make([]int, 0, len(parts))
+	for _, part := range parts {
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			return looseAppVersion{}, false
+		}
+		nums = append(nums, n)
+	}
+	return looseAppVersion{
+		nums:   nums,
+		suffix: match[2],
+		pre:    match[3],
+		hasPre: match[3] != "",
+	}, true
+}
+
+func (v looseAppVersion) compare(other looseAppVersion) int {
+	maxLen := max(len(v.nums), len(other.nums))
+	for i := 0; i < maxLen; i++ {
+		a, b := 0, 0
+		if i < len(v.nums) {
+			a = v.nums[i]
+		}
+		if i < len(other.nums) {
+			b = other.nums[i]
+		}
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+	}
+
+	if v.suffix != other.suffix {
+		if v.suffix == "" {
+			return -1
+		}
+		if other.suffix == "" {
+			return 1
+		}
+		return strings.Compare(v.suffix, other.suffix)
+	}
+
+	switch {
+	case v.hasPre && !other.hasPre:
+		return -1
+	case !v.hasPre && other.hasPre:
+		return 1
+	case v.pre != other.pre:
+		return strings.Compare(v.pre, other.pre)
+	default:
+		return 0
+	}
 }

@@ -1,6 +1,7 @@
 app: gtk
 format: ini
 schema_version: 1.0.0
+max_app_version: "4.22.4"
 docs_url: "https://docs.gtk.org/gtk4/class.Settings.html"
 coverage: partial
 hints:

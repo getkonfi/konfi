@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"golang.org/x/mod/semver"
+	"github.com/getkonfi/konfi/pkg"
 )
 
 // Status is the high-level outcome for one app.
@@ -54,39 +54,37 @@ func (r *Report) HasError() bool {
 
 // classify decides Status + CompareURL given the supported version, the
 // fetched tag, and the upstream's tag prefix. stripping the prefix yields
-// the canonical semver we stored in max_app_version.
+// the canonical app version we stored in max_app_version.
 func classify(res *AppResult, info *ReleaseInfo, tagPrefix string) {
 	latest := strings.TrimPrefix(info.Tag, tagPrefix)
 	res.Latest = latest
 	res.ReleaseURL = info.ReleaseURL
 
-	// semver.Compare needs a leading "v"
-	vSupported := "v" + strings.TrimPrefix(res.Supported, "v")
-	vLatest := "v" + strings.TrimPrefix(latest, "v")
-
-	switch {
-	case res.Supported == "":
+	if res.Supported == "" {
 		res.Status = StatusError
 		res.Detail = "schema has no max_app_version"
-	case !semver.IsValid(vSupported) || !semver.IsValid(vLatest):
-		// fall back to string equality when semver doesn't apply (git, tmux use non-semver tags)
+		return
+	}
+
+	cmp, ok := pkg.CompareAppVersions(res.Supported, latest)
+	if !ok {
 		if res.Supported == latest {
 			res.Status = StatusCurrent
 		} else {
 			res.Status = StatusBehind
 			res.CompareURL = fmt.Sprintf(info.CompareTmpl, tagPrefix+res.Supported, info.Tag)
 		}
+		return
+	}
+
+	switch {
+	case cmp == 0:
+		res.Status = StatusCurrent
+	case cmp < 0:
+		res.Status = StatusBehind
+		res.CompareURL = fmt.Sprintf(info.CompareTmpl, tagPrefix+res.Supported, info.Tag)
 	default:
-		cmp := semver.Compare(vSupported, vLatest)
-		switch {
-		case cmp == 0:
-			res.Status = StatusCurrent
-		case cmp < 0:
-			res.Status = StatusBehind
-			res.CompareURL = fmt.Sprintf(info.CompareTmpl, tagPrefix+res.Supported, info.Tag)
-		default:
-			res.Status = StatusAhead
-		}
+		res.Status = StatusAhead
 	}
 }
 

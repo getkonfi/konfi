@@ -1,6 +1,10 @@
 app: waybar
 format: json
+max_app_version: "0.15.0"
 docs_url: "https://github.com/Alexays/Waybar/wiki/Configuration"
+upstream:
+  kind: github
+  repo: Alexays/Waybar
 hints:
   - "jsonc comments and trailing commas are accepted; writes normalize to json"
   - "restart waybar after config changes if your compositor does not reload it"
