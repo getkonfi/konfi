@@ -23,23 +23,10 @@ func InitZerolog(_ context.Context, app *App) error {
 		return fmt.Errorf("open log file: %w", err)
 	}
 
-	level := zerolog.InfoLevel
-	if app.Config != nil {
-		switch app.Config.LogLevel {
-		case "debug":
-			level = zerolog.DebugLevel
-		case "warn":
-			level = zerolog.WarnLevel
-		case "error":
-			level = zerolog.ErrorLevel
-		case "trace":
-			level = zerolog.TraceLevel
-		}
-	}
-
-	// console writer to file for readable dev logs
+	// console writer to file for readable dev logs. only warn and above are
+	// recorded — the log file is a problem record, not an activity trace.
 	w := zerolog.ConsoleWriter{Out: f, TimeFormat: "15:04:05"}
-	logger := zerolog.New(w).With().Timestamp().Logger().Level(level)
+	logger := zerolog.New(w).With().Timestamp().Logger().Level(zerolog.WarnLevel)
 
 	app.Logger = &logger
 	app.closeFns = append(app.closeFns, func(_ context.Context, _ *App) error {

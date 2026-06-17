@@ -11,14 +11,19 @@ sections:
       - key: theme
         label: Theme
         type: enum
-        default: catppuccin
+        default: rose pine
         description: color palette for the TUI
         options:
           - gh-dash
           - catppuccin
+          - tomorrow night
           - tokyonight
           - gruvbox
+          - monokai
           - nord
+          - rose pine
+          - solarized
+          - oxocarbon
       - key: nerd_font
         label: Nerd Font
         type: bool
@@ -32,20 +37,6 @@ sections:
         type: bool
         default: "false"
         description: load app content while browsing the sidebar instead of requiring Enter
-  - name: Logging
-    key: ""
-    fields:
-      - key: log_level
-        label: Log Level
-        type: enum
-        default: info
-        description: minimum log level written to the log file
-        options:
-          - trace
-          - debug
-          - info
-          - warn
-          - error
   - name: Backups
     key: ""
     fields:

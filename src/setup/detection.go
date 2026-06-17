@@ -76,7 +76,7 @@ var allKonfables = []konfableEntry{
 		return konfi.New(newFilePersister(
 			cst.ConfigFilePath(),
 			cfg,
-			pkg.WithDefaultContent([]byte("theme: catppuccin\nlog_level: info\nbackup_limit: 5\n")),
+			pkg.WithDefaultContent([]byte("theme: rose pine\nbackup_limit: 5\n")),
 		))
 	}, true, nil},
 	{"gsettings", func(_ *KonfConfig) Konfable {

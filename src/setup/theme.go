@@ -8,7 +8,7 @@ import (
 
 // InitTheme creates the Theme from the configured palette preference.
 func InitTheme(_ context.Context, app *App) error {
-	name := "catppuccin"
+	name := "rose pine"
 	if app.Config != nil && app.Config.Theme != "" {
 		name = app.Config.Theme
 	}

@@ -13,7 +13,6 @@ import (
 // KonfConfig holds konfi's own preferences.
 type KonfConfig struct {
 	Theme          string            `yaml:"theme"`
-	LogLevel       string            `yaml:"log_level"`
 	BrowseLoadsApp bool              `yaml:"browse_loads_app"`
 	NerdFont       bool              `yaml:"nerd_font"`
 	BackupLimit    int               `yaml:"backup_limit"`
@@ -41,8 +40,7 @@ type GitLabSettings struct {
 
 func defaultConfig() *KonfConfig {
 	return &KonfConfig{
-		Theme:       "catppuccin",
-		LogLevel:    "info",
+		Theme:       "rose pine",
 		NerdFont:    true,
 		BackupLimit: pkg.DefaultBackupLimit,
 	}
