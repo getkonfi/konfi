@@ -24,9 +24,10 @@ type detail struct {
 	theme        *theme.Theme
 
 	// editor state
-	editor      editors.FieldEditor
-	editField   int    // index into fields slice
-	editOrigVal string // for cancel restoration
+	editor          editors.FieldEditor
+	editField       int    // index into fields slice
+	editOrigVal     string // for cancel restoration
+	editOrigPresent bool
 
 	// scroll state for browse mode
 	scrollY int

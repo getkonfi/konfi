@@ -35,6 +35,8 @@ type statusbar struct {
 	mode        string // e.g. "NORMAL", "EDIT", "SEARCH"
 	undoCount   int    // number of undoable operations
 	changeCount int    // number of unsaved field changes
+	appName     string
+	dirtyApps   []string
 
 	// cached badge styles
 	editBadge   lipgloss.Style
@@ -68,7 +70,7 @@ func (s *statusbar) refreshStyles() {
 
 func (s *statusbar) View() string {
 	tone := s.tone()
-	style := s.bandStyle(tone)
+	style := s.lineStyle(tone)
 
 	// left side: mode badge + transient status
 	var leftParts []string
@@ -83,10 +85,15 @@ func (s *statusbar) View() string {
 		modeBadge := badgeStyle.Render("[" + s.mode + "]")
 		leftParts = append(leftParts, modeBadge)
 	}
-	if signal := s.signal(tone); signal != "" {
-		leftParts = append(leftParts, s.signalStyle(tone).Render(signal))
-	}
 	statusText := s.statusText(tone)
+	if signal := s.signal(tone); signal != "" {
+		if tone == statusDirty && statusText != "" {
+			leftParts = append(leftParts, s.signalStyle(tone).Render(signal+" "+statusText))
+			statusText = ""
+		} else {
+			leftParts = append(leftParts, s.signalStyle(tone).Render(signal))
+		}
+	}
 	if statusText != "" {
 		if tone == statusQuiet {
 			leftParts = append(leftParts, s.quietLabelStyle().Render("status ")+s.quietTextStyle().Render(statusText))
@@ -96,7 +103,7 @@ func (s *statusbar) View() string {
 	} else {
 		leftParts = append(leftParts, s.quietLabelStyle().Render("ready"))
 	}
-	if s.undoCount > 0 {
+	if s.undoCount > 0 && tone != statusDirty {
 		undoStyle := s.quietLabelStyle()
 		if tone != statusQuiet {
 			undoStyle = s.bandTextStyle(tone)
@@ -104,7 +111,7 @@ func (s *statusbar) View() string {
 		undoBadge := undoStyle.Render("↩ " + strconv.Itoa(s.undoCount))
 		leftParts = append(leftParts, undoBadge)
 	}
-	if s.changeCount > 0 {
+	if s.changeCount > 0 && tone != statusDirty {
 		changeStyle := s.theme.Warning
 		if tone != statusQuiet {
 			changeStyle = s.bandTextStyle(tone)
@@ -170,7 +177,7 @@ func (s *statusbar) tone() statusTone {
 		return statusPreview
 	case strings.Contains(text, "saving") || strings.Contains(text, "reverting") || strings.Contains(text, "reloading"):
 		return statusSaving
-	case s.changeCount > 0 || strings.Contains(text, "unsaved"):
+	case s.changeCount > 0 || len(s.dirtyApps) > 0 || strings.Contains(text, "unsaved"):
 		return statusDirty
 	case strings.Contains(text, "saved") || strings.Contains(text, "reverted"):
 		return statusSaved
@@ -197,6 +204,13 @@ func (s *statusbar) bandStyle(tone statusTone) lipgloss.Style {
 	}
 }
 
+func (s *statusbar) lineStyle(tone statusTone) lipgloss.Style {
+	if tone == statusDirty {
+		return s.theme.Statusbar.Width(s.width)
+	}
+	return s.bandStyle(tone)
+}
+
 func (s *statusbar) toneBandStyle(style lipgloss.Style, bg color.Color) lipgloss.Style {
 	return style.
 		Background(bg).
@@ -208,7 +222,7 @@ func (s *statusbar) signal(tone statusTone) string {
 	text := strings.ToLower(s.status)
 	switch tone {
 	case statusDirty:
-		return "UNSAVED"
+		return "unsaved"
 	case statusPreview:
 		return "PREVIEW"
 	case statusSaving:
@@ -230,6 +244,9 @@ func (s *statusbar) signal(tone statusTone) string {
 }
 
 func (s *statusbar) signalStyle(tone statusTone) lipgloss.Style {
+	if tone == statusDirty {
+		return s.bandTextStyle(tone).Padding(0, 1)
+	}
 	bg := s.theme.Palette.Base
 	return lipgloss.NewStyle().
 		Background(bg).
@@ -239,13 +256,33 @@ func (s *statusbar) signalStyle(tone statusTone) lipgloss.Style {
 }
 
 func (s *statusbar) statusText(tone statusTone) string {
+	if tone == statusDirty {
+		return s.dirtyName()
+	}
 	if s.status != "" {
 		return s.status
 	}
-	if tone == statusDirty {
-		return "unsaved changes"
-	}
 	return ""
+}
+
+func (s *statusbar) dirtyName() string {
+	if len(s.dirtyApps) > 0 {
+		return strings.Join(s.dirtyApps, ", ")
+	}
+	if s.changeCount > 0 && s.appName != "" {
+		return s.appName
+	}
+	text := strings.TrimSpace(s.status)
+	if idx := strings.LastIndex(strings.ToLower(text), " for "); idx >= 0 {
+		name := strings.TrimSpace(text[idx+5:])
+		if name != "" {
+			return name
+		}
+	}
+	if s.appName != "" {
+		return s.appName
+	}
+	return "changes"
 }
 
 func (s *statusbar) changeText() string {
@@ -264,7 +301,7 @@ func (s *statusbar) bandTextStyle(tone statusTone) lipgloss.Style {
 }
 
 func (s *statusbar) hintStyles(tone statusTone) (keyStyle, labelStyle, themeStyle lipgloss.Style) {
-	if tone == statusQuiet {
+	if tone == statusQuiet || tone == statusDirty {
 		return s.keyCapStyle(), s.quietLabelStyle(), s.quietThemeStyle()
 	}
 	keyBg := s.theme.Palette.Base

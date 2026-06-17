@@ -109,20 +109,20 @@ func TestContentRightFocusesConfigPaneAndScrollsWithoutMovingFieldCursor(t *test
 	}
 }
 
-func TestContentDeleteKeyDeletesConfiguredField(t *testing.T) {
+func TestContentDDeletesConfiguredField(t *testing.T) {
 	c := newContentFocusTestModel(t)
 
-	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	c, _ = c.Update(tea.KeyPressMsg{Text: "d"})
 
 	if _, ok := c.values["line12"]; ok {
-		t.Fatal("delete key did not remove field from values")
+		t.Fatal("d did not remove field from values")
 	}
 	if strings.Contains(string(c.config.Content()), "line12") {
-		t.Fatalf("delete key did not remove field from config:\n%s", c.config.Content())
+		t.Fatalf("d did not remove field from config:\n%s", c.config.Content())
 	}
 }
 
-func TestContentDeleteChangedFieldRevertsBeforeDeleting(t *testing.T) {
+func TestContentBackspaceRevertsChangedField(t *testing.T) {
 	c := newContentFocusTestModel(t)
 	c.fields[1].Default = "0"
 
@@ -139,15 +139,37 @@ func TestContentDeleteChangedFieldRevertsBeforeDeleting(t *testing.T) {
 		t.Fatal("first backspace should restore the loaded file value and clear dirty state")
 	}
 
-	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	c, _ = c.Update(tea.KeyPressMsg{Text: "d"})
 	if _, ok := c.values["line12"]; ok {
-		t.Fatal("second delete should remove the configured value")
+		t.Fatal("d should remove the configured value")
 	}
 	if strings.Contains(string(c.config.Content()), "line12") {
-		t.Fatalf("second delete did not remove field from config:\n%s", c.config.Content())
+		t.Fatalf("d did not remove field from config:\n%s", c.config.Content())
 	}
 	if got := stripANSI(c.renderFieldValue(c.fields[1], c.fields[1].Default, true)); got != "0" {
 		t.Fatalf("default render after delete = %q, want 0", got)
+	}
+}
+
+func TestContentUndoRestoresRevertedField(t *testing.T) {
+	c := newContentFocusTestModel(t)
+
+	commitTestField(t, &c, "line12", "99")
+	c, _ = c.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if got := c.values["line12"]; got != "12" {
+		t.Fatalf("after revert line12 = %q, want 12", got)
+	}
+
+	c, cmd := c.Update(UndoMsg{})
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			if status, ok := msg.(StatusMsg); ok {
+				t.Fatalf("undo returned status error: %s", status.Text)
+			}
+		}
+	}
+	if got := c.values["line12"]; got != "99" {
+		t.Fatalf("after undo line12 = %q, want 99", got)
 	}
 }
 
@@ -198,6 +220,24 @@ func TestRootTabWithNoChangesShowsFeedback(t *testing.T) {
 	}
 	if got := stripANSI(r.content.renderBody(60)); !strings.Contains(got, "no unsaved changes") {
 		t.Fatalf("changed-only empty state missing feedback:\n%s", got)
+	}
+}
+
+func TestRootCtrlSShowsDiffPreview(t *testing.T) {
+	c := newContentFocusTestModel(t)
+	c.applyFieldByKey("line12", "99")
+	r := &root{content: c, focus: paneContent}
+
+	_, cmd := r.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+
+	if cmd != nil {
+		t.Fatal("ctrl+s should open the diff preview without starting a save command")
+	}
+	if !r.showDiffPreview {
+		t.Fatal("ctrl+s did not show diff preview")
+	}
+	if !r.content.diffView.HasChanges() {
+		t.Fatal("diff preview was opened without pending changes")
 	}
 }
 
@@ -346,11 +386,13 @@ func TestContentBottomHelpersMatchRequestedKeys(t *testing.T) {
 	want := []keyHint{
 		{"↑↓", "nav"},
 		{"⏎", "edit"},
-		{"⌫", "del"},
+		{"⌫/del", "revert"},
+		{"d", "delete"},
 		{"/", "search"},
 		{"c", "copy"},
 		{".", "configured"},
 		{"⇥", "changed"},
+		{"^S", "diff"},
 		{"q", "quit"},
 		{"esc", "cancel"},
 	}
@@ -483,7 +525,7 @@ func commitTestField(t *testing.T, c *content, key, value string) {
 	for i := range c.fields {
 		if c.fields[i].Key == key {
 			c.detail.editField = i
-			c.detail.editOrigVal = c.values[key]
+			c.detail.editOrigVal, c.detail.editOrigPresent = c.values[key]
 			c.commitEdit(value)
 			return
 		}

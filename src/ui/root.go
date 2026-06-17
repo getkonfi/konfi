@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -187,7 +188,7 @@ func NewRoot(app *setup.App) tea.Model {
 }
 
 func (r *root) Init() tea.Cmd {
-	return tea.RequestBackgroundColor
+	return tea.Batch(tea.RequestBackgroundColor, r.content.startDashboardLogoAnim())
 }
 
 func (r *root) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -303,9 +304,7 @@ func (r *root) interceptModal(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
 		// sync file state after edit commits
-		if r.content.config != nil && r.content.config.Dirty() {
-			r.content.fileState = "unsaved"
-		}
+		r.syncContentFileState()
 		r.updateHints()
 		return r, tea.Batch(cmd), true
 	}
@@ -468,8 +467,10 @@ func (r *root) updateKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case "t":
-		r.cycleTheme()
-		return r, tea.Batch(r.applyThemeChange()...)
+		cmd := r.cycleTheme()
+		cmds := r.applyThemeChange()
+		cmds = append(cmds, cmd)
+		return r, tea.Batch(cmds...)
 
 	case "?":
 		r.showHelp = true
@@ -609,8 +610,10 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case CycleThemeMsg:
-		r.cycleTheme()
-		return r, tea.Batch(r.applyThemeChange()...)
+		cmd := r.cycleTheme()
+		cmds = append(cmds, r.applyThemeChange()...)
+		cmds = append(cmds, cmd)
+		return r, tea.Batch(cmds...)
 
 	case OpenEditorMsg:
 		if r.focus == paneContent && r.content.config != nil && r.content.config.Path != "" {
@@ -663,12 +666,13 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Index == -1 {
 			if msg.Confirmed || r.app.Config.BrowseLoadsApp {
 				stashedName, stashed := r.stashActiveDirtyConfig()
-				r.content.showDashboard()
+				dashCmd := r.content.showDashboard()
 				if stashed {
 					r.status.status = "kept unsaved changes for " + stashedName
 				} else {
 					r.status.status = ""
 				}
+				return r, dashCmd
 			}
 			return r, nil
 		}
@@ -724,7 +728,8 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return r, nil
 		}
 		restoredState, restoredDirty := r.takeDirtyConfig(msg.appName, msg.path)
-		if restoredDirty {
+		switch {
+		case restoredDirty:
 			r.content.config = restoredState.config
 			r.content.configLoadFailed = false
 			if restoredState.fileState != "" {
@@ -736,17 +741,18 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 				r.content.undoStack = restoredState.undoStack.Clone()
 			}
 			r.status.status = "restored unsaved changes"
-		} else if msg.err == nil && msg.config != nil {
+		case msg.err == nil && msg.config != nil:
 			r.content.config = msg.config
 			r.content.configLoadFailed = false
 			r.content.config.Path = msg.path
 			if msg.isNew {
 				r.content.fileState = "new"
 			}
-		} else {
+		default:
 			r.content.configLoadFailed = true
 		}
 		r.content.refreshValues()
+		r.content.retargetSplitFlapHeader()
 		if restoredDirty {
 			r.content.origValues = cloneValues(restoredState.origValues)
 			r.content.cachedChangesDirty = true
@@ -846,6 +852,25 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return r, nil
 
+	case konfiConfigSavedMsg:
+		if msg.err != nil {
+			r.status.status = "konfi config save failed: " + msg.err.Error()
+			return r, nil
+		}
+		if msg.reloadedActive {
+			r.content.refreshValues()
+			r.content.snapshotOrigValues()
+			r.content.syncDiffView()
+			r.content.fileState = ""
+			r.clearDirtyConfig("konfi")
+			if r.content.changedOnly {
+				r.content.refilter()
+				r.content.syncDetail()
+			}
+			r.updateHints()
+		}
+		return r, nil
+
 	case previewResultMsg:
 		if msg.err != nil {
 			r.previewing = false
@@ -911,20 +936,26 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UndoMsg:
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
-		if r.content.config != nil && r.content.config.Dirty() {
-			r.content.fileState = "unsaved"
-		}
+		r.syncContentFileState()
 		r.updateHints()
 		return r, cmd
 
 	case RedoMsg:
 		var cmd tea.Cmd
 		r.content, cmd = r.content.Update(msg)
-		if r.content.config != nil && r.content.config.Dirty() {
-			r.content.fileState = "unsaved"
-		}
+		r.syncContentFileState()
 		r.updateHints()
 		return r, cmd
+
+	case RevertFieldMsg:
+		if f := r.content.currentField(); f != nil && r.content.konfable != nil && r.content.config != nil {
+			r.content.revertField(*f)
+			cmd := r.content.drainErr()
+			r.syncContentFileState()
+			r.updateHints()
+			return r, cmd
+		}
+		return r, nil
 
 	case DocOpenedMsg:
 		if msg.URL != "" {
@@ -936,14 +967,14 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return r, nil
 
 	case KonfSettingChangedMsg:
+		reloadActiveConfig := false
 		switch msg.Key {
 		case "theme":
 			p := theme.PaletteByName(msg.Value)
 			r.app.Theme.SetPalette(p)
 			cmds = append(cmds, r.applyThemeChange()...)
 			r.app.Config.Theme = msg.Value
-		case "log_level":
-			r.app.Config.LogLevel = msg.Value
+			reloadActiveConfig = true
 		case "browse_loads_app":
 			r.app.Config.BrowseLoadsApp = msg.Value == "true"
 		case "backup_limit":
@@ -968,11 +999,7 @@ func (r *root) updateMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			r.content.nerdFont = on
 			r.content.detail.nerdFont = on
 		}
-		cfg := r.app.Config
-		cmds = append(cmds, func() tea.Msg {
-			_ = setup.SaveConfig(cfg)
-			return nil
-		})
+		cmds = append(cmds, r.saveKonfiConfigCmd(reloadActiveConfig))
 		return r, tea.Batch(cmds...)
 
 	case EditorExitMsg:
@@ -1023,9 +1050,7 @@ func (r *root) fanOut(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case paneContent:
 		r.content, cmd = r.content.Update(msg)
 		// sync file state after potential bool toggle
-		if r.content.config != nil && r.content.config.Dirty() {
-			r.content.fileState = "unsaved"
-		}
+		r.syncContentFileState()
 	}
 	cmds = append(cmds, cmd)
 	r.updateHints()
@@ -1060,6 +1085,11 @@ func (r *root) View() tea.View {
 
 	// pass change count to statusbar
 	r.status.changeCount = len(changes)
+	r.status.appName = ""
+	if r.content.konfable != nil {
+		r.status.appName = r.content.konfable.Name()
+	}
+	r.status.dirtyApps = dirtyAppNames(r.sidebar.dirtyApps)
 
 	sidebarView := r.sidebar.View()
 	contentView := r.content.View()
@@ -1186,6 +1216,34 @@ func (r *root) focusPane(p pane) {
 	r.updateHints()
 }
 
+func dirtyAppNames(dirty map[string]bool) []string {
+	if len(dirty) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(dirty))
+	for name, ok := range dirty {
+		if ok && name != "" {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (r *root) syncContentFileState() {
+	if r.content.config == nil {
+		return
+	}
+	switch {
+	case r.previewing:
+		r.content.fileState = "previewing"
+	case r.content.config.Dirty():
+		r.content.fileState = "unsaved"
+	case r.content.fileState == "unsaved":
+		r.content.fileState = ""
+	}
+}
+
 // applyThemeChange propagates the active theme to the child models and refreshes
 // the statusbar. returns the child update cmds for the caller to batch.
 func (r *root) applyThemeChange() []tea.Cmd {
@@ -1205,7 +1263,10 @@ func (r *root) applyThemeChange() []tea.Cmd {
 	return cmds
 }
 
-func (r *root) cycleTheme() {
+func (r *root) cycleTheme() tea.Cmd {
+	if r.app == nil || r.app.Theme == nil {
+		return nil
+	}
 	palettes := theme.Palettes
 	current := r.app.Theme.Palette.Name
 	nextIdx := 0
@@ -1216,6 +1277,34 @@ func (r *root) cycleTheme() {
 		}
 	}
 	r.app.Theme.SetPalette(&palettes[nextIdx])
+	if r.app.Config == nil {
+		return nil
+	}
+	r.app.Config.Theme = palettes[nextIdx].Name
+	return r.saveKonfiConfigCmd(true)
+}
+
+func (r *root) saveKonfiConfigCmd(reloadActive bool) tea.Cmd {
+	if r.app == nil || r.app.Config == nil {
+		return nil
+	}
+	cfg := r.app.Config
+	var active *pkg.ConfigFile
+	if reloadActive && r.content.konfable != nil && r.content.konfable.Name() == "konfi" && r.content.config != nil {
+		active = r.content.config
+	}
+	return func() tea.Msg {
+		if err := setup.SaveConfig(cfg); err != nil {
+			return konfiConfigSavedMsg{err: err}
+		}
+		if active != nil {
+			if err := active.Reload(context.Background()); err != nil {
+				return konfiConfigSavedMsg{err: err}
+			}
+			return konfiConfigSavedMsg{reloadedActive: true}
+		}
+		return konfiConfigSavedMsg{}
+	}
 }
 
 func loadSchemaCache(allK []konfables.Konfable) map[string]*pkg.Schema {

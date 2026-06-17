@@ -27,7 +27,7 @@ var helpGlobal = helpGroup{
 	Title: "Global",
 	Bindings: []helpBinding{
 		{"ctrl+c", "quit"},
-		{"ctrl+s", "save / keep preview"},
+		{"ctrl+s", "preview diff / save"},
 		{"ctrl+k", "command palette"},
 		{"ctrl+z / ctrl+y", "undo / redo"},
 		{"ctrl+o / ctrl+]", "nav back / forward"},
@@ -67,7 +67,8 @@ var helpContent = helpGroup{
 		{"m", "bookmark field"},
 		{"b", "show bookmarks"},
 		{"c", "copy value"},
-		{"d / ⌫", "delete field"},
+		{"⌫ / del", "revert field"},
+		{"d", "delete field"},
 		{"J / K", "scroll detail"},
 		{"pgup / pgdn", "page up / down"},
 		{"home / end", "first / last"},
@@ -196,8 +197,9 @@ func renderHelpCard(width, height int, focus pane, editing bool, th *theme.Theme
 }
 
 func padRight(s string, w int) string {
-	if len(s) >= w {
+	sw := lipgloss.Width(s)
+	if sw >= w {
 		return s
 	}
-	return s + strings.Repeat(" ", w-len(s))
+	return s + strings.Repeat(" ", w-sw)
 }

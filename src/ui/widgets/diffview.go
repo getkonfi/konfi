@@ -69,11 +69,14 @@ func (d *DiffView) View() string {
 
 		switch {
 		case ch.Deleted:
-			old = th.Error.Render("  - " + theme.Truncate(ch.OldVal, maxValWidth))
+			old = renderDiffValueLines(ch.OldVal, "  - ", maxValWidth, th.Error)
 			n = th.Muted.Render("  + ∅")
 		case ch.IsNew:
 			old = th.Muted.Render("  - ∅")
-			n = th.Success.Render("  + " + theme.Truncate(ch.NewVal, maxValWidth))
+			n = renderDiffValueLines(ch.NewVal, "  + ", maxValWidth, th.Success)
+		case isMultiline(ch.OldVal) || isMultiline(ch.NewVal):
+			old = renderDiffValueLines(ch.OldVal, "  - ", maxValWidth, th.Error)
+			n = renderDiffValueLines(ch.NewVal, "  + ", maxValWidth, th.Success)
 		default:
 			ot := theme.Truncate(ch.OldVal, maxValWidth)
 			nt := theme.Truncate(ch.NewVal, maxValWidth)
@@ -96,14 +99,36 @@ func (d *DiffView) View() string {
 		lines := strings.Split(out, "\n")
 		if len(lines) > d.height {
 			lines = lines[:d.height-1]
+			remaining := len(d.entries) - countEntries(lines)
+			if remaining < 0 {
+				remaining = 0
+			}
 			lines = append(lines, th.Muted.Render(
-				fmt.Sprintf("  … %d more", len(d.entries)-countEntries(lines)),
+				fmt.Sprintf("  … %d more", remaining),
 			))
 		}
 		out = strings.Join(lines, "\n")
 	}
 
 	return out
+}
+
+func isMultiline(s string) bool {
+	return strings.ContainsAny(s, "\n\r")
+}
+
+func renderDiffValueLines(value, prefix string, maxValWidth int, style lipgloss.Style) string {
+	value = strings.TrimRight(value, "\r\n")
+	if value == "" {
+		return style.Render(prefix)
+	}
+	value = strings.ReplaceAll(value, "\r\n", "\n")
+	value = strings.ReplaceAll(value, "\r", "\n")
+	lines := strings.Split(value, "\n")
+	for i := range lines {
+		lines[i] = style.Render(prefix + theme.Truncate(lines[i], maxValWidth))
+	}
+	return strings.Join(lines, "\n")
 }
 
 // countEntries counts how many full entry blocks (3 lines each) fit in n lines.

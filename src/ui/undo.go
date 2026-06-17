@@ -2,9 +2,11 @@ package ui
 
 // EditOp represents a single field edit that can be undone/redone.
 type EditOp struct {
-	FieldKey string
-	OldValue string
-	NewValue string
+	FieldKey   string
+	OldValue   string
+	OldPresent bool
+	NewValue   string
+	NewPresent bool
 }
 
 // UndoStack manages per-app undo/redo history.
@@ -29,6 +31,12 @@ func NewUndoStack(limit int) *UndoStack {
 
 // Push records a new edit, clearing the redo stack.
 func (s *UndoStack) Push(op EditOp) {
+	if op.OldValue != "" {
+		op.OldPresent = true
+	}
+	if op.NewValue != "" {
+		op.NewPresent = true
+	}
 	s.redos = s.redos[:0]
 	if len(s.undos) >= s.limit {
 		// drop oldest

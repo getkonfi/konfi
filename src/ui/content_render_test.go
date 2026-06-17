@@ -49,6 +49,39 @@ func TestRenderFieldValueBlocklistShowsSummary(t *testing.T) {
 	}
 }
 
+func TestPendingChangesBlocklistUsesRenderedConfigText(t *testing.T) {
+	oldCfg := "Host github.com\n    User git\n"
+	newCfg := oldCfg + "Host konfi.local\n    User deploy\n"
+
+	c := newContent(testTheme())
+	c.config = &pkg.ConfigFile{}
+	c.schema = &pkg.Schema{Sections: []pkg.Section{{
+		Name: "Host & Match Blocks",
+		Fields: []pkg.Field{{
+			Key:    "Blocks",
+			Label:  "Host & Match Blocks",
+			Type:   "string",
+			Widget: "blocklist",
+		}},
+	}}}
+	c.buildFieldList()
+	c.origValues = map[string]string{"Blocks": pkg.Encode(pkg.Parse([]byte(oldCfg), []string{"Host", "Match"}, nil))}
+	c.values = map[string]string{"Blocks": pkg.Encode(pkg.Parse([]byte(newCfg), []string{"Host", "Match"}, nil))}
+	c.cachedChangesDirty = true
+
+	changes := c.pendingChanges()
+	if len(changes) != 1 {
+		t.Fatalf("pendingChanges len = %d, want 1", len(changes))
+	}
+	ch := changes[0]
+	if strings.Contains(ch.OldVal, "BMv1") || strings.Contains(ch.NewVal, "BMv1") {
+		t.Fatalf("blocklist diff leaked opaque encoding:\nold=%q\nnew=%q", ch.OldVal, ch.NewVal)
+	}
+	if !strings.Contains(ch.NewVal, "Host konfi.local") || !strings.Contains(ch.NewVal, "User deploy") {
+		t.Fatalf("blocklist diff missing rendered host edit:\n%s", ch.NewVal)
+	}
+}
+
 func TestSplitWidthsGivesDetailMoreContentArea(t *testing.T) {
 	c := &content{
 		schema: &pkg.Schema{},

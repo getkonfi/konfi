@@ -93,12 +93,12 @@ func (e *fontEditor) Update(msg tea.Msg) (tea.Cmd, bool, bool) {
 		}
 		e.all = msg.Fonts
 		e.refilter()
-		// position cursor on the current font
-		if e.val != "" {
+		currentFamily, _ := splitFontConfigValue(e.val)
+		if currentFamily != "" {
 			for i, name := range e.filtered {
-				if strings.EqualFold(name, e.val) {
+				if strings.EqualFold(name, currentFamily) {
 					e.cursor = i
-					e.scrollToCursor()
+					e.viewOffset = i
 					break
 				}
 			}
@@ -138,16 +138,18 @@ func (e *fontEditor) updatePicker(msg tea.KeyPressMsg) (tea.Cmd, bool, bool) {
 		}
 	case "enter":
 		if len(e.filtered) > 0 && e.cursor < len(e.filtered) {
-			e.val = e.filtered[e.cursor]
+			e.val = e.withCurrentFontConfigSuffix(e.filtered[e.cursor])
 		} else {
-			e.val = e.filter.Value()
+			e.val = e.withCurrentFontConfigSuffix(e.filter.Value())
 		}
 		return nil, true, false
 	case "esc":
 		return nil, true, true
 	case "tab":
 		e.freetext = true
-		e.filter.SetValue(e.filter.Value()) // seed with current filter text
+		if strings.TrimSpace(e.filter.Value()) == "" {
+			e.filter.SetValue(e.val)
+		}
 		e.filter.CursorEnd()
 		return e.filter.Focus(), false, false
 	default:
@@ -200,6 +202,29 @@ func (e *fontEditor) scrollToCursor() {
 	if e.cursor >= e.viewOffset+maxVisible {
 		e.viewOffset = e.cursor - maxVisible + 1
 	}
+}
+
+func (e *fontEditor) withCurrentFontConfigSuffix(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return value
+	}
+	if _, suffix := splitFontConfigValue(value); suffix != "" {
+		return value
+	}
+	if _, suffix := splitFontConfigValue(e.val); suffix != "" {
+		return value + suffix
+	}
+	return value
+}
+
+func splitFontConfigValue(value string) (string, string) {
+	value = strings.TrimSpace(value)
+	family, rest, ok := strings.Cut(value, ":")
+	if !ok || !strings.Contains(rest, "=") {
+		return value, ""
+	}
+	return strings.TrimSpace(family), ":" + rest
 }
 
 func (e *fontEditor) View(width int) string {

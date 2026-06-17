@@ -103,10 +103,11 @@ func (r *root) updateHints() {
 				{"↑↓", "nav"},
 				{"⏎", "edit"},
 				{"a", "listeners"},
-				{"⌫", "del"},
+				{"⌫/del", "revert"},
+				{"d", "delete"},
 				{"/", "search"},
 				{"⇥", "changed"},
-				{"^S", "save"},
+				{"^S", "diff"},
 				{"q", "quit"},
 			}
 			r.status.hints = r.content.hints
@@ -115,11 +116,13 @@ func (r *root) updateHints() {
 		r.content.hints = []keyHint{
 			{"↑↓", "nav"},
 			{"⏎", "edit"},
-			{"⌫", "del"},
+			{"⌫/del", "revert"},
+			{"d", "delete"},
 			{"/", "search"},
 			{"c", "copy"},
 			{".", "configured"},
 			{"⇥", "changed"},
+			{"^S", "diff"},
 			{"q", "quit"},
 			{"esc", "cancel"},
 		}

@@ -68,6 +68,9 @@ type UndoMsg struct{}
 // RedoMsg requests redoing the last undone edit.
 type RedoMsg struct{}
 
+// RevertFieldMsg requests reverting the focused field to its loaded value.
+type RevertFieldMsg struct{}
+
 // EditorExitMsg is sent when the external $EDITOR process exits.
 type EditorExitMsg struct{ Err error }
 
@@ -91,6 +94,12 @@ type JumpToFieldMsg struct{ FieldIdx int }
 
 // saveResultMsg is sent when an async config save completes.
 type saveResultMsg struct{ err error }
+
+// konfiConfigSavedMsg is sent when konfi's own config is written directly.
+type konfiConfigSavedMsg struct {
+	err            error
+	reloadedActive bool
+}
 
 // previewResultMsg is sent when an async preview write completes.
 type previewResultMsg struct{ err error }

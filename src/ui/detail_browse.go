@@ -157,8 +157,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	// file snippet (generous — 12 lines context)
 	if snippet := d.renderFileSnippet(width, 12); snippet != "" {
 		b.WriteByte('\n')
-		b.WriteString(d.detailSeparator(width))
-		b.WriteByte('\n')
 		b.WriteString(snippet)
 	}
 
@@ -190,13 +188,6 @@ func (d *detail) viewBrowse(width, height int) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-func (d *detail) detailSeparator(width int) string {
-	if width < 1 {
-		width = 1
-	}
-	return d.theme.FaintSeparator.Render(strings.Repeat("─", width))
 }
 
 // renderTypeVisual returns type-aware visuals for the current field value.

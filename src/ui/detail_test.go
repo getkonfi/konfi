@@ -89,9 +89,11 @@ func TestDetailBrowseOmitsConfigRuleLabel(t *testing.T) {
 	if strings.Contains(got, "── config") {
 		t.Fatalf("browse detail should not render config rule label:\n%s", got)
 	}
-	sep := strings.Repeat("─", 80)
-	if !strings.Contains(got, "font size\n\n"+sep+"\n▶ 1 font = 12") {
-		t.Fatalf("browse detail should separate description from config snippet:\n%s", got)
+	if strings.Contains(got, strings.Repeat("─", 10)) {
+		t.Fatalf("browse detail should not render a horizontal rule before config snippet:\n%s", got)
+	}
+	if !strings.Contains(got, "font size\n\n▶ 1 font = 12") {
+		t.Fatalf("browse detail should show config snippet after description:\n%s", got)
 	}
 	if !strings.Contains(got, "font = 12") {
 		t.Fatalf("browse detail lost config snippet:\n%s", got)

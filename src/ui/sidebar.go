@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/getkonfi/konfi/theme"
@@ -76,6 +77,9 @@ func (s *sidebar) refilter() {
 			uninstalled = append(uninstalled, i)
 		}
 	}
+	s.sortByName(installed)
+	s.sortByName(uninstalled)
+	s.sortByName(system)
 	s.filtered = append(s.filtered, home...)
 	s.filtered = append(s.filtered, installed...)
 	s.filtered = append(s.filtered, uninstalled...)
@@ -87,6 +91,17 @@ func (s *sidebar) refilter() {
 	if s.cursor < 0 {
 		s.cursor = 0
 	}
+}
+
+func (s sidebar) sortByName(indices []int) {
+	sort.SliceStable(indices, func(i, j int) bool {
+		a := strings.ToLower(s.items[indices[i]].name)
+		b := strings.ToLower(s.items[indices[j]].name)
+		if a == b {
+			return s.items[indices[i]].name < s.items[indices[j]].name
+		}
+		return a < b
+	})
 }
 
 func (s sidebar) Update(msg tea.Msg) (sidebar, tea.Cmd) {
@@ -270,7 +285,7 @@ func (s *sidebar) itemIcon(item sidebarItem) string {
 		return item.icon
 	}
 	if item.plainIcon != "" {
-		return item.plainIcon
+		return plainAppIcon(item.plainIcon)
 	}
 	// last resort: first 2 chars of name
 	r := []rune(item.name)
@@ -451,10 +466,7 @@ func (s *sidebar) renderItem(item sidebarItem, isCursor bool, width int) string 
 		dirty = " " + s.theme.Warning.Render("●")
 	}
 
-	iconW := 1
-	if !s.nerdFont {
-		iconW = 2
-	}
+	iconW := appIconWidth(s.nerdFont)
 
 	// icon glyph (shown before name)
 	icon := iconCell(s.itemIcon(item), iconW) + " "

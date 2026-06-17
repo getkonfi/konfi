@@ -1,10 +1,10 @@
 package ui
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/getkonfi/konfi/pkg"
 )
 
@@ -24,13 +24,13 @@ func (c *content) buildFieldList() {
 	// cache label column width and pre-padded labels
 	c.labelW = 0
 	for i := range c.fields {
-		if len(c.fields[i].Label) > c.labelW {
-			c.labelW = len(c.fields[i].Label)
+		if w := lipgloss.Width(c.fields[i].Label); w > c.labelW {
+			c.labelW = w
 		}
 	}
 	c.paddedLabels = make([]string, len(c.fields))
 	for i := range c.fields {
-		c.paddedLabels[i] = fmt.Sprintf("%-*s", c.labelW, c.fields[i].Label)
+		c.paddedLabels[i] = padRight(c.fields[i].Label, c.labelW)
 	}
 	c.refilter()
 }

@@ -474,6 +474,13 @@ func renderBlock(b Block) []string {
 	return out
 }
 
+// RenderBlockModel renders an edited model as physical config text.
+func RenderBlockModel(m BlockModel) string {
+	var sb strings.Builder
+	writeEditedBlocks(&sb, m)
+	return sb.String()
+}
+
 // blockUnchanged reports whether the block can re-emit RawSpan verbatim, i.e.
 // nothing was edited: Body's Raw lines still concatenate to RawSpan AND every
 // directive's Raw still matches its current Key/Values (a value edit leaves Raw

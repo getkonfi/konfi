@@ -104,15 +104,37 @@ func TestHypridleCurrentFieldMapsListenerRowToListenersField(t *testing.T) {
 	}
 }
 
-func TestHypridleDeleteListenerRowDoesNotDeleteAllListeners(t *testing.T) {
+func TestHypridleBackspaceListenerRowDoesNotDeleteAllListeners(t *testing.T) {
 	c := newHypridleContentTestModel(t)
 	before := c.values[hypridleListenersKey]
 	c.cursor = 0
 
 	var cmd tea.Cmd
-	c, cmd = c.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	c, cmd = c.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	if cmd == nil {
-		t.Fatal("delete listener row should return a status command")
+		t.Fatal("backspace listener row should return a status command")
+	}
+	if got := c.values[hypridleListenersKey]; got != before {
+		t.Fatalf("listeners changed on dashboard revert: got %q want %q", got, before)
+	}
+	msg, ok := cmd().(StatusMsg)
+	if !ok {
+		t.Fatalf("revert command emitted %T, want StatusMsg", cmd())
+	}
+	if !strings.Contains(msg.Text, "no field changes") {
+		t.Fatalf("revert status = %q, want no-change feedback", msg.Text)
+	}
+}
+
+func TestHypridleDListenerRowDoesNotDeleteAllListeners(t *testing.T) {
+	c := newHypridleContentTestModel(t)
+	before := c.values[hypridleListenersKey]
+	c.cursor = 0
+
+	var cmd tea.Cmd
+	c, cmd = c.Update(tea.KeyPressMsg{Text: "d"})
+	if cmd == nil {
+		t.Fatal("d on listener row should return a status command")
 	}
 	if got := c.values[hypridleListenersKey]; got != before {
 		t.Fatalf("listeners changed on dashboard delete: got %q want %q", got, before)

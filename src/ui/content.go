@@ -369,9 +369,7 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 			}
 		case "backspace", "delete":
 			if f := c.currentField(); f != nil && c.konfable != nil && c.config != nil {
-				if _, hasCur := c.values[f.Key]; hasCur {
-					c.deleteField(*f)
-				}
+				c.revertField(*f)
 				cmd := c.drainErr()
 				return c, cmd
 			}
@@ -441,14 +439,14 @@ func (c content) Update(msg tea.Msg) (content, tea.Cmd) {
 
 	case UndoMsg:
 		if op, ok := c.undoStack.Undo(); ok {
-			c.applyFieldByKey(op.FieldKey, op.OldValue)
+			c.applyFieldValue(op.FieldKey, op.OldValue, op.OldPresent)
 			cmd := c.drainErr()
 			return c, cmd
 		}
 
 	case RedoMsg:
 		if op, ok := c.undoStack.Redo(); ok {
-			c.applyFieldByKey(op.FieldKey, op.NewValue)
+			c.applyFieldValue(op.FieldKey, op.NewValue, op.NewPresent)
 			cmd := c.drainErr()
 			return c, cmd
 		}
@@ -489,7 +487,7 @@ func (c *content) openEditor() tea.Cmd {
 	}
 
 	c.detail.editField = fieldIdx
-	c.detail.editOrigVal = c.values[f.Key]
+	c.detail.editOrigVal, c.detail.editOrigPresent = c.values[f.Key]
 
 	e := editors.ForField(*f)
 
@@ -545,7 +543,7 @@ func (c *content) openEditorWithSeed(seed rune) tea.Cmd {
 	}
 
 	c.detail.editField = fieldIdx
-	c.detail.editOrigVal = c.values[f.Key]
+	c.detail.editOrigVal, c.detail.editOrigPresent = c.values[f.Key]
 
 	e := editors.ForField(*f)
 	c.detail.editor = e
@@ -579,7 +577,13 @@ func (c *content) commitEdit(value string) tea.Cmd {
 		return func() tea.Msg { return StatusMsg{Text: "edit failed: " + err.Error()} }
 	}
 	c.config.SetContent(newData)
-	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: oldValue, NewValue: value})
+	c.undoStack.Push(EditOp{
+		FieldKey:   f.Key,
+		OldValue:   oldValue,
+		OldPresent: c.detail.editOrigPresent,
+		NewValue:   value,
+		NewPresent: true,
+	})
 	c.refreshValues()
 
 	return c.settingChangedCmd(f.Key, value)
@@ -603,7 +607,7 @@ func (c *content) toggleBool(f pkg.Field) tea.Cmd {
 		return nil
 	}
 
-	cur := c.values[f.Key]
+	cur, hadCur := c.values[f.Key]
 	if cur == "" {
 		cur = f.Default
 	}
@@ -618,12 +622,65 @@ func (c *content) toggleBool(f pkg.Field) tea.Cmd {
 		return nil
 	}
 	c.config.SetContent(newData)
-	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: cur, NewValue: next})
+	c.undoStack.Push(EditOp{
+		FieldKey:   f.Key,
+		OldValue:   cur,
+		OldPresent: hadCur,
+		NewValue:   next,
+		NewPresent: true,
+	})
 	c.refreshValues()
 	return c.settingChangedCmd(f.Key, next)
 }
 
-// deleteField reverts dirty fields to the loaded value before removing the key.
+// revertField restores the focused field to its loaded value.
+func (c *content) revertField(f pkg.Field) {
+	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
+		return
+	}
+	curVal, hasCur := c.values[f.Key]
+	origVal, hadOrig := c.origValues[f.Key]
+	if hasCur == hadOrig && (!hasCur || curVal == origVal) {
+		c.lastErr = "no field changes to revert"
+		return
+	}
+
+	if hadOrig {
+		data := c.config.Content()
+		newData, err := konfables.WriteField(c.konfable.Parser(), data, f, origVal, c.konfable.Info().Format)
+		if err != nil {
+			c.lastErr = "revert failed: " + err.Error()
+			return
+		}
+		c.config.SetContent(newData)
+		c.undoStack.Push(EditOp{
+			FieldKey:   f.Key,
+			OldValue:   curVal,
+			OldPresent: hasCur,
+			NewValue:   origVal,
+			NewPresent: true,
+		})
+		c.refreshValues()
+		return
+	}
+
+	data := c.config.Content()
+	newData, err := c.konfable.Parser().DeleteKey(data, f.Key)
+	if err != nil {
+		c.lastErr = "revert failed: " + err.Error()
+		return
+	}
+	c.config.SetContent(newData)
+	c.undoStack.Push(EditOp{
+		FieldKey:   f.Key,
+		OldValue:   curVal,
+		OldPresent: hasCur,
+		NewPresent: false,
+	})
+	c.refreshValues()
+}
+
+// deleteField removes the key from the config entirely.
 func (c *content) deleteField(f pkg.Field) {
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return
@@ -634,19 +691,6 @@ func (c *content) deleteField(f pkg.Field) {
 		return
 	}
 
-	if origVal, hadOrig := c.origValues[f.Key]; hadOrig && curVal != origVal {
-		data := c.config.Content()
-		newData, err := konfables.WriteField(p, data, f, origVal, c.konfable.Info().Format)
-		if err != nil {
-			c.lastErr = "delete failed: " + err.Error()
-			return
-		}
-		c.config.SetContent(newData)
-		c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: origVal})
-		c.refreshValues()
-		return
-	}
-
 	data := c.config.Content()
 	newData, err := p.DeleteKey(data, f.Key)
 	if err != nil {
@@ -654,20 +698,28 @@ func (c *content) deleteField(f pkg.Field) {
 		return
 	}
 	c.config.SetContent(newData)
-	c.undoStack.Push(EditOp{FieldKey: f.Key, OldValue: curVal, NewValue: ""})
+	c.undoStack.Push(EditOp{
+		FieldKey:   f.Key,
+		OldValue:   curVal,
+		OldPresent: true,
+		NewPresent: false,
+	})
 	c.refreshValues()
 }
 
-// applyFieldByKey writes a value to a field identified by key, used by undo/redo.
-// empty value deletes the key from the config.
+// applyFieldByKey writes a value to a field identified by key.
 func (c *content) applyFieldByKey(key, value string) {
+	c.applyFieldValue(key, value, value != "")
+}
+
+func (c *content) applyFieldValue(key, value string, present bool) {
 	if c.konfable == nil || c.config == nil || c.konfable.Parser() == nil {
 		return
 	}
 	p := c.konfable.Parser()
 	data := c.config.Content()
 
-	if value == "" {
+	if !present {
 		newData, err := p.DeleteKey(data, key)
 		if err != nil {
 			c.lastErr = "undo/redo failed: " + err.Error()
@@ -738,9 +790,9 @@ func (c *content) reapplyUnchangedFieldEdits(edits []pendingFieldEdit) (applied,
 
 		c.lastErr = ""
 		if edit.hasNew {
-			c.applyFieldByKey(edit.key, edit.newValue)
+			c.applyFieldValue(edit.key, edit.newValue, true)
 		} else {
-			c.applyFieldByKey(edit.key, "")
+			c.applyFieldValue(edit.key, "", false)
 		}
 		if c.lastErr != "" {
 			c.lastErr = ""
@@ -785,8 +837,26 @@ func (c *content) stopWatching() {
 	}
 }
 
+// startDashboardLogoAnim starts the looping konfi logo animation for the
+// landing page and returns the cmd that drives its first frame.
+func (c *content) startDashboardLogoAnim() tea.Cmd {
+	cfg, ok := konfables.LogoAnims["konfi"]
+	if !ok {
+		c.logoAnim = nil
+		return nil
+	}
+	logo, ok := konfables.Logos["konfi"]
+	if !ok {
+		c.logoAnim = nil
+		return nil
+	}
+	c.logoAnimGen++
+	c.logoAnim = pixelart.NewAnimState(logo, cfg)
+	return logoAnimCmd(c.logoAnimGen, cfg.TickMs)
+}
+
 // showDashboard resets content to the landing/welcome state.
-func (c *content) showDashboard() {
+func (c *content) showDashboard() tea.Cmd {
 	c.stopWatching()
 	c.konfable = nil
 	c.title = "konfi"
@@ -815,11 +885,11 @@ func (c *content) showDashboard() {
 	c.insightIdx = 0
 	c.insightWarningCount = 0
 	c.insightGen++
-	c.logoAnimGen++
-	c.logoAnim = nil
+	c.splitFlap = nil
 	c.undoStack.Clear()
 	c.breadcrumb.SetPath("", "", "")
 	c.diffView.SetEntries(nil)
+	return c.startDashboardLogoAnim()
 }
 
 // loadApp sets the active konfable, loads its schema (fast, embedded), and
@@ -827,10 +897,13 @@ func (c *content) showDashboard() {
 func (c *content) loadApp(k konfables.Konfable) tea.Cmd {
 	// snapshot current header lines for split-flap transition
 	var snapshot []string
-	if c.splitFlap != nil && !c.splitFlap.done {
+	switch {
+	case c.konfable == nil:
+		snapshot = []string{"", "", ""}
+	case c.splitFlap != nil && !c.splitFlap.done:
 		snapshot = make([]string, len(c.splitFlap.current))
 		copy(snapshot, c.splitFlap.current)
-	} else if c.insightLines != nil && c.konfable != nil {
+	case c.insightLines != nil && c.konfable != nil:
 		snapshot = c.headerLeftLines()
 	}
 
@@ -1147,8 +1220,8 @@ func (c *content) computePendingChanges() []widgets.PendingChange {
 			Section: sec,
 			Label:   f.Label,
 			Key:     f.Key,
-			OldVal:  origVal,
-			NewVal:  curVal,
+			OldVal:  pendingDiffValue(*f, origVal),
+			NewVal:  pendingDiffValue(*f, curVal),
 			IsNew:   !hadOrig && hasCur,
 			Deleted: hadOrig && !hasCur,
 		})
@@ -1170,6 +1243,13 @@ func (c *content) computePendingChanges() []widgets.PendingChange {
 	}
 
 	return changes
+}
+
+func pendingDiffValue(f pkg.Field, value string) string {
+	if f.Widget != "blocklist" || strings.TrimSpace(value) == "" {
+		return value
+	}
+	return strings.TrimRight(pkg.RenderBlockModel(pkg.Decode(value)), "\r\n")
 }
 
 // syncDiffView populates the diff preview from current pending changes.
@@ -1259,6 +1339,10 @@ func (c *content) buildInsights() {
 		}
 	}
 
+	if c.config == nil {
+		return
+	}
+
 	totalFields := 0
 	for _, sec := range c.schema.Sections {
 		totalFields += len(sec.Fields)
@@ -1274,4 +1358,11 @@ func (c *content) buildInsights() {
 	sections := len(c.schema.Sections)
 	stat := fmt.Sprintf("%d/%d fields configured across %d sections", configured, totalFields, sections)
 	c.insightLines = append(c.insightLines, stat)
+}
+
+func (c *content) retargetSplitFlapHeader() {
+	if c.splitFlap == nil || c.splitFlap.done {
+		return
+	}
+	c.splitFlap.retarget(c.headerLeftLines())
 }

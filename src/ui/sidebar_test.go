@@ -9,23 +9,23 @@ import (
 )
 
 // TestSidebarGroupsNotInstalled verifies refilter orders entries as
-// home → installed → not-installed → system, so uninstalled apps form their own
-// section regardless of registry order, while preserving order within a group.
+// home → installed → not-installed → system, with each group sorted by name.
 func TestSidebarGroupsNotInstalled(t *testing.T) {
 	s := newSidebar([]sidebarItem{
 		{name: "home", installed: true, home: true},
-		{name: "ghostty", installed: true},
-		{name: "gnome", installed: false},
 		{name: "starship", installed: true},
 		{name: "kitty", installed: false},
+		{name: "ghostty", installed: true},
+		{name: "gnome", installed: false},
 		{name: "konfi", installed: true, system: true},
+		{name: "about", installed: true, system: true},
 	}, testTheme())
 
 	var order []string
 	for _, idx := range s.filtered {
 		order = append(order, s.items[idx].name)
 	}
-	want := []string{"home", "ghostty", "starship", "gnome", "kitty", "konfi"}
+	want := []string{"home", "ghostty", "starship", "gnome", "kitty", "about", "konfi"}
 	if !reflect.DeepEqual(order, want) {
 		t.Fatalf("sidebar order = %v, want %v", order, want)
 	}

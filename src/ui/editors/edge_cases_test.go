@@ -437,6 +437,49 @@ func TestFontEditor_FilterAcceptsJAndK(t *testing.T) {
 	}
 }
 
+func TestFontEditorMatchesFontconfigFamily(t *testing.T) {
+	e := &fontEditor{}
+	e.Init(pkg.Field{Widget: "font"}, "JetBrains Mono:size=11", testTheme())
+	e.Update(FontsLoadedMsg{Fonts: []string{
+		"A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7",
+		"JetBrains Mono", "Noto Sans",
+	}})
+
+	if got := e.cursor; got != 8 {
+		t.Fatalf("cursor = %d, want current font index 8", got)
+	}
+	if got := e.viewOffset; got != 8 {
+		t.Fatalf("viewOffset = %d, want selected font at top", got)
+	}
+}
+
+func TestFontEditorPreservesFontconfigSuffixOnPickerSelect(t *testing.T) {
+	e := &fontEditor{}
+	e.Init(pkg.Field{Widget: "font"}, "JetBrains Mono:size=11", testTheme())
+	e.Update(FontsLoadedMsg{Fonts: []string{"JetBrains Mono", "Iosevka", "Noto Sans"}})
+	e.cursor = 1
+
+	_, done, canceled := e.Update(keyMsg("enter"))
+	if !done || canceled {
+		t.Fatalf("enter done=%v canceled=%v, want committed", done, canceled)
+	}
+	if got, want := e.Value(), "Iosevka:size=11"; got != want {
+		t.Fatalf("Value() = %q, want %q", got, want)
+	}
+}
+
+func TestFontEditorFreeTextStartsFromRawFontconfigValue(t *testing.T) {
+	e := &fontEditor{}
+	e.Init(pkg.Field{Widget: "font"}, "JetBrains Mono:size=11", testTheme())
+	e.Update(FontsLoadedMsg{Fonts: []string{"JetBrains Mono", "Iosevka"}})
+
+	e.Update(keyMsg("tab"))
+
+	if got, want := e.filter.Value(), "JetBrains Mono:size=11"; got != want {
+		t.Fatalf("filter value = %q, want %q", got, want)
+	}
+}
+
 // ── hookEditor ──────────────────────────────────────────────────────────────
 
 func TestHookEditor_EmptyInit(t *testing.T) {

@@ -223,7 +223,13 @@ func (c content) updateHypridleDashboard(msg tea.KeyPressMsg) (content, tea.Cmd)
 	case "pgup":
 		c.moveHypridleCursor(-c.pageSize())
 		c.syncDetail()
-	case "backspace", "delete", "d":
+	case "backspace", "delete":
+		if f := c.currentField(); f != nil && c.konfable != nil && c.config != nil {
+			c.revertField(*f)
+			cmd := c.drainErr()
+			return c, cmd
+		}
+	case "d":
 		row, ok := c.currentHypridleRow()
 		if ok && row.kind == hypridleRowListener {
 			return c, func() tea.Msg {

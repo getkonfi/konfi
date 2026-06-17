@@ -31,13 +31,13 @@ func (r *root) renderDiffPreview() string {
 	r.content.diffView.SetSize(innerW, innerH)
 
 	var b strings.Builder
-	b.WriteString(th.Primary.Bold(true).Render("  save changes?"))
+	b.WriteString(th.Primary.Bold(true).Render("  preview diff"))
 	b.WriteString("\n\n")
 	b.WriteString(r.content.diffView.View())
 	b.WriteString("\n\n")
 	hints := "  enter save  esc cancel"
 	if r.currentAppInfo().AutoReload {
-		hints = "  enter save  p preview  esc cancel"
+		hints = "  enter save  p live preview  esc cancel"
 	}
 	b.WriteString(th.Muted.Italic(true).Render(hints))
 

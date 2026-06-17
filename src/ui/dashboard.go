@@ -33,10 +33,13 @@ func buildDashboardApps(apps []konfables.Konfable, installed map[string]bool, ne
 		info := k.Info()
 		nIcon := info.NerdIcon
 		if !nerdFont {
-			nIcon = info.Icon
+			nIcon = plainAppIcon(info.Icon)
 		}
 		if nIcon == "" {
-			nIcon = info.Icon
+			nIcon = plainAppIcon(info.Icon)
+		}
+		if nIcon == "" {
+			nIcon = appInitials(k.Name())
 		}
 		da := dashboardApp{
 			icon:      nIcon,
@@ -109,8 +112,12 @@ func buildDashboardApps(apps []konfables.Konfable, installed map[string]bool, ne
 func (c *content) renderDashboard(width int) string {
 	var b strings.Builder
 
-	// logo
-	if logo, ok := konfables.Logos["konfi"]; ok {
+	// logo — animated frame when the blink is running, else static
+	if c.logoAnim != nil && !c.logoAnim.Done {
+		art := c.logoAnim.CurrentFrame().Render()
+		b.WriteString(centerBlock(art, width))
+		b.WriteByte('\n')
+	} else if logo, ok := konfables.Logos["konfi"]; ok {
 		art := logo.Render()
 		b.WriteString(centerBlock(art, width))
 		b.WriteByte('\n')
@@ -138,16 +145,11 @@ func (c *content) renderDashboard(width int) string {
 		}
 	}
 
-	// sort installed: most configured first, then alphabetical
 	sort.Slice(installed, func(i, j int) bool {
-		if installed[i].configuredCount != installed[j].configuredCount {
-			return installed[i].configuredCount > installed[j].configuredCount
-		}
-		return installed[i].name < installed[j].name
+		return dashboardAppLess(installed[i], installed[j])
 	})
-	// sort not-detected alphabetically
 	sort.Slice(notInstalled, func(i, j int) bool {
-		return notInstalled[i].name < notInstalled[j].name
+		return dashboardAppLess(notInstalled[i], notInstalled[j])
 	})
 
 	// aggregate summary — actionable signals only
@@ -176,7 +178,7 @@ func (c *content) renderDashboard(width int) string {
 	}
 
 	// compute column widths across both groups for alignment
-	nameW, verW := 0, 0
+	nameW, verW, supportW, fieldCountW := 0, 0, 0, 0
 	for i := range installed {
 		if len(installed[i].name) > nameW {
 			nameW = len(installed[i].name)
@@ -184,20 +186,26 @@ func (c *content) renderDashboard(width int) string {
 		if len(installed[i].version) > verW {
 			verW = len(installed[i].version)
 		}
+		if w := intWidth(installed[i].totalFields); w > fieldCountW {
+			fieldCountW = w
+		}
 	}
 	for i := range notInstalled {
 		if len(notInstalled[i].name) > nameW {
 			nameW = len(notInstalled[i].name)
+		}
+		if label := dashboardSupportLabel(notInstalled[i]); lipgloss.Width(label) > supportW {
+			supportW = lipgloss.Width(label)
+		}
+		if w := intWidth(notInstalled[i].totalFields); w > fieldCountW {
+			fieldCountW = w
 		}
 	}
 
 	// build all lines first, then left-align the block at a single offset
 	var lines []string
 	maxW := 0
-	iconW := 1
-	if !c.nerdFont {
-		iconW = 2
-	}
+	iconW := appIconWidth(c.nerdFont)
 
 	if len(installed) > 0 {
 		label := "── installed "
@@ -216,7 +224,7 @@ func (c *content) renderDashboard(width int) string {
 				ver = "  " + padRight(a.version, verW)
 			}
 			ver = c.theme.Muted.Render(ver)
-			stats := c.dashboardStats(a)
+			stats := c.dashboardStats(a, false, fieldCountW)
 			lines = append(lines, icon+name+ver+stats)
 		}
 	}
@@ -234,19 +242,16 @@ func (c *content) renderDashboard(width int) string {
 			a := &notInstalled[i]
 			icon := c.theme.Muted.Faint(true).Render(iconCell(a.icon, iconW))
 			name := c.theme.Muted.Faint(true).Render(" " + padRight(a.name, nameW))
-			ver := ""
-			switch {
-			case a.minAppVersion != "" && a.maxAppVersion != "":
-				ver = fmt.Sprintf("  %s – %s", a.minAppVersion, a.maxAppVersion)
-			case a.minAppVersion != "":
-				ver = fmt.Sprintf("  %s+", a.minAppVersion)
-			case a.maxAppVersion != "":
-				ver = fmt.Sprintf("  up to %s", a.maxAppVersion)
+			support := ""
+			if supportW > 0 {
+				support = strings.Repeat(" ", supportW+2)
+				if label := dashboardSupportLabel(*a); label != "" {
+					support = "  " + padRight(label, supportW)
+				}
+				support = c.theme.Muted.Faint(true).Render(support)
 			}
-			if ver != "" {
-				ver = c.theme.Muted.Faint(true).Render(ver)
-			}
-			lines = append(lines, icon+name+ver)
+			stats := c.dashboardStats(a, true, fieldCountW)
+			lines = append(lines, icon+name+support+stats)
 		}
 	}
 
@@ -285,15 +290,58 @@ func (c *content) renderDashboard(width int) string {
 	return b.String()
 }
 
-// dashboardStats formats the actionable stats suffix for a dashboard app.
-// configured count is omitted — sort order communicates engagement.
-func (c *content) dashboardStats(a *dashboardApp) string {
+func dashboardAppLess(a, b dashboardApp) bool {
+	an := strings.ToLower(a.name)
+	bn := strings.ToLower(b.name)
+	if an == bn {
+		return a.name < b.name
+	}
+	return an < bn
+}
+
+func dashboardSupportLabel(a dashboardApp) string {
+	switch {
+	case a.minAppVersion != "" && a.maxAppVersion != "":
+		return fmt.Sprintf("%s – %s", a.minAppVersion, a.maxAppVersion)
+	case a.minAppVersion != "":
+		return fmt.Sprintf("%s+", a.minAppVersion)
+	case a.maxAppVersion != "":
+		return fmt.Sprintf("up to %s", a.maxAppVersion)
+	default:
+		return ""
+	}
+}
+
+// dashboardStats formats the metadata suffix for a dashboard app.
+func (c *content) dashboardStats(a *dashboardApp, faint bool, fieldCountW int) string {
 	var parts []string
+	if a.totalFields > 0 {
+		parts = append(parts, fieldCountLabel(a.totalFields, fieldCountW))
+	}
 	if a.deprecatedCount > 0 {
 		parts = append(parts, fmt.Sprintf("%d deprecated", a.deprecatedCount))
 	}
 	if len(parts) == 0 {
 		return ""
 	}
-	return c.theme.Muted.Render("  " + strings.Join(parts, " · "))
+	style := c.theme.Muted
+	if faint {
+		style = style.Faint(true)
+	}
+	return style.Render("  " + strings.Join(parts, " · "))
+}
+
+func fieldCountLabel(n, width int) string {
+	count := fmt.Sprintf("%*d", width, n)
+	if n == 1 {
+		return count + " field"
+	}
+	return count + " fields"
+}
+
+func intWidth(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	return len(fmt.Sprintf("%d", n))
 }

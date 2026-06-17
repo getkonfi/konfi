@@ -141,6 +141,7 @@ func (c *content) renderBody(width int) string {
 
 	// hoist per-field constants outside the loop
 	icons := fieldIcons(c.nerdFont)
+	iconW := fieldIconWidth(c.nerdFont)
 
 	for i, r := range c.visible {
 		// section header row
@@ -237,12 +238,13 @@ func (c *content) renderBody(width int) string {
 		if isDeprecated {
 			iconStyle = c.theme.FieldStale
 		}
+		iconText := iconCell(icon, iconW)
 		isBookmarked := c.konfable != nil && c.bookmarks[c.konfable.Name()+"/"+f.Key]
 		var prefix, label string
 		if isCursor {
-			prefix = c.theme.Primary.Render("▎ ") + iconStyle.Render(icon) + " "
+			prefix = c.theme.Primary.Render("▎ ") + iconStyle.Render(iconText) + " "
 		} else {
-			prefix = "  " + iconStyle.Faint(true).Render(icon) + " "
+			prefix = "  " + iconStyle.Faint(true).Render(iconText) + " "
 		}
 		label = c.fieldLabelStyle(isCursor, isChanged, isDeprecated).Render(paddedLabel)
 		if isBookmarked {

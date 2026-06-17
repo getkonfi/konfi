@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	splitFlapTickRate = 45 * time.Millisecond
-	splitFlapMaxSteps = 14
-	splitFlapCharSet  = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-~:_"
+	splitFlapTickRate         = 45 * time.Millisecond
+	splitFlapMaxSteps         = 14
+	splitFlapColumnStaggerNum = 4
+	splitFlapColumnStaggerDen = 5
+	splitFlapCharSet          = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./-~:_"
 )
 
 var splitFlapRunes = []rune(splitFlapCharSet)
@@ -40,14 +42,6 @@ func newSplitFlap(source, target []string, gen int) *splitFlapState {
 	copy(tgt, target)
 	copy(cur, source)
 
-	// find longest line to set proper animation duration
-	maxChars := 0
-	for _, s := range tgt {
-		if n := len([]rune(s)); n > maxChars {
-			maxChars = n
-		}
-	}
-
 	return &splitFlapState{
 		source:   src,
 		target:   tgt,
@@ -55,8 +49,35 @@ func newSplitFlap(source, target []string, gen int) *splitFlapState {
 		step:     0,
 		done:     false,
 		gen:      gen,
-		maxChars: maxChars,
+		maxChars: maxLineRunes(tgt),
 	}
+}
+
+func (s *splitFlapState) retarget(target []string) {
+	maxLines := len(s.current)
+	if len(target) > maxLines {
+		maxLines = len(target)
+	}
+	for len(s.source) < maxLines {
+		s.source = append(s.source, "")
+	}
+	for len(s.current) < maxLines {
+		s.current = append(s.current, "")
+	}
+	tgt := make([]string, maxLines)
+	copy(tgt, target)
+	s.target = tgt
+	s.maxChars = maxLineRunes(tgt)
+}
+
+func maxLineRunes(lines []string) int {
+	maxChars := 0
+	for _, line := range lines {
+		if n := len([]rune(line)); n > maxChars {
+			maxChars = n
+		}
+	}
+	return maxChars
 }
 
 // tick advances one frame. returns true when animation is complete.
@@ -79,7 +100,7 @@ func (s *splitFlapState) tick() bool {
 	return s.done
 }
 
-// advanceLine settles characters left-to-right with a 1-step stagger per line.
+// advanceLine settles characters left-to-right with a compressed column stagger.
 // positions beyond the target length settle to space immediately (no cycling).
 func advanceLine(src, tgt string, step, lineOffset int) string {
 	effectiveStep := step - lineOffset
@@ -105,7 +126,7 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 
 	out := make([]rune, maxLen)
 	for i := range out {
-		charStep := effectiveStep - i
+		charStep := effectiveStep - splitFlapColumnDelay(i)
 		switch {
 		case charStep <= 0:
 			out[i] = srcRunes[i]
@@ -125,6 +146,13 @@ func advanceLine(src, tgt string, step, lineOffset int) string {
 		}
 	}
 	return strings.TrimRight(string(out), " ")
+}
+
+func splitFlapColumnDelay(col int) int {
+	if col <= 0 {
+		return 0
+	}
+	return (col*splitFlapColumnStaggerNum + splitFlapColumnStaggerDen/2) / splitFlapColumnStaggerDen
 }
 
 func splitFlapCmd(gen int) tea.Cmd {

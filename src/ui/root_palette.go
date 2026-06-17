@@ -18,11 +18,18 @@ func (r *root) buildPaletteItems() []PaletteItem {
 	// actions
 	items = append(items,
 		PaletteItem{
-			Label:      "Save",
+			Label:      "Preview Diff / Save",
 			Shortcut:   "ctrl+s",
 			Category:   "action",
-			MatchTerms: "save write",
+			MatchTerms: "preview diff save write",
 			Action:     SaveMsg{},
+		},
+		PaletteItem{
+			Label:      "Revert Field",
+			Shortcut:   "backspace",
+			Category:   "action",
+			MatchTerms: "revert field reset discard",
+			Action:     RevertFieldMsg{},
 		},
 		PaletteItem{
 			Label:      "Undo",
